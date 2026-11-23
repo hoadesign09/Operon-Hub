@@ -1,23 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IconDevices, IconDownload, IconRefresh } from '@tabler/icons-react';
 import type { AssetAssignmentItem } from '@/modules/hrm/office/assets.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface MyAssetsResponse {
   activeItems: AssetAssignmentItem[];
   historyItems: AssetAssignmentItem[];
 }
 
-const CATEGORY_TEXT: Record<AssetAssignmentItem['assetCategory'], string> = {
-  LAPTOP: 'Laptop / Máy tính',
-  MONITOR: 'Màn hình',
-  PHONE: 'Điện thoại / Di động',
-  FURNITURE: 'Nội thất văn phòng',
-  OTHER: 'Thiết bị khác',
+const CATEGORY_TEXT: Record<AssetAssignmentItem['assetCategory'], { vi: string; en: string }> = {
+  LAPTOP: { vi: 'Laptop / Máy tính', en: 'Laptop / Computer' },
+  MONITOR: { vi: 'Màn hình', en: 'Monitor' },
+  PHONE: { vi: 'Điện thoại / Di động', en: 'Phone / Mobile' },
+  FURNITURE: { vi: 'Nội thất văn phòng', en: 'Office Furniture' },
+  OTHER: { vi: 'Thiết bị khác', en: 'Other Equipment' },
 };
 
 export default function MyAssetsPage() {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const [data, setData] = useState<MyAssetsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -34,14 +41,24 @@ export default function MyAssetsPage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success || !json.data) {
-          throw new Error(json.error?.message ?? 'Không thể tải danh sách tài sản của bạn.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải danh sách tài sản của bạn.',
+                'Failed to load your assigned assets.',
+              ),
+          );
         }
         setData(json.data);
         setErrorMessage(null);
       })
       .catch((err: unknown) => {
         if ((err as { name?: string })?.name === 'AbortError') return;
-        setErrorMessage(err instanceof Error ? err.message : 'Lỗi kết nối máy chủ.');
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi kết nối máy chủ.', 'Server connection error.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -55,21 +72,30 @@ export default function MyAssetsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Tài sản của tôi</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {tr('Tài sản của tôi', 'My Assigned Assets')}
+        </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Theo dõi danh sách thiết bị công ty đang cấp phát cho bạn và tải Biên bản bàn giao / thu hồi PDF.
+          {tr(
+            'Theo dõi danh sách thiết bị công ty đang cấp phát cho bạn và tải Biên bản bàn giao / thu hồi PDF.',
+            'Track company equipment assigned to you and download PDF handover / return minutes.',
+          )}
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:max-w-md">
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-          <div className="text-xs font-medium text-blue-700">Đang sử dụng</div>
+          <div className="text-xs font-medium text-blue-700">
+            {tr('Đang sử dụng', 'In Use')}
+          </div>
           <div className="mt-1 text-2xl font-bold text-blue-800">
             {isLoading ? '...' : (data?.activeItems.length ?? 0)}
           </div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">Đã bàn giao trả</div>
+          <div className="text-xs text-slate-500">
+            {tr('Đã bàn giao trả', 'Returned')}
+          </div>
           <div className="mt-1 text-2xl font-bold text-slate-800">
             {isLoading ? '...' : (data?.historyItems.length ?? 0)}
           </div>
@@ -93,7 +119,7 @@ export default function MyAssetsPage() {
             className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-medium text-white"
           >
             <IconRefresh size={14} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       ) : !data || (data.activeItems.length === 0 && data.historyItems.length === 0) ? (
@@ -102,10 +128,13 @@ export default function MyAssetsPage() {
             <IconDevices size={24} />
           </div>
           <p className="mt-3 text-sm font-semibold text-slate-800">
-            Bạn chưa được cấp phát tài sản nào
+            {tr('Bạn chưa được cấp phát tài sản nào', 'No assets assigned to you yet')}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Khi Bộ phận Hành chính cấp phát thiết bị làm việc, thông tin và biên bản bàn giao sẽ hiển thị tại đây.
+            {tr(
+              'Khi Bộ phận Hành chính cấp phát thiết bị làm việc, thông tin và biên bản bàn giao sẽ hiển thị tại đây.',
+              'When Admin assigns work equipment to you, details and handover minutes will appear here.',
+            )}
           </p>
         </div>
       ) : (
@@ -113,11 +142,17 @@ export default function MyAssetsPage() {
           {/* Active Assigned Assets */}
           <div className="space-y-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              Thiết bị đang quản lý & sử dụng ({data.activeItems.length})
+              {tr(
+                `Thiết bị đang quản lý & sử dụng (${data.activeItems.length})`,
+                `Currently Assigned Equipment (${data.activeItems.length})`,
+              )}
             </h2>
             {data.activeItems.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-                Hiện không có thiết bị nào đang cấp phát.
+                {tr(
+                  'Hiện không có thiết bị nào đang cấp phát.',
+                  'No equipment is currently assigned to you.',
+                )}
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
@@ -133,27 +168,35 @@ export default function MyAssetsPage() {
                             {item.assetCode} — {item.assetName}
                           </div>
                           <div className="text-xs text-slate-500">
-                            {CATEGORY_TEXT[item.assetCategory]} • S/N:{' '}
-                            {item.serialNumber ?? 'Không có'}
+                            {locale === 'en'
+                              ? CATEGORY_TEXT[item.assetCategory].en
+                              : CATEGORY_TEXT[item.assetCategory].vi}{' '}
+                            • S/N: {item.serialNumber ?? tr('Không có', 'N/A')}
                           </div>
                         </div>
                         <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-800">
-                          Đang sử dụng
+                          {tr('Đang sử dụng', 'In Use')}
                         </span>
                       </div>
 
                       <div className="mt-3 space-y-1 text-xs text-slate-600">
                         <div>
-                          <span className="font-semibold text-slate-800">Ngày nhận:</span>{' '}
+                          <span className="font-semibold text-slate-800">
+                            {tr('Ngày nhận:', 'Assigned Date:')}
+                          </span>{' '}
                           {item.assignedAt}
                         </div>
                         <div>
-                          <span className="font-semibold text-slate-800">Tình trạng lúc nhận:</span>{' '}
+                          <span className="font-semibold text-slate-800">
+                            {tr('Tình trạng lúc nhận:', 'Condition on Handover:')}
+                          </span>{' '}
                           {item.conditionOnAssign}
                         </div>
                         {item.note && (
                           <div>
-                            <span className="font-semibold text-slate-800">Ghi chú:</span>{' '}
+                            <span className="font-semibold text-slate-800">
+                              {tr('Ghi chú:', 'Note:')}
+                            </span>{' '}
                             {item.note}
                           </div>
                         )}
@@ -166,7 +209,9 @@ export default function MyAssetsPage() {
                         className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
                       >
                         <IconDownload size={14} />
-                        <span>Tải Biên bản bàn giao PDF</span>
+                        <span>
+                          {tr('Tải Biên bản bàn giao PDF', 'Download Handover PDF')}
+                        </span>
                       </a>
                     </div>
                   </div>
@@ -179,18 +224,25 @@ export default function MyAssetsPage() {
           {data.historyItems.length > 0 && (
             <div className="space-y-3">
               <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-                Lịch sử thiết bị đã bàn giao trả ({data.historyItems.length})
+                {tr(
+                  `Lịch sử thiết bị đã bàn giao trả (${data.historyItems.length})`,
+                  `Returned Equipment History (${data.historyItems.length})`,
+                )}
               </h2>
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       <tr>
-                        <th className="px-4 py-3">Thiết bị</th>
-                        <th className="px-4 py-3">Ngày nhận</th>
-                        <th className="px-4 py-3">Ngày trả</th>
-                        <th className="px-4 py-3">Tình trạng lúc trả</th>
-                        <th className="px-4 py-3 text-right">Biên bản</th>
+                        <th className="px-4 py-3">{tr('Thiết bị', 'Asset')}</th>
+                        <th className="px-4 py-3">{tr('Ngày nhận', 'Assigned Date')}</th>
+                        <th className="px-4 py-3">{tr('Ngày trả', 'Returned Date')}</th>
+                        <th className="px-4 py-3">
+                          {tr('Tình trạng lúc trả', 'Condition on Return')}
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          {tr('Biên bản', 'Handover Doc')}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">

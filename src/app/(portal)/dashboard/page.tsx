@@ -27,25 +27,41 @@ import { SystemStatusCard } from '@/components/system/SystemStatusCard';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
 import type { DashboardSummaryData } from '@/modules/hrm/dashboard/dashboard.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
+import {
+  formatMonthSelectOption,
+  formatPeriodLabel,
+  type TranslationKey,
+} from '@/shared/i18n/translator';
 
-const ATTENDANCE_SELF_LABELS: Record<
+const ATTENDANCE_SELF_STYLES: Record<
   'NOT_CHECKED_IN' | 'CHECKED_IN' | 'CHECKED_OUT',
-  { label: string; cls: string }
+  { key: TranslationKey; cls: string }
 > = {
-  NOT_CHECKED_IN: { label: 'Chưa chấm công', cls: 'bg-amber-400/20 text-amber-200 ring-amber-300/30' },
-  CHECKED_IN: { label: 'Đang làm việc', cls: 'bg-cyan-400/20 text-cyan-200 ring-cyan-300/30' },
-  CHECKED_OUT: { label: 'Đã Check-out', cls: 'bg-emerald-400/20 text-emerald-200 ring-emerald-300/30' },
+  NOT_CHECKED_IN: {
+    key: 'dashboard.ess.status.NOT_CHECKED_IN',
+    cls: 'bg-amber-400/20 text-amber-200 ring-amber-300/30',
+  },
+  CHECKED_IN: {
+    key: 'dashboard.ess.status.CHECKED_IN',
+    cls: 'bg-cyan-400/20 text-cyan-200 ring-cyan-300/30',
+  },
+  CHECKED_OUT: {
+    key: 'dashboard.ess.status.CHECKED_OUT',
+    cls: 'bg-emerald-400/20 text-emerald-200 ring-emerald-300/30',
+  },
 };
 
-const ANNOUNCEMENT_CAT_LABELS: Record<string, { label: string; cls: string }> = {
-  GENERAL: { label: 'Chung', cls: 'bg-slate-100 text-slate-700' },
-  HR_POLICY: { label: 'Chính sách', cls: 'bg-blue-50 text-blue-700' },
-  EVENT: { label: 'Sự kiện', cls: 'bg-emerald-50 text-emerald-700' },
-  URGENT: { label: 'Khẩn cấp', cls: 'bg-rose-100 text-rose-700' },
+const ANNOUNCEMENT_CAT_STYLES: Record<string, { key: TranslationKey; cls: string }> = {
+  GENERAL: { key: 'dashboard.announcement.cat.GENERAL', cls: 'bg-slate-100 text-slate-700' },
+  HR_POLICY: { key: 'dashboard.announcement.cat.HR_POLICY', cls: 'bg-blue-50 text-blue-700' },
+  EVENT: { key: 'dashboard.announcement.cat.EVENT', cls: 'bg-emerald-50 text-emerald-700' },
+  URGENT: { key: 'dashboard.announcement.cat.URGENT', cls: 'bg-rose-100 text-rose-700' },
 };
 
 export default function DashboardPage() {
   const { user, selectedBranchId, hasPermission } = usePortalAuth();
+  const { locale, t } = useI18n();
   const canReadDashboard = hasPermission('hrm.dashboard.read');
 
   const [initialPeriod] = useState(() => {
@@ -89,7 +105,7 @@ export default function DashboardPage() {
         } | null;
 
         if (!res.ok || !json?.success || !json.data) {
-          throw new Error(json?.error?.message ?? 'Không thể tải dữ liệu Dashboard vận hành.');
+          throw new Error(json?.error?.message ?? 'LOAD_ERROR');
         }
 
         setData(json.data);
@@ -97,9 +113,7 @@ export default function DashboardPage() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMessage(
-          err instanceof Error ? err.message : 'Lỗi kết nối máy chủ khi tải Dashboard.',
-        );
+        setErrorMessage(err instanceof Error ? err.message : 'NETWORK_ERROR');
       } finally {
         setIsLoading(false);
       }
@@ -110,30 +124,36 @@ export default function DashboardPage() {
 
   const adminQuickLinks = [
     {
-      title: 'Quản lý Chi nhánh',
-      description: 'Thiết lập trụ sở chính và các chi nhánh thành viên.',
+      title: t('dashboard.adminLinks.branchesTitle'),
+      description: t('dashboard.adminLinks.branchesDesc'),
       href: '/settings/branches',
       permission: 'core.branches.read',
       icon: IconBuilding,
     },
     {
-      title: 'Người dùng & RBAC',
-      description: 'Cấp tài khoản, gán vai trò và tinh chỉnh ma trận quyền.',
+      title: t('dashboard.adminLinks.usersRolesTitle'),
+      description: t('dashboard.adminLinks.usersRolesDesc'),
       href: '/settings/users-roles',
       permission: 'core.users.read',
       icon: IconUsers,
     },
     {
-      title: 'Nhật ký Kiểm toán',
-      description: 'Theo dõi lịch sử đăng nhập và mọi thay đổi nhạy cảm.',
+      title: t('dashboard.adminLinks.auditLogsTitle'),
+      description: t('dashboard.adminLinks.auditLogsDesc'),
       href: '/settings/audit-logs',
       permission: 'core.audit_logs.read',
       icon: IconShieldLock,
     },
   ].filter((item) => hasPermission(item.permission));
 
-  const periodLabel = `Tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear}`;
+  const periodLabel = formatPeriodLabel(locale, selectedMonth, selectedYear);
   const yearOptions = [initialPeriod.year - 1, initialPeriod.year, initialPeriod.year + 1];
+  const resolvedError =
+    errorMessage === 'LOAD_ERROR'
+      ? t('dashboard.loadError')
+      : errorMessage === 'NETWORK_ERROR'
+        ? t('dashboard.networkError')
+        : errorMessage;
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-6">
@@ -144,15 +164,17 @@ export default function DashboardPage() {
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold tracking-widest text-cyan-300 uppercase">
-              Operon Command Center • {periodLabel}
+              {t('dashboard.commandCenter', { period: periodLabel })}
             </p>
             <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-white">
-              Xin chào, {user?.fullName ?? 'Người dùng'}
+              {t('dashboard.greeting', { name: user?.fullName ?? t('common.user') })}
             </h1>
             <p className="mt-1 text-xs text-slate-300">
-              Chi nhánh hiển thị:{' '}
+              {t('dashboard.displayBranch')}{' '}
               <span className="font-semibold text-white">
-                {currentBranch ? `${currentBranch.name} (${currentBranch.code})` : 'Tất cả chi nhánh'}
+                {currentBranch
+                  ? `${currentBranch.name} (${currentBranch.code})`
+                  : t('common.allBranches')}
               </span>
             </p>
           </div>
@@ -160,27 +182,27 @@ export default function DashboardPage() {
           {canReadDashboard && (
             <div className="flex flex-wrap items-center gap-2">
               <select
-                aria-label="Chọn tháng"
+                aria-label={t('dashboard.selectMonth')}
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
                 className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white backdrop-blur-xs outline-none focus:border-cyan-400"
               >
                 {Array.from({ length: 12 }, (_, idx) => idx + 1).map((m) => (
                   <option key={m} value={m} className="text-slate-900">
-                    Tháng {m}
+                    {formatMonthSelectOption(locale, m)}
                   </option>
                 ))}
               </select>
 
               <select
-                aria-label="Chọn năm"
+                aria-label={t('dashboard.selectYear')}
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
                 className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white backdrop-blur-xs outline-none focus:border-cyan-400"
               >
                 {yearOptions.map((y) => (
                   <option key={y} value={y} className="text-slate-900">
-                    Năm {y}
+                    {t('dashboard.yearOption', { year: y })}
                   </option>
                 ))}
               </select>
@@ -191,7 +213,7 @@ export default function DashboardPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500"
               >
                 <IconRefresh size={15} />
-                <span>Làm mới</span>
+                <span>{t('common.refresh')}</span>
               </button>
             </div>
           )}
@@ -202,16 +224,18 @@ export default function DashboardPage() {
           <div className="relative z-10 mt-5 border-t border-white/10 pt-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs text-slate-300">
-                <strong className="text-white">Không gian Cá nhân (ESS)</strong> —{' '}
+                <strong className="text-white">{t('dashboard.ess.title')}</strong> —{' '}
                 {data.selfService.employeeCode} • {data.selfService.positionName} (
                 {data.selfService.departmentName})
               </div>
               <span
                 className={`rounded-full px-3 py-1 text-[11px] font-semibold ring-1 ${
-                  ATTENDANCE_SELF_LABELS[data.selfService.todayAttendanceStatus].cls
+                  ATTENDANCE_SELF_STYLES[data.selfService.todayAttendanceStatus].cls
                 }`}
               >
-                Hôm nay: {ATTENDANCE_SELF_LABELS[data.selfService.todayAttendanceStatus].label}
+                {t('dashboard.ess.todayPrefix', {
+                  status: t(ATTENDANCE_SELF_STYLES[data.selfService.todayAttendanceStatus].key),
+                })}
               </span>
             </div>
 
@@ -221,14 +245,18 @@ export default function DashboardPage() {
                 className="rounded-xl border border-white/10 bg-white/8 p-3.5 backdrop-blur-xs transition hover:border-cyan-400/50 hover:bg-white/12"
               >
                 <div className="flex items-center justify-between text-[11px] text-slate-300">
-                  <span>Phép năm còn lại</span>
+                  <span>{t('dashboard.ess.annualLeaveTitle')}</span>
                   <IconCalendarEvent size={16} className="text-cyan-300" />
                 </div>
                 <div className="mt-1.5 text-xl font-bold text-white tabular-nums">
-                  {data.selfService.annualLeaveRemainingDays} ngày
+                  {t('dashboard.ess.daysUnit', {
+                    count: data.selfService.annualLeaveRemainingDays,
+                  })}
                 </div>
                 <div className="mt-0.5 text-[11px] text-slate-400">
-                  {data.selfService.myPendingRequestsCount} đơn đang chờ duyệt
+                  {t('dashboard.ess.pendingRequests', {
+                    count: data.selfService.myPendingRequestsCount,
+                  })}
                 </div>
               </Link>
 
@@ -237,15 +265,19 @@ export default function DashboardPage() {
                 className="rounded-xl border border-white/10 bg-white/8 p-3.5 backdrop-blur-xs transition hover:border-cyan-400/50 hover:bg-white/12"
               >
                 <div className="flex items-center justify-between text-[11px] text-slate-300">
-                  <span>Chấm công hôm nay</span>
+                  <span>{t('dashboard.ess.todayAttendanceTitle')}</span>
                   <IconClockCheck size={16} className="text-emerald-300" />
                 </div>
                 <div className="mt-1.5 text-base font-bold text-white tabular-nums">
                   {data.selfService.todayCheckInAt
-                    ? `Vào: ${formatDateTimeVN(data.selfService.todayCheckInAt).slice(11)}`
-                    : 'Chưa Check-in'}
+                    ? t('dashboard.ess.checkedInAt', {
+                        time: formatDateTimeVN(data.selfService.todayCheckInAt).slice(11),
+                      })
+                    : t('dashboard.ess.notCheckedIn')}
                 </div>
-                <div className="mt-1 text-[11px] font-semibold text-cyan-300">Mở chấm công →</div>
+                <div className="mt-1 text-[11px] font-semibold text-cyan-300">
+                  {t('dashboard.ess.openAttendance')}
+                </div>
               </Link>
 
               <Link
@@ -253,13 +285,17 @@ export default function DashboardPage() {
                 className="rounded-xl border border-white/10 bg-white/8 p-3.5 backdrop-blur-xs transition hover:border-cyan-400/50 hover:bg-white/12"
               >
                 <div className="flex items-center justify-between text-[11px] text-slate-300">
-                  <span>Tài sản đang giữ</span>
+                  <span>{t('dashboard.ess.assignedAssetsTitle')}</span>
                   <IconDevices size={16} className="text-blue-300" />
                 </div>
                 <div className="mt-1.5 text-xl font-bold text-white tabular-nums">
-                  {data.selfService.assignedAssetsCount} thiết bị
+                  {t('dashboard.ess.devicesUnit', {
+                    count: data.selfService.assignedAssetsCount,
+                  })}
                 </div>
-                <div className="mt-0.5 text-[11px] text-slate-400">Xem biên bản bàn giao</div>
+                <div className="mt-0.5 text-[11px] text-slate-400">
+                  {t('dashboard.ess.viewHandover')}
+                </div>
               </Link>
 
               <Link
@@ -267,14 +303,18 @@ export default function DashboardPage() {
                 className="rounded-xl border border-white/10 bg-white/8 p-3.5 backdrop-blur-xs transition hover:border-cyan-400/50 hover:bg-white/12"
               >
                 <div className="flex items-center justify-between text-[11px] text-slate-300">
-                  <span>Thông báo chưa đọc</span>
+                  <span>{t('dashboard.ess.unreadNewsTitle')}</span>
                   <IconSpeakerphone size={16} className="text-amber-300" />
                 </div>
                 <div className="mt-1.5 text-xl font-bold text-amber-300 tabular-nums">
-                  {data.kpis.office.unreadAnnouncementsCount} bản tin
+                  {t('dashboard.ess.bulletinsUnit', {
+                    count: data.kpis.office.unreadAnnouncementsCount,
+                  })}
                 </div>
                 <div className="mt-0.5 text-[11px] text-slate-400">
-                  {data.kpis.office.todayBookingsCount} cuộc họp hôm nay
+                  {t('dashboard.ess.todayMeetings', {
+                    count: data.kpis.office.todayBookingsCount,
+                  })}
                 </div>
               </Link>
             </div>
@@ -285,7 +325,7 @@ export default function DashboardPage() {
       {/* Main Dashboard States */}
       {!canReadDashboard ? (
         <div className="rounded-2xl border border-slate-200/90 bg-white p-8 text-center text-sm text-slate-500 shadow-xs">
-          Tài khoản hiện tại chưa được cấp quyền xem tổng quan HRM (`hrm.dashboard.read`).
+          {t('dashboard.noPermission')}
         </div>
       ) : isLoading ? (
         <div className="space-y-5">
@@ -299,16 +339,16 @@ export default function DashboardPage() {
             <div className="h-72 animate-pulse rounded-2xl bg-white/80" />
           </div>
         </div>
-      ) : errorMessage ? (
+      ) : resolvedError ? (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-xs">
-          <p className="text-sm font-medium text-rose-700">{errorMessage}</p>
+          <p className="text-sm font-medium text-rose-700">{resolvedError}</p>
           <button
             type="button"
             onClick={() => setReloadTick((v) => v + 1)}
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{t('common.retry')}</span>
           </button>
         </div>
       ) : data ? (
@@ -325,7 +365,9 @@ export default function DashboardPage() {
                     <IconUsers size={20} />
                   </span>
                   <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
-                    +{data.kpis.workforce.newHiresThisMonth} mới
+                    {t('dashboard.kpi.newHiresBadge', {
+                      count: data.kpis.workforce.newHiresThisMonth,
+                    })}
                   </span>
                 </div>
                 <div className="mt-4">
@@ -333,10 +375,13 @@ export default function DashboardPage() {
                     {data.kpis.workforce.activeEmployees}
                   </div>
                   <div className="mt-1 text-xs font-semibold text-slate-700">
-                    Nhân sự đang làm việc
+                    {t('dashboard.kpi.activeEmployees')}
                   </div>
                   <div className="mt-0.5 text-[11px] text-slate-500">
-                    Thử việc: <strong>{data.kpis.workforce.probationCount}</strong> • Kỳ {periodLabel}
+                    {t('dashboard.kpi.probationPeriod', {
+                      count: data.kpis.workforce.probationCount,
+                      period: periodLabel,
+                    })}
                   </div>
                 </div>
               </Link>
@@ -352,7 +397,7 @@ export default function DashboardPage() {
                     <IconFileCertificate size={20} />
                   </span>
                   <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
-                    ≤ 30 ngày
+                    {t('dashboard.kpi.within30Days')}
                   </span>
                 </div>
                 <div className="mt-4">
@@ -364,10 +409,10 @@ export default function DashboardPage() {
                     {data.kpis.expiringContractsCount}
                   </div>
                   <div className="mt-1 text-xs font-semibold text-slate-700">
-                    Hợp đồng sắp hết hạn
+                    {t('dashboard.kpi.expiringContracts')}
                   </div>
                   <div className="mt-0.5 text-[11px] text-slate-500">
-                    Bao gồm hợp đồng quá hạn chưa gia hạn
+                    {t('dashboard.kpi.expiringContractsDesc')}
                   </div>
                 </div>
               </Link>
@@ -389,7 +434,9 @@ export default function DashboardPage() {
                         : 'bg-emerald-50 text-emerald-700'
                     }`}
                   >
-                    {data.kpis.pendingApprovalsCount > 0 ? 'Cần duyệt' : 'Đã sạch'}
+                    {data.kpis.pendingApprovalsCount > 0
+                      ? t('dashboard.kpi.needsApproval')
+                      : t('dashboard.kpi.allClear')}
                   </span>
                 </div>
                 <div className="mt-4">
@@ -397,10 +444,10 @@ export default function DashboardPage() {
                     {data.kpis.pendingApprovalsCount}
                   </div>
                   <div className="mt-1 text-xs font-semibold text-slate-700">
-                    Đơn đang chờ tôi phê duyệt
+                    {t('dashboard.kpi.pendingApprovals')}
                   </div>
                   <div className="mt-0.5 text-[11px] text-slate-500">
-                    Hộp thư phê duyệt đa cấp (Nghỉ phép / OT / Công tác)
+                    {t('dashboard.kpi.pendingApprovalsDesc')}
                   </div>
                 </div>
               </Link>
@@ -423,11 +470,15 @@ export default function DashboardPage() {
                   <div className="text-3xl font-bold tracking-tight text-slate-900 tabular-nums">
                     {data.kpis.attendance.lateRatePercent}%
                   </div>
-                  <div className="mt-1 text-xs font-semibold text-slate-700">Tỷ lệ đi muộn</div>
+                  <div className="mt-1 text-xs font-semibold text-slate-700">
+                    {t('dashboard.kpi.lateRate')}
+                  </div>
                   <div className="mt-0.5 text-[11px] text-slate-500">
-                    Đúng giờ: <strong>{data.kpis.attendance.presentCount}</strong> • Đi muộn:{' '}
-                    <strong>{data.kpis.attendance.lateCount}</strong> ({data.kpis.attendance.totalLogs}{' '}
-                    lượt)
+                    {t('dashboard.kpi.attendanceSummary', {
+                      present: data.kpis.attendance.presentCount,
+                      late: data.kpis.attendance.lateCount,
+                      total: data.kpis.attendance.totalLogs,
+                    })}
                   </div>
                 </div>
               </Link>
@@ -443,22 +494,25 @@ export default function DashboardPage() {
                     <IconCash size={20} />
                   </span>
                   <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-                    {data.kpis.latestPayroll?.code ?? 'Kỳ lương'}
+                    {data.kpis.latestPayroll?.code ?? t('dashboard.kpi.payrollPeriodFallback')}
                   </span>
                 </div>
                 <div className="mt-4">
                   <div className="text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
                     {data.kpis.latestPayroll
                       ? formatVND(data.kpis.latestPayroll.totalNet)
-                      : 'Chưa có kỳ lương'}
+                      : t('dashboard.kpi.noPayrollYet')}
                   </div>
                   <div className="mt-1 text-xs font-semibold text-slate-700">
-                    Quỹ lương Thực lĩnh (Kỳ gần nhất)
+                    {t('dashboard.kpi.payrollNetTitle')}
                   </div>
                   <div className="mt-0.5 truncate text-[11px] text-slate-500">
                     {data.kpis.latestPayroll
-                      ? `Gross: ${formatVND(data.kpis.latestPayroll.totalGross)} (${data.kpis.latestPayroll.totalEmployees} NV)`
-                      : 'Tạo kỳ lương tại phân hệ Tính lương'}
+                      ? t('dashboard.kpi.payrollGrossSummary', {
+                          gross: formatVND(data.kpis.latestPayroll.totalGross),
+                          count: data.kpis.latestPayroll.totalEmployees,
+                        })
+                      : t('dashboard.kpi.payrollCreateHint')}
                   </div>
                 </div>
               </Link>
@@ -476,11 +530,15 @@ export default function DashboardPage() {
                   {data.kpis.assets.offboardingAlertsCount > 0 ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold text-rose-700">
                       <IconAlertTriangle size={12} />
-                      {data.kpis.assets.offboardingAlertsCount} chưa thu hồi
+                      {t('dashboard.kpi.unrecoveredAssets', {
+                        count: data.kpis.assets.offboardingAlertsCount,
+                      })}
                     </span>
                   ) : (
                     <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-                      Sẵn sàng: {data.kpis.assets.available}
+                      {t('dashboard.kpi.availableAssetsBadge', {
+                        count: data.kpis.assets.available,
+                      })}
                     </span>
                   )}
                 </div>
@@ -492,10 +550,12 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   <div className="mt-1 text-xs font-semibold text-slate-700">
-                    Tài sản & Thiết bị đang cấp phát
+                    {t('dashboard.kpi.assignedAssets')}
                   </div>
                   <div className="mt-0.5 text-[11px] text-slate-500">
-                    Kho sẵn sàng cấp phát: {data.kpis.assets.available} thiết bị
+                    {t('dashboard.kpi.availableAssetsDesc', {
+                      count: data.kpis.assets.available,
+                    })}
                   </div>
                 </div>
               </Link>
@@ -514,17 +574,19 @@ export default function DashboardPage() {
             {data.visibility.canViewContracts && (
               <div className="flex flex-col rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs">
                 <div className="mb-3.5 flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-slate-900">Hợp đồng sắp hết hạn</h2>
+                  <h2 className="text-sm font-bold text-slate-900">
+                    {t('dashboard.widget.expiringContractsTitle')}
+                  </h2>
                   <Link
                     href="/hrm/contracts"
                     className="text-xs font-semibold text-blue-600 hover:underline"
                   >
-                    Xem tất cả
+                    {t('common.viewAll')}
                   </Link>
                 </div>
                 {data.widgets.expiringContracts.length === 0 ? (
                   <p className="py-6 text-center text-xs text-slate-400">
-                    Không có hợp đồng nào sắp hết hạn trong 30 ngày tới.
+                    {t('dashboard.widget.expiringContractsEmpty')}
                   </p>
                 ) : (
                   <div className="space-y-2.5">
@@ -548,12 +610,15 @@ export default function DashboardPage() {
                             }`}
                           >
                             {c.daysRemaining < 0
-                              ? `Quá hạn ${Math.abs(c.daysRemaining)} ngày`
-                              : `Còn ${c.daysRemaining} ngày`}
+                              ? t('dashboard.widget.overdueDays', {
+                                  days: Math.abs(c.daysRemaining),
+                                })
+                              : t('dashboard.widget.remainingDays', { days: c.daysRemaining })}
                           </span>
                         </div>
                         <div className="mt-1 text-[11px] text-slate-500">
-                          {c.contractNo} • Hết hạn: {formatDateVN(c.endDate)}
+                          {c.contractNo} •{' '}
+                          {t('dashboard.widget.expiresOn', { date: formatDateVN(c.endDate) })}
                         </div>
                       </Link>
                     ))}
@@ -566,18 +631,18 @@ export default function DashboardPage() {
               <div className="mb-3.5 flex items-center justify-between">
                 <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
                   <IconCalendarTime size={17} className="text-blue-600" />
-                  <span>Lịch phòng họp sắp tới</span>
+                  <span>{t('dashboard.widget.upcomingMeetingsTitle')}</span>
                 </h2>
                 <Link
                   href="/hrm/office/meeting-rooms"
                   className="text-xs font-semibold text-blue-600 hover:underline"
                 >
-                  Đặt phòng
+                  {t('dashboard.widget.bookRoom')}
                 </Link>
               </div>
               {data.widgets.upcomingMeetings.length === 0 ? (
                 <p className="py-6 text-center text-xs text-slate-400">
-                  Chưa có cuộc họp nào sắp diễn ra.
+                  {t('dashboard.widget.upcomingMeetingsEmpty')}
                 </p>
               ) : (
                 <div className="space-y-2.5">
@@ -594,7 +659,7 @@ export default function DashboardPage() {
                         {formatDateTimeVN(m.startTime)} • [{m.roomCode}] {m.roomName}
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-500">
-                        Người đặt: {m.bookedByEmployeeName}
+                        {t('dashboard.widget.bookedBy', { name: m.bookedByEmployeeName })}
                       </div>
                     </Link>
                   ))}
@@ -606,24 +671,24 @@ export default function DashboardPage() {
               <div className="mb-3.5 flex items-center justify-between">
                 <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
                   <IconSpeakerphone size={17} className="text-amber-500" />
-                  <span>Bản tin Nội bộ mới nhất</span>
+                  <span>{t('dashboard.widget.latestAnnouncementsTitle')}</span>
                 </h2>
                 <Link
                   href="/hrm/office/announcements"
                   className="text-xs font-semibold text-blue-600 hover:underline"
                 >
-                  Xem bản tin
+                  {t('dashboard.widget.viewAnnouncements')}
                 </Link>
               </div>
               {data.widgets.latestAnnouncements.length === 0 ? (
                 <p className="py-6 text-center text-xs text-slate-400">
-                  Chưa có thông báo nội bộ nào được xuất bản.
+                  {t('dashboard.widget.latestAnnouncementsEmpty')}
                 </p>
               ) : (
                 <div className="space-y-2.5">
                   {data.widgets.latestAnnouncements.map((ann) => {
                     const cat =
-                      ANNOUNCEMENT_CAT_LABELS[ann.category] ?? ANNOUNCEMENT_CAT_LABELS.GENERAL;
+                      ANNOUNCEMENT_CAT_STYLES[ann.category] ?? ANNOUNCEMENT_CAT_STYLES.GENERAL;
                     return (
                       <Link
                         key={ann.id}
@@ -634,15 +699,15 @@ export default function DashboardPage() {
                           {ann.isPinned && (
                             <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
                               <IconPin size={10} />
-                              Ghim
+                              {t('common.pinBadge')}
                             </span>
                           )}
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${cat.cls}`}>
-                            {cat.label}
+                            {t(cat.key)}
                           </span>
                           {!ann.isReadByMe && (
                             <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                              Mới
+                              {t('common.newBadge')}
                             </span>
                           )}
                         </div>
@@ -653,7 +718,7 @@ export default function DashboardPage() {
                           {ann.title}
                         </div>
                         <div className="mt-1 text-[11px] text-slate-500">
-                          {ann.branchName ?? 'Toàn công ty'}
+                          {ann.branchName ?? t('common.companyWide')}
                           {ann.publishedAt ? ` • ${formatDateVN(ann.publishedAt)}` : ''}
                         </div>
                       </Link>
@@ -669,7 +734,9 @@ export default function DashboardPage() {
       {/* Core Admin Quick Links */}
       {adminQuickLinks.length > 0 && (
         <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs">
-          <h2 className="mb-3.5 text-sm font-bold text-slate-900">Lối tắt Quản trị Nền tảng Core</h2>
+          <h2 className="mb-3.5 text-sm font-bold text-slate-900">
+            {t('dashboard.adminLinks.title')}
+          </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {adminQuickLinks.map((item) => {
               const Icon = item.icon;
@@ -689,7 +756,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 group-hover:underline">
-                    <span>Mở ngay</span>
+                    <span>{t('common.openNow')}</span>
                     <IconArrowRight size={14} />
                   </div>
                 </Link>

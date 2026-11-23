@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   IconAlertCircle,
@@ -34,6 +34,7 @@ import {
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 type RequestTab = 'LEAVE' | 'OT' | 'TRIP';
 type RequestStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
@@ -91,27 +92,45 @@ interface MyBusinessTripRequest {
   approvalRequestId: number | null;
 }
 
-const SESSION_SHORT: Record<LeaveSessionOption, string> = {
-  FULL: 'Cả ngày',
-  AM: 'Sáng',
-  PM: 'Chiều',
+const SESSION_SHORT: Record<LeaveSessionOption, { vi: string; en: string }> = {
+  FULL: { vi: 'Cả ngày', en: 'Full day' },
+  AM: { vi: 'Sáng', en: 'Morning' },
+  PM: { vi: 'Chiều', en: 'Afternoon' },
 };
 
-const OT_RATE_BADGE: Record<OtRateType, { label: string; className: string }> = {
-  WEEKDAY_150: { label: '150% (Thường)', className: 'bg-blue-50 text-blue-700' },
-  WEEKEND_200: { label: '200% (Cuối tuần)', className: 'bg-amber-50 text-amber-800' },
-  HOLIDAY_300: { label: '300% (Ngày lễ)', className: 'bg-rose-50 text-rose-700' },
+const OT_RATE_BADGE: Record<OtRateType, { vi: string; en: string; className: string }> = {
+  WEEKDAY_150: {
+    vi: '150% (Thường)',
+    en: '150% (Weekday)',
+    className: 'bg-blue-50 text-blue-700',
+  },
+  WEEKEND_200: {
+    vi: '200% (Cuối tuần)',
+    en: '200% (Weekend)',
+    className: 'bg-amber-50 text-amber-800',
+  },
+  HOLIDAY_300: {
+    vi: '300% (Ngày lễ)',
+    en: '300% (Holiday)',
+    className: 'bg-rose-50 text-rose-700',
+  },
 };
 
-const STATUS_BADGE: Record<RequestStatus, { label: string; className: string }> = {
-  DRAFT: { label: 'Nháp', className: 'bg-slate-100 text-slate-700' },
-  PENDING: { label: 'Chờ duyệt', className: 'bg-amber-100 text-amber-800' },
-  APPROVED: { label: 'Đã duyệt', className: 'bg-emerald-100 text-emerald-800' },
-  REJECTED: { label: 'Từ chối', className: 'bg-rose-100 text-rose-700' },
-  CANCELLED: { label: 'Đã hủy', className: 'bg-slate-200 text-slate-600' },
+const STATUS_BADGE: Record<RequestStatus, { vi: string; en: string; className: string }> = {
+  DRAFT: { vi: 'Nháp', en: 'Draft', className: 'bg-slate-100 text-slate-700' },
+  PENDING: { vi: 'Chờ duyệt', en: 'Pending', className: 'bg-amber-100 text-amber-800' },
+  APPROVED: { vi: 'Đã duyệt', en: 'Approved', className: 'bg-emerald-100 text-emerald-800' },
+  REJECTED: { vi: 'Từ chối', en: 'Rejected', className: 'bg-rose-100 text-rose-700' },
+  CANCELLED: { vi: 'Đã hủy', en: 'Cancelled', className: 'bg-slate-200 text-slate-600' },
 };
 
 export default function MyRequestsPage() {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const currentYear = new Date().getFullYear();
   const [activeTab, setActiveTab] = useState<RequestTab>('LEAVE');
   const [year, setYear] = useState<number>(currentYear);
@@ -189,13 +208,25 @@ export default function MyRequestsPage() {
         ];
 
         if (!typesRes.ok || !typesJson.success) {
-          throw new Error(typesJson.error?.message ?? 'Không tải được danh mục loại phép.');
+          throw new Error(
+            typesJson.error?.message ??
+              trRef.current('Không tải được danh mục loại phép.', 'Failed to load leave types.'),
+          );
         }
         if (!balRes.ok || !balJson.success) {
-          throw new Error(balJson.error?.message ?? 'Không tải được quỹ phép cá nhân.');
+          throw new Error(
+            balJson.error?.message ??
+              trRef.current(
+                'Không tải được quỹ phép cá nhân.',
+                'Failed to load personal leave balances.',
+              ),
+          );
         }
         if (!tabRes.ok || !tabJson.success) {
-          throw new Error(tabJson.error?.message ?? 'Không tải được danh sách đơn từ.');
+          throw new Error(
+            tabJson.error?.message ??
+              trRef.current('Không tải được danh sách đơn từ.', 'Failed to load requests.'),
+          );
         }
 
         setLeaveTypes(typesJson.data?.items ?? []);
@@ -214,7 +245,12 @@ export default function MyRequestsPage() {
           return;
         }
         setErrorMsg(
-          err instanceof Error ? err.message : 'Lỗi kết nối máy chủ khi tải dữ liệu đơn từ.',
+          err instanceof Error
+            ? err.message
+            : trRef.current(
+                'Lỗi kết nối máy chủ khi tải dữ liệu đơn từ.',
+                'Server connection error while loading requests.',
+              ),
         );
       })
       .finally(() => {
@@ -267,7 +303,12 @@ export default function MyRequestsPage() {
         res = await fetch(`${basePath}/${id}/cancel`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ comment: 'Nhân viên tự hủy đơn từ cổng ESS' }),
+          body: JSON.stringify({
+            comment: tr(
+              'Nhân viên tự hủy đơn từ cổng ESS',
+              'Employee self-cancelled via ESS portal',
+            ),
+          }),
         });
       } else {
         res = await fetch(`${basePath}/${id}`, { method: 'DELETE' });
@@ -281,20 +322,29 @@ export default function MyRequestsPage() {
       if (!res.ok || !json.success) {
         setBannerMsg({
           type: 'error',
-          text: json.error?.message ?? 'Thao tác không thành công.',
+          text: json.error?.message ?? tr('Thao tác không thành công.', 'Action failed.'),
         });
       } else {
         const successText =
           mode === 'SUBMIT'
-            ? `Đã gửi duyệt đơn ${requestCode} thành công.`
+            ? tr(
+                `Đã gửi duyệt đơn ${requestCode} thành công.`,
+                `Submitted request ${requestCode} for approval.`,
+              )
             : mode === 'CANCEL'
-              ? `Đã hủy đơn ${requestCode} thành công.`
-              : `Đã xóa đơn ${requestCode}.`;
+              ? tr(
+                  `Đã hủy đơn ${requestCode} thành công.`,
+                  `Cancelled request ${requestCode}.`,
+                )
+              : tr(`Đã xóa đơn ${requestCode}.`, `Deleted request ${requestCode}.`);
         setBannerMsg({ type: 'success', text: successText });
         triggerReload();
       }
     } catch {
-      setBannerMsg({ type: 'error', text: 'Lỗi kết nối máy chủ. Vui lòng thử lại.' });
+      setBannerMsg({
+        type: 'error',
+        text: tr('Lỗi kết nối máy chủ. Vui lòng thử lại.', 'Server connection error. Please try again.'),
+      });
     } finally {
       setIsActionProcessing(false);
       setConfirmAction(null);
@@ -303,18 +353,23 @@ export default function MyRequestsPage() {
 
   const createBtnLabel =
     activeTab === 'LEAVE'
-      ? 'Tạo đơn nghỉ phép'
+      ? tr('Tạo đơn nghỉ phép', 'New Leave Request')
       : activeTab === 'OT'
-        ? 'Tạo đơn Tăng ca (OT)'
-        : 'Tạo đơn Công tác';
+        ? tr('Tạo đơn Tăng ca (OT)', 'New Overtime (OT) Request')
+        : tr('Tạo đơn Công tác', 'New Business Trip Request');
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Đơn từ & Quỹ phép của tôi</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Đơn từ & Quỹ phép của tôi', 'My Requests & Leave Balances')}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Theo dõi quỹ phép năm cá nhân, tạo và theo dõi đơn Nghỉ phép, Tăng ca (OT) và Công tác
+            {tr(
+              'Theo dõi quỹ phép năm cá nhân, tạo và theo dõi đơn Nghỉ phép, Tăng ca (OT) và Công tác',
+              'Track your annual leave balances, and create or manage Leave, Overtime (OT), and Business Trip requests',
+            )}
           </p>
         </div>
 
@@ -325,12 +380,12 @@ export default function MyRequestsPage() {
               setIsLoading(true);
               setYear(Number(e.target.value));
             }}
-            aria-label="Chọn năm"
+            aria-label={tr('Chọn năm', 'Select year')}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-blue-500"
           >
             {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
               <option key={y} value={y}>
-                Năm {y}
+                {tr(`Năm ${y}`, `Year ${y}`)}
               </option>
             ))}
           </select>
@@ -359,7 +414,7 @@ export default function MyRequestsPage() {
             type="button"
             onClick={() => setBannerMsg(null)}
             className="rounded p-1 hover:bg-black/5"
-            aria-label="Đóng thông báo"
+            aria-label={tr('Đóng thông báo', 'Dismiss notification')}
           >
             <IconX size={16} />
           </button>
@@ -370,7 +425,7 @@ export default function MyRequestsPage() {
       {activeTab === 'LEAVE' && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-            Quỹ phép cá nhân năm {year}
+            {tr(`Quỹ phép cá nhân năm ${year}`, `Personal Leave Balances — ${year}`)}
           </h2>
 
           {isLoading ? (
@@ -384,8 +439,10 @@ export default function MyRequestsPage() {
             </div>
           ) : balances.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-              Chưa có dữ liệu quỹ phép năm {year} cho hồ sơ của bạn. Vui lòng liên hệ Phòng Nhân sự
-              để khởi tạo quỹ phép.
+              {tr(
+                `Chưa có dữ liệu quỹ phép năm ${year} cho hồ sơ của bạn. Vui lòng liên hệ Phòng Nhân sự để khởi tạo quỹ phép.`,
+                `No leave balance data for ${year} found for your profile. Please contact HR to initialize your leave quota.`,
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -411,7 +468,9 @@ export default function MyRequestsPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-blue-600">{bal.remainingDays}</div>
-                        <div className="text-[11px] text-slate-500">ngày còn lại</div>
+                        <div className="text-[11px] text-slate-500">
+                          {tr('ngày còn lại', 'days remaining')}
+                        </div>
                       </div>
                     </div>
 
@@ -424,15 +483,21 @@ export default function MyRequestsPage() {
 
                     <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-2.5 text-xs text-slate-600">
                       <div>
-                        <span className="block text-[11px] text-slate-400">Tổng quỹ</span>
+                        <span className="block text-[11px] text-slate-400">
+                          {tr('Tổng quỹ', 'Total Quota')}
+                        </span>
                         <strong className="text-slate-800">{totalQuota}</strong>
                       </div>
                       <div>
-                        <span className="block text-[11px] text-slate-400">Đã dùng</span>
+                        <span className="block text-[11px] text-slate-400">
+                          {tr('Đã dùng', 'Used')}
+                        </span>
                         <strong className="text-emerald-700">{bal.usedDays}</strong>
                       </div>
                       <div>
-                        <span className="block text-[11px] text-slate-400">Chờ duyệt</span>
+                        <span className="block text-[11px] text-slate-400">
+                          {tr('Chờ duyệt', 'Pending')}
+                        </span>
                         <strong className="text-amber-700">{bal.pendingDays}</strong>
                       </div>
                     </div>
@@ -461,7 +526,7 @@ export default function MyRequestsPage() {
               }`}
             >
               <IconCalendarEvent size={15} />
-              <span>Đơn nghỉ phép</span>
+              <span>{tr('Đơn nghỉ phép', 'Leave Requests')}</span>
             </button>
 
             <button
@@ -477,7 +542,7 @@ export default function MyRequestsPage() {
               }`}
             >
               <IconClockPlus size={15} />
-              <span>Đơn Tăng ca (OT)</span>
+              <span>{tr('Đơn Tăng ca (OT)', 'Overtime (OT)')}</span>
             </button>
 
             <button
@@ -493,7 +558,7 @@ export default function MyRequestsPage() {
               }`}
             >
               <IconBriefcase size={15} />
-              <span>Đơn Công tác</span>
+              <span>{tr('Đơn Công tác', 'Business Trips')}</span>
             </button>
           </div>
 
@@ -504,15 +569,15 @@ export default function MyRequestsPage() {
                 setIsLoading(true);
                 setStatusFilter(e.target.value);
               }}
-              aria-label="Lọc trạng thái"
+              aria-label={tr('Lọc trạng thái', 'Filter by status')}
               className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-blue-500"
             >
-              <option value="">Tất cả trạng thái</option>
-              <option value="DRAFT">Nháp</option>
-              <option value="PENDING">Chờ duyệt</option>
-              <option value="APPROVED">Đã duyệt</option>
-              <option value="REJECTED">Từ chối</option>
-              <option value="CANCELLED">Đã hủy</option>
+              <option value="">{tr('Tất cả trạng thái', 'All Statuses')}</option>
+              <option value="DRAFT">{tr('Nháp', 'Draft')}</option>
+              <option value="PENDING">{tr('Chờ duyệt', 'Pending')}</option>
+              <option value="APPROVED">{tr('Đã duyệt', 'Approved')}</option>
+              <option value="REJECTED">{tr('Từ chối', 'Rejected')}</option>
+              <option value="CANCELLED">{tr('Đã hủy', 'Cancelled')}</option>
             </select>
 
             <button
@@ -521,7 +586,7 @@ export default function MyRequestsPage() {
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
               <IconRefresh size={15} />
-              <span>Làm mới</span>
+              <span>{tr('Làm mới', 'Refresh')}</span>
             </button>
           </div>
         </div>
@@ -542,7 +607,7 @@ export default function MyRequestsPage() {
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               <IconRefresh size={16} />
-              <span>Thử lại</span>
+              <span>{tr('Thử lại', 'Retry')}</span>
             </button>
           </div>
         ) : activeTab === 'LEAVE' ? (
@@ -550,7 +615,10 @@ export default function MyRequestsPage() {
             <div className="p-10 text-center">
               <IconCalendarOff size={36} className="mx-auto text-slate-300" />
               <p className="mt-3 text-sm font-semibold text-slate-700">
-                Bạn chưa có đơn nghỉ phép nào trong năm {year}
+                {tr(
+                  `Bạn chưa có đơn nghỉ phép nào trong năm ${year}`,
+                  `You have no leave requests in ${year}`,
+                )}
               </p>
               <button
                 type="button"
@@ -558,7 +626,7 @@ export default function MyRequestsPage() {
                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 <IconPlus size={16} />
-                <span>Tạo đơn nghỉ phép</span>
+                <span>{tr('Tạo đơn nghỉ phép', 'New Leave Request')}</span>
               </button>
             </div>
           ) : (
@@ -566,18 +634,19 @@ export default function MyRequestsPage() {
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Mã đơn</th>
-                    <th className="px-4 py-3">Loại phép</th>
-                    <th className="px-4 py-3">Thời gian nghỉ</th>
-                    <th className="px-4 py-3 text-right">Số ngày</th>
-                    <th className="px-4 py-3">Lý do</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
+                    <th className="px-4 py-3">{tr('Mã đơn', 'Request Code')}</th>
+                    <th className="px-4 py-3">{tr('Loại phép', 'Leave Type')}</th>
+                    <th className="px-4 py-3">{tr('Thời gian nghỉ', 'Leave Period')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Số ngày', 'Days')}</th>
+                    <th className="px-4 py-3">{tr('Lý do', 'Reason')}</th>
+                    <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {leaves.map((item) => {
                     const badge = STATUS_BADGE[item.status];
+                    const daysText = `${item.totalDays} ${tr('ngày', item.totalDays === 1 ? 'day' : 'days')}`;
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/70">
                         <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-800">
@@ -586,19 +655,27 @@ export default function MyRequestsPage() {
                         <td className="px-4 py-3">
                           <div className="font-medium text-slate-900">{item.leaveTypeName}</div>
                           <div className="text-[11px] text-slate-500">
-                            {item.isPaid ? 'Hưởng lương' : 'Không lương'}
+                            {item.isPaid ? tr('Hưởng lương', 'Paid') : tr('Không lương', 'Unpaid')}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-700">
                           <div>
-                            {formatDateVN(item.startDate)} ({SESSION_SHORT[item.startSession]})
+                            {formatDateVN(item.startDate)} (
+                            {locale === 'en'
+                              ? SESSION_SHORT[item.startSession].en
+                              : SESSION_SHORT[item.startSession].vi}
+                            )
                           </div>
                           <div className="text-slate-500">
-                            → {formatDateVN(item.endDate)} ({SESSION_SHORT[item.endSession]})
+                            → {formatDateVN(item.endDate)} (
+                            {locale === 'en'
+                              ? SESSION_SHORT[item.endSession].en
+                              : SESSION_SHORT[item.endSession].vi}
+                            )
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right font-semibold text-slate-900">
-                          {item.totalDays} ngày
+                          {daysText}
                         </td>
                         <td className="max-w-xs px-4 py-3">
                           <p className="truncate text-xs text-slate-600" title={item.reason}>
@@ -609,7 +686,7 @@ export default function MyRequestsPage() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
                           >
-                            {badge.label}
+                            {locale === 'en' ? badge.en : badge.vi}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -618,14 +695,14 @@ export default function MyRequestsPage() {
                               <>
                                 <button
                                   type="button"
-                                  title="Gửi duyệt"
+                                  title={tr('Gửi duyệt', 'Submit for approval')}
                                   onClick={() =>
                                     setConfirmAction({
                                       tab: 'LEAVE',
                                       mode: 'SUBMIT',
                                       id: item.id,
                                       requestCode: item.requestCode,
-                                      detailText: `${item.totalDays} ngày`,
+                                      detailText: daysText,
                                     })
                                   }
                                   className="rounded-lg bg-blue-50 p-1.5 text-blue-600 hover:bg-blue-100"
@@ -634,7 +711,7 @@ export default function MyRequestsPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  title="Chỉnh sửa"
+                                  title={tr('Chỉnh sửa', 'Edit')}
                                   onClick={() => {
                                     setEditingLeave({
                                       id: item.id,
@@ -657,14 +734,14 @@ export default function MyRequestsPage() {
                             {(item.status === 'DRAFT' || item.status === 'PENDING') && (
                               <button
                                 type="button"
-                                title="Hủy đơn"
+                                title={tr('Hủy đơn', 'Cancel request')}
                                 onClick={() =>
                                   setConfirmAction({
                                     tab: 'LEAVE',
                                     mode: 'CANCEL',
                                     id: item.id,
                                     requestCode: item.requestCode,
-                                    detailText: `${item.totalDays} ngày`,
+                                    detailText: daysText,
                                   })
                                 }
                                 className="rounded-lg bg-rose-50 p-1.5 text-rose-600 hover:bg-rose-100"
@@ -675,14 +752,14 @@ export default function MyRequestsPage() {
                             {(item.status === 'DRAFT' || item.status === 'CANCELLED') && (
                               <button
                                 type="button"
-                                title="Xóa đơn"
+                                title={tr('Xóa đơn', 'Delete request')}
                                 onClick={() =>
                                   setConfirmAction({
                                     tab: 'LEAVE',
                                     mode: 'DELETE',
                                     id: item.id,
                                     requestCode: item.requestCode,
-                                    detailText: `${item.totalDays} ngày`,
+                                    detailText: daysText,
                                   })
                                 }
                                 className="rounded-lg bg-slate-100 p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
@@ -693,7 +770,7 @@ export default function MyRequestsPage() {
                             {item.approvalRequestId && (
                               <Link
                                 href="/approvals"
-                                title="Xem luồng phê duyệt"
+                                title={tr('Xem luồng phê duyệt', 'View approval workflow')}
                                 className="rounded-lg bg-slate-100 p-1.5 text-slate-600 hover:bg-blue-50 hover:text-blue-600"
                               >
                                 <IconExternalLink size={15} />
@@ -713,7 +790,10 @@ export default function MyRequestsPage() {
             <div className="p-10 text-center">
               <IconClockPlus size={36} className="mx-auto text-slate-300" />
               <p className="mt-3 text-sm font-semibold text-slate-700">
-                Bạn chưa có đơn tăng ca (OT) nào trong năm {year}
+                {tr(
+                  `Bạn chưa có đơn tăng ca (OT) nào trong năm ${year}`,
+                  `You have no overtime (OT) requests in ${year}`,
+                )}
               </p>
               <button
                 type="button"
@@ -721,7 +801,7 @@ export default function MyRequestsPage() {
                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 <IconPlus size={16} />
-                <span>Tạo đơn Tăng ca (OT)</span>
+                <span>{tr('Tạo đơn Tăng ca (OT)', 'New Overtime (OT) Request')}</span>
               </button>
             </div>
           ) : (
@@ -729,19 +809,20 @@ export default function MyRequestsPage() {
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Mã đơn</th>
-                    <th className="px-4 py-3">Ngày & Khung giờ</th>
-                    <th className="px-4 py-3 text-right">Tổng giờ</th>
-                    <th className="px-4 py-3">Hệ số OT</th>
-                    <th className="px-4 py-3">Lý do</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
+                    <th className="px-4 py-3">{tr('Mã đơn', 'Request Code')}</th>
+                    <th className="px-4 py-3">{tr('Ngày & Khung giờ', 'Date & Time')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Tổng giờ', 'Total Hours')}</th>
+                    <th className="px-4 py-3">{tr('Hệ số OT', 'OT Rate')}</th>
+                    <th className="px-4 py-3">{tr('Lý do', 'Reason')}</th>
+                    <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {overtimes.map((item) => {
                     const badge = STATUS_BADGE[item.status];
                     const rateBadge = OT_RATE_BADGE[item.otRateType];
+                    const hoursText = `${item.totalHours} ${tr('giờ', item.totalHours === 1 ? 'hr' : 'hrs')}`;
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/70">
                         <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-800">
@@ -756,13 +837,13 @@ export default function MyRequestsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right font-semibold text-slate-900">
-                          {item.totalHours} giờ
+                          {hoursText}
                         </td>
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${rateBadge.className}`}
                           >
-                            {rateBadge.label}
+                            {locale === 'en' ? rateBadge.en : rateBadge.vi}
                           </span>
                         </td>
                         <td className="max-w-xs px-4 py-3">
@@ -774,7 +855,7 @@ export default function MyRequestsPage() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
                           >
-                            {badge.label}
+                            {locale === 'en' ? badge.en : badge.vi}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -783,14 +864,14 @@ export default function MyRequestsPage() {
                               <>
                                 <button
                                   type="button"
-                                  title="Gửi duyệt"
+                                  title={tr('Gửi duyệt', 'Submit for approval')}
                                   onClick={() =>
                                     setConfirmAction({
                                       tab: 'OT',
                                       mode: 'SUBMIT',
                                       id: item.id,
                                       requestCode: item.requestCode,
-                                      detailText: `${item.totalHours} giờ`,
+                                      detailText: hoursText,
                                     })
                                   }
                                   className="rounded-lg bg-blue-50 p-1.5 text-blue-600 hover:bg-blue-100"
@@ -799,7 +880,7 @@ export default function MyRequestsPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  title="Chỉnh sửa"
+                                  title={tr('Chỉnh sửa', 'Edit')}
                                   onClick={() => {
                                     setEditingOt({
                                       id: item.id,
@@ -820,14 +901,14 @@ export default function MyRequestsPage() {
                             {(item.status === 'DRAFT' || item.status === 'PENDING') && (
                               <button
                                 type="button"
-                                title="Hủy đơn"
+                                title={tr('Hủy đơn', 'Cancel request')}
                                 onClick={() =>
                                   setConfirmAction({
                                     tab: 'OT',
                                     mode: 'CANCEL',
                                     id: item.id,
                                     requestCode: item.requestCode,
-                                    detailText: `${item.totalHours} giờ`,
+                                    detailText: hoursText,
                                   })
                                 }
                                 className="rounded-lg bg-rose-50 p-1.5 text-rose-600 hover:bg-rose-100"
@@ -838,14 +919,14 @@ export default function MyRequestsPage() {
                             {(item.status === 'DRAFT' || item.status === 'CANCELLED') && (
                               <button
                                 type="button"
-                                title="Xóa đơn"
+                                title={tr('Xóa đơn', 'Delete request')}
                                 onClick={() =>
                                   setConfirmAction({
                                     tab: 'OT',
                                     mode: 'DELETE',
                                     id: item.id,
                                     requestCode: item.requestCode,
-                                    detailText: `${item.totalHours} giờ`,
+                                    detailText: hoursText,
                                   })
                                 }
                                 className="rounded-lg bg-slate-100 p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
@@ -856,7 +937,7 @@ export default function MyRequestsPage() {
                             {item.approvalRequestId && (
                               <Link
                                 href="/approvals"
-                                title="Xem luồng phê duyệt"
+                                title={tr('Xem luồng phê duyệt', 'View approval workflow')}
                                 className="rounded-lg bg-slate-100 p-1.5 text-slate-600 hover:bg-blue-50 hover:text-blue-600"
                               >
                                 <IconExternalLink size={15} />
@@ -875,7 +956,10 @@ export default function MyRequestsPage() {
           <div className="p-10 text-center">
             <IconBriefcase size={36} className="mx-auto text-slate-300" />
             <p className="mt-3 text-sm font-semibold text-slate-700">
-              Bạn chưa có đơn công tác nào trong năm {year}
+              {tr(
+                `Bạn chưa có đơn công tác nào trong năm ${year}`,
+                `You have no business trip requests in ${year}`,
+              )}
             </p>
             <button
               type="button"
@@ -883,7 +967,7 @@ export default function MyRequestsPage() {
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
               <IconPlus size={16} />
-              <span>Tạo đơn Công tác</span>
+              <span>{tr('Tạo đơn Công tác', 'New Business Trip Request')}</span>
             </button>
           </div>
         ) : (
@@ -891,13 +975,13 @@ export default function MyRequestsPage() {
             <table className="w-full min-w-[780px] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Mã đơn</th>
-                  <th className="px-4 py-3">Địa điểm</th>
-                  <th className="px-4 py-3">Thời gian</th>
-                  <th className="px-4 py-3 text-right">Dự kiến phí</th>
-                  <th className="px-4 py-3">Mục đích</th>
-                  <th className="px-4 py-3">Trạng thái</th>
-                  <th className="px-4 py-3 text-right">Thao tác</th>
+                  <th className="px-4 py-3">{tr('Mã đơn', 'Request Code')}</th>
+                  <th className="px-4 py-3">{tr('Địa điểm', 'Destination')}</th>
+                  <th className="px-4 py-3">{tr('Thời gian', 'Duration')}</th>
+                  <th className="px-4 py-3 text-right">{tr('Dự kiến phí', 'Estimated Cost')}</th>
+                  <th className="px-4 py-3">{tr('Mục đích', 'Purpose')}</th>
+                  <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                  <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -913,7 +997,9 @@ export default function MyRequestsPage() {
                         <div>
                           {formatDateVN(item.startDate)} → {formatDateVN(item.endDate)}
                         </div>
-                        <div className="text-slate-500">{item.totalDays} ngày</div>
+                        <div className="text-slate-500">
+                          {item.totalDays} {tr('ngày', item.totalDays === 1 ? 'day' : 'days')}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-slate-900">
                         {formatVND(item.estimatedCost)}
@@ -927,7 +1013,7 @@ export default function MyRequestsPage() {
                         <span
                           className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
                         >
-                          {badge.label}
+                          {locale === 'en' ? badge.en : badge.vi}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -936,7 +1022,7 @@ export default function MyRequestsPage() {
                             <>
                               <button
                                 type="button"
-                                title="Gửi duyệt"
+                                title={tr('Gửi duyệt', 'Submit for approval')}
                                 onClick={() =>
                                   setConfirmAction({
                                     tab: 'TRIP',
@@ -952,7 +1038,7 @@ export default function MyRequestsPage() {
                               </button>
                               <button
                                 type="button"
-                                title="Chỉnh sửa"
+                                title={tr('Chỉnh sửa', 'Edit')}
                                 onClick={() => {
                                   setEditingTrip({
                                     id: item.id,
@@ -973,7 +1059,7 @@ export default function MyRequestsPage() {
                           {(item.status === 'DRAFT' || item.status === 'PENDING') && (
                             <button
                               type="button"
-                              title="Hủy đơn"
+                              title={tr('Hủy đơn', 'Cancel request')}
                               onClick={() =>
                                 setConfirmAction({
                                   tab: 'TRIP',
@@ -991,7 +1077,7 @@ export default function MyRequestsPage() {
                           {(item.status === 'DRAFT' || item.status === 'CANCELLED') && (
                             <button
                               type="button"
-                              title="Xóa đơn"
+                              title={tr('Xóa đơn', 'Delete request')}
                               onClick={() =>
                                 setConfirmAction({
                                   tab: 'TRIP',
@@ -1009,7 +1095,7 @@ export default function MyRequestsPage() {
                           {item.approvalRequestId && (
                             <Link
                               href="/approvals"
-                              title="Xem luồng phê duyệt"
+                              title={tr('Xem luồng phê duyệt', 'View approval workflow')}
                               className="rounded-lg bg-slate-100 p-1.5 text-slate-600 hover:bg-blue-50 hover:text-blue-600"
                             >
                               <IconExternalLink size={15} />
@@ -1040,7 +1126,10 @@ export default function MyRequestsPage() {
           onSaved={() => {
             setIsLeaveModalOpen(false);
             setEditingLeave(null);
-            setBannerMsg({ type: 'success', text: 'Đã lưu đơn nghỉ phép thành công.' });
+            setBannerMsg({
+              type: 'success',
+              text: tr('Đã lưu đơn nghỉ phép thành công.', 'Leave request saved successfully.'),
+            });
             triggerReload();
           }}
         />
@@ -1057,7 +1146,13 @@ export default function MyRequestsPage() {
           onSaved={() => {
             setIsOtModalOpen(false);
             setEditingOt(null);
-            setBannerMsg({ type: 'success', text: 'Đã lưu đơn tăng ca (OT) thành công.' });
+            setBannerMsg({
+              type: 'success',
+              text: tr(
+                'Đã lưu đơn tăng ca (OT) thành công.',
+                'Overtime (OT) request saved successfully.',
+              ),
+            });
             triggerReload();
           }}
         />
@@ -1074,7 +1169,13 @@ export default function MyRequestsPage() {
           onSaved={() => {
             setIsTripModalOpen(false);
             setEditingTrip(null);
-            setBannerMsg({ type: 'success', text: 'Đã lưu đơn công tác thành công.' });
+            setBannerMsg({
+              type: 'success',
+              text: tr(
+                'Đã lưu đơn công tác thành công.',
+                'Business trip request saved successfully.',
+              ),
+            });
             triggerReload();
           }}
         />
@@ -1084,24 +1185,33 @@ export default function MyRequestsPage() {
         isOpen={Boolean(confirmAction)}
         title={
           confirmAction?.mode === 'SUBMIT'
-            ? 'Xác nhận gửi duyệt đơn'
+            ? tr('Xác nhận gửi duyệt đơn', 'Confirm Request Submission')
             : confirmAction?.mode === 'CANCEL'
-              ? 'Xác nhận hủy đơn'
-              : 'Xác nhận xóa đơn'
+              ? tr('Xác nhận hủy đơn', 'Confirm Request Cancellation')
+              : tr('Xác nhận xóa đơn', 'Confirm Request Deletion')
         }
         description={
           confirmAction?.mode === 'SUBMIT'
-            ? `Gửi đơn ${confirmAction.requestCode} (${confirmAction.detailText}) vào quy trình phê duyệt?`
+            ? tr(
+                `Gửi đơn ${confirmAction.requestCode} (${confirmAction.detailText}) vào quy trình phê duyệt?`,
+                `Submit request ${confirmAction.requestCode} (${confirmAction.detailText}) for approval?`,
+              )
             : confirmAction?.mode === 'CANCEL'
-              ? `Hủy đơn ${confirmAction?.requestCode} (${confirmAction?.detailText})? Nếu đơn đang chờ duyệt, yêu cầu phê duyệt tương ứng cũng sẽ bị hủy.`
-              : `Xóa đơn ${confirmAction?.requestCode} khỏi danh sách?`
+              ? tr(
+                  `Hủy đơn ${confirmAction?.requestCode} (${confirmAction?.detailText})? Nếu đơn đang chờ duyệt, yêu cầu phê duyệt tương ứng cũng sẽ bị hủy.`,
+                  `Cancel request ${confirmAction?.requestCode} (${confirmAction?.detailText})? If it is pending approval, the linked approval request will also be cancelled.`,
+                )
+              : tr(
+                  `Xóa đơn ${confirmAction?.requestCode} khỏi danh sách?`,
+                  `Delete request ${confirmAction?.requestCode} from the list?`,
+                )
         }
         confirmLabel={
           confirmAction?.mode === 'SUBMIT'
-            ? 'Gửi duyệt'
+            ? tr('Gửi duyệt', 'Submit')
             : confirmAction?.mode === 'CANCEL'
-              ? 'Hủy đơn'
-              : 'Xóa đơn'
+              ? tr('Hủy đơn', 'Cancel Request')
+              : tr('Xóa đơn', 'Delete Request')
         }
         variant={confirmAction?.mode === 'SUBMIT' ? 'primary' : 'danger'}
         isProcessing={isActionProcessing}

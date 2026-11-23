@@ -17,6 +17,8 @@ import {
 } from 'recharts';
 import { formatVND } from '@/lib/portable/currency-utils';
 import type { DashboardSummaryData } from '@/modules/hrm/dashboard/dashboard.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
+import type { TranslationKey } from '@/shared/i18n/translator';
 
 interface HrmDashboardChartsProps {
   visibility: DashboardSummaryData['visibility'];
@@ -40,17 +42,24 @@ const ATTENDANCE_COLORS: Record<string, string> = {
   ABSENT: '#e11d48',
 };
 
-function formatCompactMillions(value: number): string {
-  if (Math.abs(value) >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
-  }
-  if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(0)} tr`;
-  }
-  return String(value);
-}
+const EMP_STATUS_KEYS: Record<string, TranslationKey> = {
+  ACTIVE: 'charts.empStatus.ACTIVE',
+  PROBATION: 'charts.empStatus.PROBATION',
+  ON_LEAVE: 'charts.empStatus.ON_LEAVE',
+  RESIGNED: 'charts.empStatus.RESIGNED',
+  TERMINATED: 'charts.empStatus.TERMINATED',
+};
+
+const ATT_STATUS_KEYS: Record<string, TranslationKey> = {
+  PRESENT: 'charts.attStatus.PRESENT',
+  LATE: 'charts.attStatus.LATE',
+  LEAVE: 'charts.attStatus.LEAVE',
+  HOLIDAY: 'charts.attStatus.HOLIDAY',
+  ABSENT: 'charts.attStatus.ABSENT',
+};
 
 export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashboardChartsProps) {
+  const { t } = useI18n();
   const hasAnyChart =
     visibility.canViewWorkforce || visibility.canViewAttendance || visibility.canViewPayroll;
 
@@ -58,18 +67,44 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
     return null;
   }
 
+  function formatCompactMillions(value: number): string {
+    if (Math.abs(value) >= 1_000_000_000) {
+      return t('charts.compact.billion', { value: (value / 1_000_000_000).toFixed(1) });
+    }
+    if (Math.abs(value) >= 1_000_000) {
+      return t('charts.compact.million', { value: (value / 1_000_000).toFixed(0) });
+    }
+    return String(value);
+  }
+
+  const localizedHeadcountStatus = charts.headcountByStatus.map((entry) => {
+    const key = EMP_STATUS_KEYS[entry.status];
+    return {
+      ...entry,
+      label: key ? t(key) : entry.label,
+    };
+  });
+
+  const localizedAttendanceBreakdown = charts.attendanceBreakdown.map((entry) => {
+    const key = ATT_STATUS_KEYS[entry.status];
+    return {
+      ...entry,
+      label: key ? t(key) : entry.label,
+    };
+  });
+
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       {/* 1. Headcount by Department */}
       {visibility.canViewWorkforce && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-sm font-bold text-slate-900">Phân bổ Nhân sự theo Phòng ban</h2>
-            <p className="text-xs text-slate-500">Top 8 phòng ban có nhân sự đang làm việc</p>
+            <h2 className="text-sm font-bold text-slate-900">{t('charts.headcountDept.title')}</h2>
+            <p className="text-xs text-slate-500">{t('charts.headcountDept.subtitle')}</p>
           </div>
           {charts.headcountByDepartment.length === 0 ? (
             <div className="flex h-60 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-400">
-              Chưa có dữ liệu phân bổ phòng ban trong phạm vi này.
+              {t('charts.headcountDept.empty')}
             </div>
           ) : (
             <div className="h-64 w-full">
@@ -90,13 +125,22 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
                     axisLine={{ stroke: '#cbd5e1' }}
                   />
                   <Tooltip
-                    formatter={(value) => [`${Number(value ?? 0)} nhân sự`, 'Số lượng']}
+                    formatter={(value) => [
+                      t('charts.headcountDept.unit', { count: Number(value ?? 0) }),
+                      t('charts.headcountDept.label'),
+                    ]}
                     labelFormatter={(_label, payload) => {
                       const item = payload?.[0]?.payload as { departmentName?: string } | undefined;
                       return item?.departmentName ?? String(_label ?? '');
                     }}
                   />
-                  <Bar dataKey="count" name="Nhân sự" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={44} />
+                  <Bar
+                    dataKey="count"
+                    name={t('charts.headcountDept.barName')}
+                    fill="#2563eb"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={44}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -108,21 +152,21 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
       {visibility.canViewWorkforce && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-sm font-bold text-slate-900">Cơ cấu Trạng thái Lao động</h2>
-            <p className="text-xs text-slate-500">
-              Tỷ trọng nhân sự chính thức, thử việc, nghỉ dài hạn & thôi việc
-            </p>
+            <h2 className="text-sm font-bold text-slate-900">
+              {t('charts.headcountStatus.title')}
+            </h2>
+            <p className="text-xs text-slate-500">{t('charts.headcountStatus.subtitle')}</p>
           </div>
-          {charts.headcountByStatus.length === 0 ? (
+          {localizedHeadcountStatus.length === 0 ? (
             <div className="flex h-60 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-400">
-              Chưa có dữ liệu trạng thái nhân sự.
+              {t('charts.headcountStatus.empty')}
             </div>
           ) : (
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={charts.headcountByStatus}
+                    data={localizedHeadcountStatus}
                     dataKey="count"
                     nameKey="label"
                     cx="50%"
@@ -131,14 +175,19 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
                     outerRadius={86}
                     paddingAngle={3}
                   >
-                    {charts.headcountByStatus.map((entry) => (
+                    {localizedHeadcountStatus.map((entry) => (
                       <Cell
                         key={entry.status}
                         fill={STATUS_COLORS[entry.status] ?? '#64748b'}
                       />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${Number(value ?? 0)} nhân sự`, 'Số lượng']} />
+                  <Tooltip
+                    formatter={(value) => [
+                      t('charts.headcountDept.unit', { count: Number(value ?? 0) }),
+                      t('charts.headcountDept.label'),
+                    ]}
+                  />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -152,21 +201,19 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h2 className="text-sm font-bold text-slate-900">
-              Phân bổ Chấm công ({periodLabel})
+              {t('charts.attendance.title', { period: periodLabel })}
             </h2>
-            <p className="text-xs text-slate-500">
-              Số lượt ghi nhận theo trạng thái đúng giờ, đi muộn, phép, lễ & vắng
-            </p>
+            <p className="text-xs text-slate-500">{t('charts.attendance.subtitle')}</p>
           </div>
-          {charts.attendanceBreakdown.every((item) => item.count === 0) ? (
+          {localizedAttendanceBreakdown.every((item) => item.count === 0) ? (
             <div className="flex h-60 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-400">
-              Chưa có lượt chấm công nào phát sinh trong {periodLabel}.
+              {t('charts.attendance.empty', { period: periodLabel })}
             </div>
           ) : (
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={charts.attendanceBreakdown}
+                  data={localizedAttendanceBreakdown}
                   margin={{ top: 8, right: 16, left: -12, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -180,9 +227,19 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
                     tick={{ fontSize: 12, fill: '#475569' }}
                     axisLine={{ stroke: '#cbd5e1' }}
                   />
-                  <Tooltip formatter={(value) => [`${Number(value ?? 0)} lượt`, 'Ghi nhận']} />
-                  <Bar dataKey="count" name="Lượt công" radius={[6, 6, 0, 0]} maxBarSize={44}>
-                    {charts.attendanceBreakdown.map((entry) => (
+                  <Tooltip
+                    formatter={(value) => [
+                      t('charts.attendance.unit', { count: Number(value ?? 0) }),
+                      t('charts.attendance.label'),
+                    ]}
+                  />
+                  <Bar
+                    dataKey="count"
+                    name={t('charts.attendance.barName')}
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={44}
+                  >
+                    {localizedAttendanceBreakdown.map((entry) => (
                       <Cell
                         key={entry.status}
                         fill={ATTENDANCE_COLORS[entry.status] ?? '#64748b'}
@@ -200,12 +257,12 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
       {visibility.canViewPayroll && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-sm font-bold text-slate-900">Xu hướng Quỹ lương (6 kỳ gần nhất)</h2>
-            <p className="text-xs text-slate-500">So sánh tổng Gross & tổng Thực lĩnh (Net)</p>
+            <h2 className="text-sm font-bold text-slate-900">{t('charts.payroll.title')}</h2>
+            <p className="text-xs text-slate-500">{t('charts.payroll.subtitle')}</p>
           </div>
           {charts.payrollTrend.length === 0 ? (
             <div className="flex h-60 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-400">
-              Chưa có kỳ lương nào được tạo trong phạm vi chi nhánh hiện tại.
+              {t('charts.payroll.empty')}
             </div>
           ) : (
             <div className="h-64 w-full">
@@ -228,12 +285,16 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
                   <Tooltip
                     formatter={(value, name) => [
                       formatVND(Number(value ?? 0)),
-                      name === 'totalGross' ? 'Tổng Gross' : 'Tổng Thực lĩnh (Net)',
+                      name === 'totalGross'
+                        ? t('charts.payroll.totalGross')
+                        : t('charts.payroll.totalNet'),
                     ]}
                   />
                   <Legend
                     formatter={(value) =>
-                      value === 'totalGross' ? 'Tổng Gross' : 'Tổng Thực lĩnh (Net)'
+                      value === 'totalGross'
+                        ? t('charts.payroll.totalGross')
+                        : t('charts.payroll.totalNet')
                     }
                     wrapperStyle={{ fontSize: '12px' }}
                   />

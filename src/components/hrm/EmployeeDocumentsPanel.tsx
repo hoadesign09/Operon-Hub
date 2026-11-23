@@ -10,6 +10,7 @@ import {
 } from '@tabler/icons-react';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface EmployeeDocumentView {
   id: number;
@@ -23,12 +24,12 @@ export interface EmployeeDocumentView {
   createdAt: string;
 }
 
-const DOC_TYPE_LABELS: Record<EmployeeDocumentView['docType'], string> = {
-  ID_CARD: 'CCCD / Hộ chiếu',
-  DEGREE: 'Bằng cấp / Chứng chỉ',
-  CONTRACT: 'Hợp đồng lao động',
-  HEALTH_CERT: 'Giấy khám sức khỏe',
-  OTHER: 'Tài liệu khác',
+const DOC_TYPE_LABELS: Record<EmployeeDocumentView['docType'], { vi: string; en: string }> = {
+  ID_CARD: { vi: 'CCCD / Hộ chiếu', en: 'ID Card / Passport' },
+  DEGREE: { vi: 'Bằng cấp / Chứng chỉ', en: 'Degree / Certificate' },
+  CONTRACT: { vi: 'Hợp đồng lao động', en: 'Labor Contract' },
+  HEALTH_CERT: { vi: 'Giấy khám sức khỏe', en: 'Health Certificate' },
+  OTHER: { vi: 'Tài liệu khác', en: 'Other Document' },
 };
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
@@ -58,6 +59,7 @@ export function EmployeeDocumentsPanel({
   canManage,
   onChanged,
 }: EmployeeDocumentsPanelProps) {
+  const { locale, tr } = useI18n();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [docType, setDocType] = useState<EmployeeDocumentView['docType']>('ID_CARD');
   const [title, setTitle] = useState('');
@@ -75,7 +77,12 @@ export function EmployeeDocumentsPanel({
     }
 
     if (selectedFile.size > MAX_SIZE_BYTES) {
-      setUploadError('Dung lượng tệp vượt quá giới hạn tối đa 5 MB.');
+      setUploadError(
+        tr(
+          'Dung lượng tệp vượt quá giới hạn tối đa 5 MB.',
+          'File size exceeds the maximum limit of 5 MB.',
+        ),
+      );
       return;
     }
 
@@ -102,7 +109,10 @@ export function EmployeeDocumentsPanel({
       };
 
       if (!res.ok || !json.success) {
-        setUploadError(json.error?.message ?? 'Không thể tải tệp lên hệ thống.');
+        setUploadError(
+          json.error?.message ??
+            tr('Không thể tải tệp lên hệ thống.', 'Failed to upload file.'),
+        );
         return;
       }
 
@@ -114,7 +124,9 @@ export function EmployeeDocumentsPanel({
       }
       onChanged();
     } catch {
-      setUploadError('Lỗi kết nối khi tải tệp tài liệu.');
+      setUploadError(
+        tr('Lỗi kết nối khi tải tệp tài liệu.', 'Connection error while uploading document.'),
+      );
     } finally {
       setIsUploading(false);
     }
@@ -147,7 +159,10 @@ export function EmployeeDocumentsPanel({
           className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
         >
           <div className="mb-3 text-sm font-semibold text-slate-900">
-            Tải lên Tài liệu Hồ sơ mới (PDF, Ảnh, DOCX, XLSX — tối đa 5 MB)
+            {tr(
+              'Tải lên Tài liệu Hồ sơ mới (PDF, Ảnh, DOCX, XLSX — tối đa 5 MB)',
+              'Upload New Employee Document (PDF, Image, DOCX, XLSX — max 5 MB)',
+            )}
           </div>
 
           {uploadError && (
@@ -158,7 +173,9 @@ export function EmployeeDocumentsPanel({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Loại tài liệu</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {tr('Loại tài liệu', 'Document Type')}
+              </label>
               <select
                 value={docType}
                 onChange={(e) =>
@@ -168,7 +185,7 @@ export function EmployeeDocumentsPanel({
               >
                 {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
                   <option key={key} value={key}>
-                    {label}
+                    {locale === 'en' ? label.en : label.vi}
                   </option>
                 ))}
               </select>
@@ -176,21 +193,21 @@ export function EmployeeDocumentsPanel({
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Tên hiển thị <span className="text-rose-500">*</span>
+                {tr('Tên hiển thị', 'Display Name')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="VD: CCCD mặt trước & sau"
+                placeholder={tr('VD: CCCD mặt trước & sau', 'e.g. National ID front & back')}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Ngày hết hạn (nếu có)
+                {tr('Ngày hết hạn (nếu có)', 'Expiration Date (optional)')}
               </label>
               <input
                 type="date"
@@ -202,7 +219,7 @@ export function EmployeeDocumentsPanel({
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Chọn tệp <span className="text-rose-500">*</span>
+                {tr('Chọn tệp', 'Select File')} <span className="text-rose-500">*</span>
               </label>
               <input
                 ref={fileInputRef}
@@ -232,7 +249,11 @@ export function EmployeeDocumentsPanel({
               ) : (
                 <IconUpload size={15} />
               )}
-              <span>{isUploading ? 'Đang tải lên...' : 'Tải lên tài liệu'}</span>
+              <span>
+                {isUploading
+                  ? tr('Đang tải lên...', 'Uploading...')
+                  : tr('Tải lên tài liệu', 'Upload Document')}
+              </span>
             </button>
           </div>
         </form>
@@ -241,11 +262,19 @@ export function EmployeeDocumentsPanel({
       {documents.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
           <IconFileText size={32} className="mx-auto text-slate-300" />
-          <p className="mt-2 text-sm font-medium text-slate-700">Chưa có tài liệu hồ sơ nào</p>
+          <p className="mt-2 text-sm font-medium text-slate-700">
+            {tr('Chưa có tài liệu hồ sơ nào', 'No employee documents yet')}
+          </p>
           <p className="mt-1 text-xs text-slate-500">
             {canManage
-              ? 'Sử dụng khung tải lên phía trên để lưu CCCD, bằng cấp hoặc hợp đồng scan.'
-              : 'Phòng Nhân sự chưa đính kèm tài liệu vào hồ sơ này.'}
+              ? tr(
+                  'Sử dụng khung tải lên phía trên để lưu CCCD, bằng cấp hoặc hợp đồng scan.',
+                  'Use the upload form above to store IDs, certificates, or scanned contracts.',
+                )
+              : tr(
+                  'Phòng Nhân sự chưa đính kèm tài liệu vào hồ sơ này.',
+                  'HR has not attached any documents to this profile yet.',
+                )}
           </p>
         </div>
       ) : (
@@ -253,12 +282,12 @@ export function EmployeeDocumentsPanel({
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-3">Tài liệu</th>
-                <th className="px-4 py-3">Phân loại</th>
-                <th className="px-4 py-3">Dung lượng</th>
-                <th className="px-4 py-3">Hạn hiệu lực</th>
-                <th className="px-4 py-3">Ngày tải lên</th>
-                <th className="px-4 py-3 text-right">Thao tác</th>
+                <th className="px-4 py-3">{tr('Tài liệu', 'Document')}</th>
+                <th className="px-4 py-3">{tr('Phân loại', 'Category')}</th>
+                <th className="px-4 py-3">{tr('Dung lượng', 'Size')}</th>
+                <th className="px-4 py-3">{tr('Hạn hiệu lực', 'Expiration')}</th>
+                <th className="px-4 py-3">{tr('Ngày tải lên', 'Uploaded Date')}</th>
+                <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -274,7 +303,9 @@ export function EmployeeDocumentsPanel({
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
-                        {DOC_TYPE_LABELS[doc.docType]}
+                        {locale === 'en'
+                          ? DOC_TYPE_LABELS[doc.docType].en
+                          : DOC_TYPE_LABELS[doc.docType].vi}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600">
@@ -289,10 +320,13 @@ export function EmployeeDocumentsPanel({
                               : 'bg-emerald-50 text-emerald-700'
                           }`}
                         >
-                          {formatDateVN(doc.expiredAt)} {expired ? '(Hết hạn)' : ''}
+                          {formatDateVN(doc.expiredAt)}{' '}
+                          {expired ? tr('(Hết hạn)', '(Expired)') : ''}
                         </span>
                       ) : (
-                        <span className="text-slate-400">Không giới hạn</span>
+                        <span className="text-slate-400">
+                          {tr('Không giới hạn', 'No expiration')}
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600">
@@ -305,7 +339,7 @@ export function EmployeeDocumentsPanel({
                           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                         >
                           <IconDownload size={14} />
-                          <span>Tải về</span>
+                          <span>{tr('Tải về', 'Download')}</span>
                         </a>
                         {canManage && (
                           <button
@@ -314,7 +348,7 @@ export function EmployeeDocumentsPanel({
                             className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
                           >
                             <IconTrash size={14} />
-                            <span>Xóa</span>
+                            <span>{tr('Xóa', 'Delete')}</span>
                           </button>
                         )}
                       </div>
@@ -329,13 +363,16 @@ export function EmployeeDocumentsPanel({
 
       <ConfirmModal
         isOpen={deletingDoc !== null}
-        title="Xác nhận xóa tài liệu hồ sơ"
+        title={tr('Xác nhận xóa tài liệu hồ sơ', 'Confirm Document Deletion')}
         description={
           deletingDoc
-            ? `Bạn có chắc muốn xóa tài liệu "${deletingDoc.title}" khỏi hồ sơ nhân viên này?`
+            ? tr(
+                `Bạn có chắc muốn xóa tài liệu "${deletingDoc.title}" khỏi hồ sơ nhân viên này?`,
+                `Are you sure you want to delete "${deletingDoc.title}" from this employee profile?`,
+              )
             : ''
         }
-        confirmLabel="Xóa tài liệu"
+        confirmLabel={tr('Xóa tài liệu', 'Delete Document')}
         isProcessing={isDeleting}
         onCancel={() => setDeletingDoc(null)}
         onConfirm={() => void handleConfirmDelete()}

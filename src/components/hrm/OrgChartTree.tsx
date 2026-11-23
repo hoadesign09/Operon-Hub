@@ -9,6 +9,7 @@ import {
   IconHierarchy2,
   IconPlus,
 } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface OrgDepartmentNode {
   id: number;
@@ -39,6 +40,7 @@ interface OrgNodeCardProps {
 }
 
 function OrgNodeCard({ node, depth, canManage, onAddChild, onEdit }: OrgNodeCardProps) {
+  const { tr } = useI18n();
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
 
@@ -50,7 +52,7 @@ function OrgNodeCard({ node, depth, canManage, onAddChild, onEdit }: OrgNodeCard
             <button
               type="button"
               onClick={() => setExpanded((prev) => !prev)}
-              aria-label={expanded ? 'Thu gọn' : 'Mở rộng'}
+              aria-label={expanded ? tr('Thu gọn', 'Collapse') : tr('Mở rộng', 'Expand')}
               className="mt-0.5 rounded-md p-0.5 text-slate-500 hover:bg-slate-100"
             >
               {expanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
@@ -67,7 +69,7 @@ function OrgNodeCard({ node, depth, canManage, onAddChild, onEdit }: OrgNodeCard
               </span>
               {!node.isActive && (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
-                  Ngừng hoạt động
+                  {tr('Ngừng hoạt động', 'Inactive')}
                 </span>
               )}
             </div>
@@ -85,13 +87,13 @@ function OrgNodeCard({ node, depth, canManage, onAddChild, onEdit }: OrgNodeCard
               className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50/50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
             >
               <IconPlus size={13} />
-              <span>Phòng con</span>
+              <span>{tr('Phòng con', 'Sub-dept')}</span>
             </button>
             <button
               type="button"
               onClick={() => onEdit(node)}
               className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
-              title="Chỉnh sửa phòng ban"
+              title={tr('Chỉnh sửa phòng ban', 'Edit department')}
             >
               <IconEdit size={15} />
             </button>
@@ -130,6 +132,8 @@ export function OrgChartTree({
   onAddChild: (branchId: number, parentId: number) => void;
   onEdit: (node: OrgDepartmentNode) => void;
 }) {
+  const { tr } = useI18n();
+
   return (
     <div className="space-y-5">
       {branches.map((branch) => (
@@ -150,12 +154,13 @@ export function OrgChartTree({
                   </span>
                   {branch.isHeadquarters && (
                     <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                      Trụ sở chính
+                      {tr('Trụ sở chính', 'Headquarters')}
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-slate-500">
-                  {branch.departments.length} khối / phòng ban cấp gốc
+                  {branch.departments.length}{' '}
+                  {tr('khối / phòng ban cấp gốc', 'root divisions / departments')}
                 </p>
               </div>
             </div>
@@ -167,7 +172,7 @@ export function OrgChartTree({
                 className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50"
               >
                 <IconPlus size={14} />
-                <span>Thêm phòng ban gốc</span>
+                <span>{tr('Thêm phòng ban gốc', 'Add Root Department')}</span>
               </button>
             )}
           </div>
@@ -175,7 +180,12 @@ export function OrgChartTree({
           {branch.departments.length === 0 ? (
             <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-xs text-slate-500">
               <IconHierarchy2 size={18} className="text-slate-400" />
-              <span>Chi nhánh này chưa có phòng ban nào được thiết lập.</span>
+              <span>
+                {tr(
+                  'Chi nhánh này chưa có phòng ban nào được thiết lập.',
+                  'No departments have been set up for this branch yet.',
+                )}
+              </span>
             </div>
           ) : (
             <div>

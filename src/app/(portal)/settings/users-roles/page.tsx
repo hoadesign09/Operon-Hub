@@ -16,6 +16,7 @@ import {
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface UserAssignment {
   roleId: number;
@@ -58,7 +59,11 @@ interface BranchOption {
   name: string;
 }
 
+const ERR_LOAD_USERS = '__ERR_LOAD_USERS__';
+const ERR_NETWORK_USERS = '__ERR_NETWORK_USERS__';
+
 export default function UsersRolesSettingsPage() {
+  const { tr } = useI18n();
   const { user: currentUser, hasPermission } = usePortalAuth();
   const canCreateUser = hasPermission('core.users.create');
   const canUpdateUser = hasPermission('core.users.update');
@@ -124,7 +129,7 @@ export default function UsersRolesSettingsPage() {
         ]);
 
         if (!uRes.ok || !uJson?.success) {
-          setErrorMessage(uJson?.error?.message ?? 'Không thể tải dữ liệu người dùng.');
+          setErrorMessage(uJson?.error?.message ?? ERR_LOAD_USERS);
           setViewState('error');
           return;
         }
@@ -151,7 +156,7 @@ export default function UsersRolesSettingsPage() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMessage('Lỗi kết nối khi tải dữ liệu người dùng & phân quyền.');
+        setErrorMessage(ERR_NETWORK_USERS);
         setViewState('error');
       });
 
@@ -193,13 +198,19 @@ export default function UsersRolesSettingsPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setPermToast(json?.error?.message ?? 'Không thể lưu phân quyền.');
+        setPermToast(
+          json?.error?.message ?? tr('Không thể lưu phân quyền.', 'Unable to save permissions.'),
+        );
         return;
       }
-      setPermToast('Đã lưu ma trận phân quyền thành công.');
+      setPermToast(
+        tr('Đã lưu ma trận phân quyền thành công.', 'Permission matrix saved successfully.'),
+      );
       triggerReload();
     } catch {
-      setPermToast('Lỗi kết nối khi lưu phân quyền.');
+      setPermToast(
+        tr('Lỗi kết nối khi lưu phân quyền.', 'Connection error while saving permissions.'),
+      );
     } finally {
       setIsSavingPerms(false);
     }
@@ -211,7 +222,7 @@ export default function UsersRolesSettingsPage() {
 
     const parsedRoleId = Number(newRoleId || roles[0]?.id || 0);
     if (!parsedRoleId) {
-      setUserFormError('Vui lòng chọn vai trò.');
+      setUserFormError(tr('Vui lòng chọn vai trò.', 'Please select a role.'));
       return;
     }
 
@@ -238,7 +249,9 @@ export default function UsersRolesSettingsPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setUserFormError(json?.error?.message ?? 'Không thể tạo tài khoản.');
+        setUserFormError(
+          json?.error?.message ?? tr('Không thể tạo tài khoản.', 'Unable to create account.'),
+        );
         return;
       }
 
@@ -249,7 +262,9 @@ export default function UsersRolesSettingsPage() {
       setNewBranchId('');
       triggerReload();
     } catch {
-      setUserFormError('Lỗi kết nối khi tạo tài khoản.');
+      setUserFormError(
+        tr('Lỗi kết nối khi tạo tài khoản.', 'Connection error while creating account.'),
+      );
     } finally {
       setIsSavingUser(false);
     }
@@ -273,7 +288,10 @@ export default function UsersRolesSettingsPage() {
         error?: { message?: string };
       } | null;
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể cập nhật trạng thái tài khoản.');
+        setErrorMessage(
+          json?.error?.message ??
+            tr('Không thể cập nhật trạng thái tài khoản.', 'Unable to update account status.'),
+        );
         setViewState('error');
       } else {
         triggerReload();
@@ -284,6 +302,16 @@ export default function UsersRolesSettingsPage() {
     }
   }
 
+  const resolvedErrorMessage =
+    errorMessage === ERR_LOAD_USERS
+      ? tr('Không thể tải dữ liệu người dùng.', 'Unable to load user data.')
+      : errorMessage === ERR_NETWORK_USERS
+        ? tr(
+            'Lỗi kết nối khi tải dữ liệu người dùng & phân quyền.',
+            'Connection error while loading users & roles.',
+          )
+        : errorMessage;
+
   const selectedRole = roles.find((r) => r.id === selectedRoleId) ?? null;
   const isSuperAdminRole = selectedRole?.code === 'SUPER_ADMIN';
 
@@ -291,9 +319,14 @@ export default function UsersRolesSettingsPage() {
     <div className="mx-auto max-w-6xl space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Người dùng &amp; Phân quyền RBAC</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Người dùng & Phân quyền RBAC', 'Users & Roles (RBAC)')}
+          </h1>
           <p className="text-sm text-slate-500">
-            Quản lý tài khoản đăng nhập, gán vai trò theo chi nhánh và thiết lập ma trận quyền.
+            {tr(
+              'Quản lý tài khoản đăng nhập, gán vai trò theo chi nhánh và thiết lập ma trận quyền.',
+              'Manage user accounts, branch role assignments, and the permission matrix.',
+            )}
           </p>
         </div>
         {activeTab === 'users' && canCreateUser && (
@@ -307,7 +340,7 @@ export default function UsersRolesSettingsPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
           >
             <IconPlus size={18} />
-            <span>Tạo tài khoản</span>
+            <span>{tr('Tạo tài khoản', 'Create Account')}</span>
           </button>
         )}
       </div>
@@ -323,7 +356,9 @@ export default function UsersRolesSettingsPage() {
           }`}
         >
           <IconUsers size={17} />
-          <span>Tài khoản ({users.length})</span>
+          <span>
+            {tr('Tài khoản', 'Users')} ({users.length})
+          </span>
         </button>
         <button
           type="button"
@@ -335,7 +370,9 @@ export default function UsersRolesSettingsPage() {
           }`}
         >
           <IconShieldCheck size={17} />
-          <span>Vai trò &amp; Ma trận Quyền ({roles.length})</span>
+          <span>
+            {tr('Vai trò & Ma trận Quyền', 'Roles & Permission Matrix')} ({roles.length})
+          </span>
         </button>
       </div>
 
@@ -349,14 +386,14 @@ export default function UsersRolesSettingsPage() {
 
       {viewState === 'error' && (
         <div className="flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-5">
-          <span className="text-sm font-medium text-rose-700">{errorMessage}</span>
+          <span className="text-sm font-medium text-rose-700">{resolvedErrorMessage}</span>
           <button
             type="button"
             onClick={triggerReload}
             className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-white px-3.5 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100"
           >
             <IconRefresh size={15} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       )}
@@ -370,7 +407,7 @@ export default function UsersRolesSettingsPage() {
             />
             <input
               type="text"
-              placeholder="Tìm theo họ tên hoặc email..."
+              placeholder={tr('Tìm theo họ tên hoặc email...', 'Search by full name or email...')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500"
@@ -380,7 +417,9 @@ export default function UsersRolesSettingsPage() {
           {users.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-12 text-center">
               <IconInbox size={32} className="text-slate-400" />
-              <p className="mt-2 text-sm font-medium text-slate-700">Chưa có tài khoản phù hợp</p>
+              <p className="mt-2 text-sm font-medium text-slate-700">
+                {tr('Chưa có tài khoản phù hợp', 'No matching accounts found')}
+              </p>
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -388,11 +427,11 @@ export default function UsersRolesSettingsPage() {
                 <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                   <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                     <tr>
-                      <th className="px-4 py-3">Người dùng</th>
-                      <th className="px-4 py-3">Vai trò &amp; Chi nhánh</th>
-                      <th className="px-4 py-3">Đăng nhập gần nhất</th>
-                      <th className="px-4 py-3">Trạng thái</th>
-                      <th className="px-4 py-3 text-right">Thao tác</th>
+                      <th className="px-4 py-3">{tr('Người dùng', 'User')}</th>
+                      <th className="px-4 py-3">{tr('Vai trò & Chi nhánh', 'Roles & Branches')}</th>
+                      <th className="px-4 py-3">{tr('Đăng nhập gần nhất', 'Last Login')}</th>
+                      <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                      <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -412,7 +451,9 @@ export default function UsersRolesSettingsPage() {
                                   className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
                                 >
                                   {a.roleName}
-                                  {a.branchName ? ` (${a.branchName})` : ' (Toàn công ty)'}
+                                  {a.branchName
+                                    ? ` (${a.branchName})`
+                                    : tr(' (Toàn công ty)', ' (Company-wide)')}
                                 </span>
                               ))}
                             </div>
@@ -428,7 +469,9 @@ export default function UsersRolesSettingsPage() {
                                   : 'bg-rose-50 text-rose-700'
                               }`}
                             >
-                              {u.status === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa'}
+                              {u.status === 'ACTIVE'
+                                ? tr('Hoạt động', 'Active')
+                                : tr('Đã khóa', 'Locked')}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -441,12 +484,12 @@ export default function UsersRolesSettingsPage() {
                                 {u.status === 'ACTIVE' ? (
                                   <>
                                     <IconLock size={14} className="text-rose-600" />
-                                    <span>Khóa</span>
+                                    <span>{tr('Khóa', 'Lock')}</span>
                                   </>
                                 ) : (
                                   <>
                                     <IconLockOpen size={14} className="text-emerald-600" />
-                                    <span>Mở khóa</span>
+                                    <span>{tr('Mở khóa', 'Unlock')}</span>
                                   </>
                                 )}
                               </button>
@@ -467,7 +510,7 @@ export default function UsersRolesSettingsPage() {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="px-2 text-xs font-semibold uppercase text-slate-500">
-              Danh sách Vai trò
+              {tr('Danh sách Vai trò', 'Roles List')}
             </h2>
             {roles.map((role) => (
               <button
@@ -483,11 +526,11 @@ export default function UsersRolesSettingsPage() {
                 <div>
                   <div className="text-sm font-semibold">{role.name}</div>
                   <div className="text-xs text-slate-500">
-                    {role.code} • Phạm vi: {role.dataScope}
+                    {role.code} • {tr('Phạm vi', 'Scope')}: {role.dataScope}
                   </div>
                 </div>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                  {role.userCount} NV
+                  {role.userCount} {tr('NV', 'users')}
                 </span>
               </button>
             ))}
@@ -500,7 +543,11 @@ export default function UsersRolesSettingsPage() {
                   <div>
                     <h3 className="text-base font-semibold text-slate-900">{selectedRole.name}</h3>
                     <p className="text-xs text-slate-500">
-                      {selectedRole.description ?? 'Cấu hình quyền truy cập chi tiết cho vai trò này.'}
+                      {selectedRole.description ??
+                        tr(
+                          'Cấu hình quyền truy cập chi tiết cho vai trò này.',
+                          'Configure detailed access permissions for this role.',
+                        )}
                     </p>
                   </div>
                   {canUpdateRoles && !isSuperAdminRole && (
@@ -511,14 +558,21 @@ export default function UsersRolesSettingsPage() {
                       className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                     >
                       <IconCheck size={15} />
-                      <span>{isSavingPerms ? 'Đang lưu...' : 'Lưu phân quyền'}</span>
+                      <span>
+                        {isSavingPerms
+                          ? tr('Đang lưu...', 'Saving...')
+                          : tr('Lưu phân quyền', 'Save Permissions')}
+                      </span>
                     </button>
                   )}
                 </div>
 
                 {isSuperAdminRole && (
                   <div className="rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-xs text-blue-800">
-                    Vai trò hệ thống SUPER_ADMIN luôn giữ toàn quyền và không thể chỉnh sửa.
+                    {tr(
+                      'Vai trò hệ thống SUPER_ADMIN luôn giữ toàn quyền và không thể chỉnh sửa.',
+                      'The SUPER_ADMIN system role always retains full access and cannot be modified.',
+                    )}
                   </div>
                 )}
 
@@ -532,7 +586,7 @@ export default function UsersRolesSettingsPage() {
                   {Object.entries(permissionsGrouped).map(([modCode, perms]) => (
                     <div key={modCode} className="rounded-xl border border-slate-200 p-4">
                       <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
-                        Phân hệ: {modCode}
+                        {tr('Phân hệ', 'Module')}: {modCode}
                       </h4>
                       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                         {perms.map((perm) => (
@@ -559,7 +613,12 @@ export default function UsersRolesSettingsPage() {
                 </div>
               </>
             ) : (
-              <p className="text-sm text-slate-500">Chọn một vai trò để xem ma trận phân quyền.</p>
+              <p className="text-sm text-slate-500">
+                {tr(
+                  'Chọn một vai trò để xem ma trận phân quyền.',
+                  'Select a role to view its permission matrix.',
+                )}
+              </p>
             )}
           </div>
         </div>
@@ -573,7 +632,9 @@ export default function UsersRolesSettingsPage() {
         >
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">Tạo tài khoản mới</h2>
+              <h2 className="text-base font-semibold text-slate-900">
+                {tr('Tạo tài khoản mới', 'Create New Account')}
+              </h2>
               <button
                 type="button"
                 disabled={isSavingUser}
@@ -592,7 +653,9 @@ export default function UsersRolesSettingsPage() {
               )}
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">Họ và tên *</label>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  {tr('Họ và tên *', 'Full Name *')}
+                </label>
                 <input
                   type="text"
                   required
@@ -615,7 +678,10 @@ export default function UsersRolesSettingsPage() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Mật khẩu tạm (tối thiểu 8 ký tự) *
+                  {tr(
+                    'Mật khẩu tạm (tối thiểu 8 ký tự) *',
+                    'Temporary Password (min. 8 characters) *',
+                  )}
                 </label>
                 <input
                   type="password"
@@ -628,7 +694,9 @@ export default function UsersRolesSettingsPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">Vai trò *</label>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  {tr('Vai trò *', 'Role *')}
+                </label>
                 <select
                   value={newRoleId}
                   onChange={(e) => setNewRoleId(e.target.value)}
@@ -644,14 +712,14 @@ export default function UsersRolesSettingsPage() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Chi nhánh áp dụng
+                  {tr('Chi nhánh áp dụng', 'Assigned Branch')}
                 </label>
                 <select
                   value={newBranchId}
                   onChange={(e) => setNewBranchId(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
                 >
-                  <option value="">Toàn công ty</option>
+                  <option value="">{tr('Toàn công ty', 'Company-wide')}</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name} ({b.code})
@@ -667,14 +735,16 @@ export default function UsersRolesSettingsPage() {
                   onClick={() => setIsUserModalOpen(false)}
                   className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
                 >
-                  Hủy
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingUser}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {isSavingUser ? 'Đang tạo...' : 'Tạo tài khoản'}
+                  {isSavingUser
+                    ? tr('Đang tạo...', 'Creating...')
+                    : tr('Tạo tài khoản', 'Create Account')}
                 </button>
               </div>
             </form>
@@ -686,11 +756,25 @@ export default function UsersRolesSettingsPage() {
         isOpen={Boolean(toggleStatusTarget)}
         title={
           toggleStatusTarget?.status === 'ACTIVE'
-            ? 'Xác nhận khóa tài khoản'
-            : 'Xác nhận mở khóa tài khoản'
+            ? tr('Xác nhận khóa tài khoản', 'Confirm Lock Account')
+            : tr('Xác nhận mở khóa tài khoản', 'Confirm Unlock Account')
         }
-        description={`Bạn có chắc muốn ${toggleStatusTarget?.status === 'ACTIVE' ? 'khóa' : 'mở khóa'} tài khoản "${toggleStatusTarget?.fullName ?? ''}" (${toggleStatusTarget?.email ?? ''})?`}
-        confirmLabel={toggleStatusTarget?.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa'}
+        description={
+          toggleStatusTarget?.status === 'ACTIVE'
+            ? tr(
+                `Bạn có chắc muốn khóa tài khoản "${toggleStatusTarget?.fullName ?? ''}" (${toggleStatusTarget?.email ?? ''})?`,
+                `Are you sure you want to lock the account "${toggleStatusTarget?.fullName ?? ''}" (${toggleStatusTarget?.email ?? ''})?`,
+              )
+            : tr(
+                `Bạn có chắc muốn mở khóa tài khoản "${toggleStatusTarget?.fullName ?? ''}" (${toggleStatusTarget?.email ?? ''})?`,
+                `Are you sure you want to unlock the account "${toggleStatusTarget?.fullName ?? ''}" (${toggleStatusTarget?.email ?? ''})?`,
+              )
+        }
+        confirmLabel={
+          toggleStatusTarget?.status === 'ACTIVE'
+            ? tr('Khóa tài khoản', 'Lock Account')
+            : tr('Mở khóa', 'Unlock')
+        }
         variant={toggleStatusTarget?.status === 'ACTIVE' ? 'danger' : 'primary'}
         isProcessing={isTogglingStatus}
         onCancel={() => setToggleStatusTarget(null)}

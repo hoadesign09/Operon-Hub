@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { IconLoader2, IconX } from '@tabler/icons-react';
 import type { WorkShiftRecord } from '@/components/hrm/WorkShiftFormModal';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface SimpleEmployeeOption {
   id: number;
@@ -19,13 +20,13 @@ interface ShiftAssignmentModalProps {
 }
 
 const WEEKDAY_OPTIONS = [
-  { value: 1, label: 'T2' },
-  { value: 2, label: 'T3' },
-  { value: 3, label: 'T4' },
-  { value: 4, label: 'T5' },
-  { value: 5, label: 'T6' },
-  { value: 6, label: 'T7' },
-  { value: 0, label: 'CN' },
+  { value: 1, vi: 'T2', en: 'Mon' },
+  { value: 2, vi: 'T3', en: 'Tue' },
+  { value: 3, vi: 'T4', en: 'Wed' },
+  { value: 4, vi: 'T5', en: 'Thu' },
+  { value: 5, vi: 'T6', en: 'Fri' },
+  { value: 6, vi: 'T7', en: 'Sat' },
+  { value: 0, vi: 'CN', en: 'Sun' },
 ] as const;
 
 export function ShiftAssignmentModal({
@@ -34,6 +35,7 @@ export function ShiftAssignmentModal({
   onClose,
   onSuccess,
 }: ShiftAssignmentModalProps) {
+  const { tr } = useI18n();
   const activeShifts = shifts.filter((s) => s.isActive);
   const [selectedEmpIds, setSelectedEmpIds] = useState<number[]>([]);
   const [empSearch, setEmpSearch] = useState('');
@@ -78,15 +80,25 @@ export function ShiftAssignmentModal({
     setErrorMsg(null);
 
     if (selectedEmpIds.length === 0) {
-      setErrorMsg('Vui lòng chọn ít nhất 1 nhân viên để phân ca.');
+      setErrorMsg(
+        tr(
+          'Vui lòng chọn ít nhất 1 nhân viên để phân ca.',
+          'Please select at least 1 employee to assign.',
+        ),
+      );
       return;
     }
     if (!shiftId) {
-      setErrorMsg('Vui lòng chọn ca làm việc.');
+      setErrorMsg(tr('Vui lòng chọn ca làm việc.', 'Please select a work shift.'));
       return;
     }
     if (workDays.length === 0) {
-      setErrorMsg('Vui lòng chọn ít nhất 1 ngày làm việc trong tuần.');
+      setErrorMsg(
+        tr(
+          'Vui lòng chọn ít nhất 1 ngày làm việc trong tuần.',
+          'Please select at least 1 working day of the week.',
+        ),
+      );
       return;
     }
 
@@ -109,14 +121,18 @@ export function ShiftAssignmentModal({
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setErrorMsg(json.error?.message ?? 'Không thể phân ca làm việc.');
+        setErrorMsg(
+          json.error?.message ?? tr('Không thể phân ca làm việc.', 'Unable to assign work shift.'),
+        );
         setIsSubmitting(false);
         return;
       }
 
       onSuccess();
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ khi phân ca.');
+      setErrorMsg(
+        tr('Lỗi kết nối máy chủ khi phân ca.', 'Server connection error while assigning shift.'),
+      );
       setIsSubmitting(false);
     }
   }
@@ -125,13 +141,15 @@ export function ShiftAssignmentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h3 className="text-base font-semibold text-slate-900">Phân ca làm việc cho Nhân viên</h3>
+          <h3 className="text-base font-semibold text-slate-900">
+            {tr('Phân ca làm việc cho Nhân viên', 'Assign Work Shift to Employees')}
+          </h3>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -147,7 +165,7 @@ export function ShiftAssignmentModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="sm:col-span-1">
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Ca làm việc *
+                {tr('Ca làm việc *', 'Work shift *')}
               </label>
               <select
                 required
@@ -156,7 +174,7 @@ export function ShiftAssignmentModal({
                 onChange={(e) => setShiftId(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="">-- Chọn ca --</option>
+                <option value="">{tr('-- Chọn ca --', '-- Select shift --')}</option>
                 {activeShifts.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.code} - {s.name} ({s.startTime}–{s.endTime})
@@ -166,7 +184,7 @@ export function ShiftAssignmentModal({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Hiệu lực từ ngày *
+                {tr('Hiệu lực từ ngày *', 'Effective from *')}
               </label>
               <input
                 type="date"
@@ -179,7 +197,7 @@ export function ShiftAssignmentModal({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Đến ngày (tùy chọn)
+                {tr('Đến ngày (tùy chọn)', 'Effective to (optional)')}
               </label>
               <input
                 type="date"
@@ -193,7 +211,7 @@ export function ShiftAssignmentModal({
 
           <div>
             <label className="mb-1.5 block text-xs font-medium text-slate-700">
-              Ngày làm việc trong tuần *
+              {tr('Ngày làm việc trong tuần *', 'Working days of week *')}
             </label>
             <div className="flex flex-wrap gap-2">
               {WEEKDAY_OPTIONS.map((item) => {
@@ -210,7 +228,7 @@ export function ShiftAssignmentModal({
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    {item.label}
+                    {tr(item.vi, item.en)}
                   </button>
                 );
               })}
@@ -220,7 +238,10 @@ export function ShiftAssignmentModal({
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <label className="text-xs font-medium text-slate-700">
-                Chọn nhân viên ({selectedEmpIds.length} đã chọn) *
+                {tr(
+                  `Chọn nhân viên (${selectedEmpIds.length} đã chọn) *`,
+                  `Select employees (${selectedEmpIds.length} selected) *`,
+                )}
               </label>
               <div className="flex items-center gap-2 text-xs">
                 <button
@@ -228,7 +249,7 @@ export function ShiftAssignmentModal({
                   onClick={() => setSelectedEmpIds(filteredEmployees.map((e) => e.id))}
                   className="font-medium text-blue-600 hover:underline"
                 >
-                  Chọn tất cả
+                  {tr('Chọn tất cả', 'Select all')}
                 </button>
                 <span className="text-slate-300">|</span>
                 <button
@@ -236,7 +257,7 @@ export function ShiftAssignmentModal({
                   onClick={() => setSelectedEmpIds([])}
                   className="font-medium text-slate-500 hover:underline"
                 >
-                  Bỏ chọn
+                  {tr('Bỏ chọn', 'Clear')}
                 </button>
               </div>
             </div>
@@ -244,13 +265,16 @@ export function ShiftAssignmentModal({
               type="text"
               value={empSearch}
               onChange={(e) => setEmpSearch(e.target.value)}
-              placeholder="Tìm theo mã NV, họ tên hoặc phòng ban..."
+              placeholder={tr(
+                'Tìm theo mã NV, họ tên hoặc phòng ban...',
+                'Search by employee code, name, or department...',
+              )}
               className="mb-2 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs outline-none focus:border-blue-500"
             />
             <div className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
               {filteredEmployees.length === 0 ? (
                 <div className="p-4 text-center text-xs text-slate-500">
-                  Không tìm thấy nhân viên phù hợp.
+                  {tr('Không tìm thấy nhân viên phù hợp.', 'No matching employees found.')}
                 </div>
               ) : (
                 filteredEmployees.map((emp) => (
@@ -276,13 +300,18 @@ export function ShiftAssignmentModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Ghi chú</label>
+            <label className="mb-1 block text-xs font-medium text-slate-700">
+              {tr('Ghi chú', 'Notes')}
+            </label>
             <input
               type="text"
               disabled={isSubmitting}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: Áp dụng lịch làm việc mới Q4/2026"
+              placeholder={tr(
+                'VD: Áp dụng lịch làm việc mới Q4/2026',
+                'e.g. New Q4/2026 work schedule',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
           </div>
@@ -294,7 +323,7 @@ export function ShiftAssignmentModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -302,7 +331,12 @@ export function ShiftAssignmentModal({
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
-              <span>Lưu phân ca ({selectedEmpIds.length})</span>
+              <span>
+                {tr(
+                  `Lưu phân ca (${selectedEmpIds.length})`,
+                  `Save Assignments (${selectedEmpIds.length})`,
+                )}
+              </span>
             </button>
           </div>
         </form>

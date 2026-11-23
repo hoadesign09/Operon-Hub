@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import { IconAlertCircle, IconBriefcase, IconLoader2, IconSend, IconX } from '@tabler/icons-react';
 import { formatVND } from '@/lib/portable/currency-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface EditableBusinessTripRequest {
   id: number;
@@ -25,6 +26,7 @@ export function BusinessTripFormModal({
   onClose,
   onSaved,
 }: BusinessTripFormModalProps) {
+  const { tr } = useI18n();
   const todayIso = new Date().toISOString().slice(0, 10);
   const [destination, setDestination] = useState(editingRequest?.destination ?? '');
   const [startDate, setStartDate] = useState(editingRequest?.startDate ?? todayIso);
@@ -40,13 +42,19 @@ export function BusinessTripFormModal({
     const s = dayjs(startDate).startOf('day');
     const e = dayjs(endDate).startOf('day');
     if (!s.isValid() || !e.isValid()) {
-      return { days: 0, error: 'Ngày công tác không hợp lệ.' };
+      return { days: 0, error: tr('Ngày công tác không hợp lệ.', 'Invalid business trip dates.') };
     }
     if (e.isBefore(s, 'day')) {
-      return { days: 0, error: 'Ngày kết thúc không được nhỏ hơn ngày bắt đầu.' };
+      return {
+        days: 0,
+        error: tr(
+          'Ngày kết thúc không được nhỏ hơn ngày bắt đầu.',
+          'End date cannot be earlier than start date.',
+        ),
+      };
     }
     return { days: e.diff(s, 'day') + 1, error: null };
-  }, [startDate, endDate]);
+  }, [startDate, endDate, tr]);
 
   const numericCost = Number(estimatedCost);
 
@@ -56,15 +64,22 @@ export function BusinessTripFormModal({
       return;
     }
     if (destination.trim().length < 2) {
-      setErrorMsg('Vui lòng nhập địa điểm công tác.');
+      setErrorMsg(
+        tr('Vui lòng nhập địa điểm công tác.', 'Please enter the business trip destination.'),
+      );
       return;
     }
     if (Number.isNaN(numericCost) || numericCost < 0) {
-      setErrorMsg('Chi phí dự kiến phải là số >= 0.');
+      setErrorMsg(tr('Chi phí dự kiến phải là số >= 0.', 'Estimated cost must be a number >= 0.'));
       return;
     }
     if (purpose.trim().length < 3) {
-      setErrorMsg('Vui lòng nhập mục đích công tác tối thiểu 3 ký tự.');
+      setErrorMsg(
+        tr(
+          'Vui lòng nhập mục đích công tác tối thiểu 3 ký tự.',
+          'Please enter the trip purpose (at least 3 characters).',
+        ),
+      );
       return;
     }
 
@@ -104,7 +119,10 @@ export function BusinessTripFormModal({
       };
 
       if (!res.ok || !json.success) {
-        setErrorMsg(json.error?.message ?? 'Không thể lưu đơn công tác.');
+        setErrorMsg(
+          json.error?.message ??
+            tr('Không thể lưu đơn công tác.', 'Unable to save business trip request.'),
+        );
         setSubmittingMode(null);
         return;
       }
@@ -119,7 +137,13 @@ export function BusinessTripFormModal({
           error?: { message?: string };
         };
         if (!submitRes.ok || !submitJson.success) {
-          setErrorMsg(submitJson.error?.message ?? 'Đã lưu nháp nhưng gửi duyệt thất bại.');
+          setErrorMsg(
+            submitJson.error?.message ??
+              tr(
+                'Đã lưu nháp nhưng gửi duyệt thất bại.',
+                'Draft saved, but submitting for approval failed.',
+              ),
+          );
           setSubmittingMode(null);
           return;
         }
@@ -127,7 +151,9 @@ export function BusinessTripFormModal({
 
       onSaved();
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ. Vui lòng thử lại.');
+      setErrorMsg(
+        tr('Lỗi kết nối máy chủ. Vui lòng thử lại.', 'Server connection error. Please try again.'),
+      );
       setSubmittingMode(null);
     }
   }
@@ -142,10 +168,15 @@ export function BusinessTripFormModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                {editingRequest ? 'Chỉnh sửa đơn công tác' : 'Tạo đơn đăng ký công tác'}
+                {editingRequest
+                  ? tr('Chỉnh sửa đơn công tác', 'Edit Business Trip Request')
+                  : tr('Tạo đơn đăng ký công tác', 'Create Business Trip Request')}
               </h2>
               <p className="text-xs text-slate-500">
-                Khai báo lịch trình, địa điểm và dự trù công tác phí
+                {tr(
+                  'Khai báo lịch trình, địa điểm và dự trù công tác phí',
+                  'Declare schedule, destination, and estimated travel expenses',
+                )}
               </p>
             </div>
           </div>
@@ -154,7 +185,7 @@ export function BusinessTripFormModal({
             onClick={onClose}
             disabled={submittingMode !== null}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -170,13 +201,16 @@ export function BusinessTripFormModal({
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Địa điểm công tác <span className="text-rose-500">*</span>
+              {tr('Địa điểm công tác', 'Destination')} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder="Ví dụ: Chi nhánh Đà Nẵng / Khách hàng ABC tại TP.HCM"
+              placeholder={tr(
+                'Ví dụ: Chi nhánh Đà Nẵng / Khách hàng ABC tại TP.HCM',
+                'e.g. Da Nang Branch / Client ABC in HCMC',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             />
           </div>
@@ -184,7 +218,7 @@ export function BusinessTripFormModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Từ ngày <span className="text-rose-500">*</span>
+                {tr('Từ ngày', 'Start Date')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -199,7 +233,7 @@ export function BusinessTripFormModal({
 
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Đến ngày <span className="text-rose-500">*</span>
+                {tr('Đến ngày', 'End Date')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -213,7 +247,7 @@ export function BusinessTripFormModal({
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Chi phí dự kiến (VNĐ)
+              {tr('Chi phí dự kiến (VNĐ)', 'Estimated Cost (VND)')}
             </label>
             <input
               type="number"
@@ -224,7 +258,8 @@ export function BusinessTripFormModal({
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             />
             <p className="mt-1 text-xs text-slate-500">
-              Hiển thị: <strong className="text-slate-800">{formatVND(numericCost || 0)}</strong>
+              {tr('Hiển thị:', 'Preview:')}{' '}
+              <strong className="text-slate-800">{formatVND(numericCost || 0)}</strong>
             </p>
           </div>
 
@@ -236,21 +271,25 @@ export function BusinessTripFormModal({
             }`}
           >
             <div className="flex items-center justify-between font-semibold">
-              <span>Tổng thời gian công tác:</span>
-              <span>{tripPreview.days} ngày</span>
+              <span>{tr('Tổng thời gian công tác:', 'Total trip duration:')}</span>
+              <span>{tr(`${tripPreview.days} ngày`, `${tripPreview.days} days`)}</span>
             </div>
             {tripPreview.error && <p className="mt-1 text-xs text-rose-700">{tripPreview.error}</p>}
           </div>
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Mục đích & Lịch trình công tác <span className="text-rose-500">*</span>
+              {tr('Mục đích & Lịch trình công tác', 'Trip Purpose & Itinerary')}{' '}
+              <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={3}
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              placeholder="Mô tả mục tiêu chuyến công tác, khách hàng/đối tác làm việc..."
+              placeholder={tr(
+                'Mô tả mục tiêu chuyến công tác, khách hàng/đối tác làm việc...',
+                'Describe trip objectives, clients/partners to meet...',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             />
           </div>
@@ -263,7 +302,7 @@ export function BusinessTripFormModal({
             disabled={submittingMode !== null}
             className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
-            Đóng
+            {tr('Đóng', 'Close')}
           </button>
           <button
             type="button"
@@ -272,7 +311,7 @@ export function BusinessTripFormModal({
             className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
           >
             {submittingMode === 'DRAFT' && <IconLoader2 size={16} className="animate-spin" />}
-            <span>Lưu nháp</span>
+            <span>{tr('Lưu nháp', 'Save Draft')}</span>
           </button>
           <button
             type="button"
@@ -285,7 +324,7 @@ export function BusinessTripFormModal({
             ) : (
               <IconSend size={16} />
             )}
-            <span>Gửi duyệt ngay</span>
+            <span>{tr('Gửi duyệt ngay', 'Submit Now')}</span>
           </button>
         </div>
       </div>

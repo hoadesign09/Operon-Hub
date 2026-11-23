@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   IconAlertTriangle,
   IconCalculator,
@@ -26,20 +26,27 @@ import type {
   PayrollPeriodItem,
   PayslipRowItem,
 } from '@/modules/hrm/payroll/payroll.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 type ActiveTab = 'periods' | 'config';
 
 const STATUS_BADGES: Record<
   PayrollPeriodItem['status'],
-  { label: string; className: string }
+  { vi: string; en: string; className: string }
 > = {
-  DRAFT: { label: 'Nháp', className: 'bg-slate-100 text-slate-700' },
-  CALCULATED: { label: 'Đã tính lương', className: 'bg-amber-100 text-amber-800' },
-  APPROVED: { label: 'Đã phê duyệt', className: 'bg-blue-100 text-blue-800' },
-  PAID: { label: 'Đã chi trả & Phát phiếu', className: 'bg-emerald-100 text-emerald-800' },
+  DRAFT: { vi: 'Nháp', en: 'Draft', className: 'bg-slate-100 text-slate-700' },
+  CALCULATED: { vi: 'Đã tính lương', en: 'Calculated', className: 'bg-amber-100 text-amber-800' },
+  APPROVED: { vi: 'Đã phê duyệt', en: 'Approved', className: 'bg-blue-100 text-blue-800' },
+  PAID: { vi: 'Đã chi trả & Phát phiếu', en: 'Paid & Published', className: 'bg-emerald-100 text-emerald-800' },
 };
 
 export default function HrmPayrollPage() {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const { user, selectedBranchId } = usePortalAuth();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -115,7 +122,10 @@ export default function HrmPayrollPage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success || !json.data) {
-          throw new Error(json.error?.message ?? 'Không thể tải danh sách kỳ lương.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current('Không thể tải danh sách kỳ lương.', 'Failed to load payroll periods.'),
+          );
         }
         const items = json.data.items;
         setPeriods(items);
@@ -129,7 +139,11 @@ export default function HrmPayrollPage() {
       })
       .catch((err: unknown) => {
         if ((err as { name?: string })?.name === 'AbortError') return;
-        setPeriodsError(err instanceof Error ? err.message : 'Lỗi tải danh sách kỳ lương.');
+        setPeriodsError(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi tải danh sách kỳ lương.', 'Error loading payroll periods.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -162,7 +176,10 @@ export default function HrmPayrollPage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success || !json.data) {
-          throw new Error(json.error?.message ?? 'Không thể tải bảng lương chi tiết.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current('Không thể tải bảng lương chi tiết.', 'Failed to load payroll details.'),
+          );
         }
         setSelectedPeriod(json.data.period);
         setPayslips(json.data.payslips);
@@ -170,7 +187,11 @@ export default function HrmPayrollPage() {
       })
       .catch((err: unknown) => {
         if ((err as { name?: string })?.name === 'AbortError') return;
-        setDetailError(err instanceof Error ? err.message : 'Lỗi tải chi tiết kỳ lương.');
+        setDetailError(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi tải chi tiết kỳ lương.', 'Error loading payroll period details.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -194,14 +215,24 @@ export default function HrmPayrollPage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success || !json.data?.config) {
-          throw new Error(json.error?.message ?? 'Không thể tải cấu hình tính lương.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải cấu hình tính lương.',
+                'Failed to load payroll configuration.',
+              ),
+          );
         }
         setConfig(json.data.config);
         setConfigError(null);
       })
       .catch((err: unknown) => {
         if ((err as { name?: string })?.name === 'AbortError') return;
-        setConfigError(err instanceof Error ? err.message : 'Lỗi tải cấu hình lương.');
+        setConfigError(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi tải cấu hình lương.', 'Error loading payroll configuration.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -246,16 +277,24 @@ export default function HrmPayrollPage() {
         error?: { message?: string };
       };
       if (!res.ok || !json.success || !json.data) {
-        setActionError(json.error?.message ?? 'Không thể chạy tính lương.');
+        setActionError(
+          json.error?.message ??
+            tr('Không thể chạy tính lương.', 'Failed to run payroll calculation.'),
+        );
       } else {
         setActionMessage(
-          `Đã hoàn tất tính lương cho ${json.data.processedCount} nhân viên.`,
+          tr(
+            `Đã hoàn tất tính lương cho ${json.data.processedCount} nhân viên.`,
+            `Payroll calculation completed for ${json.data.processedCount} employees.`,
+          ),
         );
         setActionWarnings(json.data.warnings ?? []);
         triggerReloadAll();
       }
     } catch {
-      setActionError('Lỗi kết nối khi chạy tính lương.');
+      setActionError(
+        tr('Lỗi kết nối khi chạy tính lương.', 'Connection error while running payroll calculation.'),
+      );
     } finally {
       setActionBusy(null);
     }
@@ -282,16 +321,21 @@ export default function HrmPayrollPage() {
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setActionError(json.error?.message ?? 'Thao tác thất bại.');
+        setActionError(json.error?.message ?? tr('Thao tác thất bại.', 'Action failed.'));
       } else {
         if (confirmAction === 'approve') {
-          setActionMessage('Đã phê duyệt kỳ lương thành công.');
+          setActionMessage(
+            tr('Đã phê duyệt kỳ lương thành công.', 'Payroll period approved successfully.'),
+          );
         } else if (confirmAction === 'pay') {
           setActionMessage(
-            `Đã xác nhận chi trả, phát hành ${json.data?.publishedCount ?? 0} phiếu lương và gửi ${json.data?.notifiedCount ?? 0} thông báo tới nhân viên.`,
+            tr(
+              `Đã xác nhận chi trả, phát hành ${json.data?.publishedCount ?? 0} phiếu lương và gửi ${json.data?.notifiedCount ?? 0} thông báo tới nhân viên.`,
+              `Payment confirmed, ${json.data?.publishedCount ?? 0} payslips published, and ${json.data?.notifiedCount ?? 0} notifications sent to employees.`,
+            ),
           );
         } else {
-          setActionMessage('Đã xóa kỳ lương.');
+          setActionMessage(tr('Đã xóa kỳ lương.', 'Payroll period deleted.'));
           setSelectedPeriodId(null);
           setSelectedPeriod(null);
           setPayslips([]);
@@ -299,7 +343,7 @@ export default function HrmPayrollPage() {
         triggerReloadAll();
       }
     } catch {
-      setActionError('Lỗi kết nối máy chủ.');
+      setActionError(tr('Lỗi kết nối máy chủ.', 'Server connection error.'));
     } finally {
       setActionBusy(null);
       setConfirmAction(null);
@@ -327,15 +371,24 @@ export default function HrmPayrollPage() {
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setActionError(json.error?.message ?? 'Không thể mở lại kỳ lương.');
+        setActionError(
+          json.error?.message ?? tr('Không thể mở lại kỳ lương.', 'Failed to reopen payroll period.'),
+        );
       } else {
-        setActionMessage('Đã mở lại kỳ lương sang trạng thái Đã tính để điều chỉnh.');
+        setActionMessage(
+          tr(
+            'Đã mở lại kỳ lương sang trạng thái Đã tính để điều chỉnh.',
+            'Payroll period reopened to Calculated status for adjustments.',
+          ),
+        );
         setReopenReason('');
         setIsReopenModalOpen(false);
         triggerReloadAll();
       }
     } catch {
-      setActionError('Lỗi kết nối khi mở lại kỳ lương.');
+      setActionError(
+        tr('Lỗi kết nối khi mở lại kỳ lương.', 'Connection error while reopening payroll period.'),
+      );
     } finally {
       setActionBusy(null);
     }
@@ -360,13 +413,23 @@ export default function HrmPayrollPage() {
         error?: { message?: string };
       };
       if (!res.ok || !json.success || !json.data?.config) {
-        setConfigError(json.error?.message ?? 'Không thể lưu cấu hình lương.');
+        setConfigError(
+          json.error?.message ??
+            tr('Không thể lưu cấu hình lương.', 'Failed to save payroll configuration.'),
+        );
       } else {
         setConfig(json.data.config);
-        setConfigSavedMsg('Đã cập nhật cấu hình Bảo hiểm & Thuế TNCN thành công.');
+        setConfigSavedMsg(
+          tr(
+            'Đã cập nhật cấu hình Bảo hiểm & Thuế TNCN thành công.',
+            'Insurance & PIT configuration updated successfully.',
+          ),
+        );
       }
     } catch {
-      setConfigError('Lỗi kết nối khi lưu cấu hình.');
+      setConfigError(
+        tr('Lỗi kết nối khi lưu cấu hình.', 'Connection error while saving configuration.'),
+      );
     } finally {
       setIsSavingConfig(false);
     }
@@ -376,9 +439,14 @@ export default function HrmPayrollPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tính lương & Phiếu lương</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {tr('Tính lương & Phiếu lương', 'Payroll & Payslips')}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Quản lý kỳ lương, tính lương tự động từ bảng công & hợp đồng, duyệt chi trả và phát hành phiếu lương PDF/Excel.
+            {tr(
+              'Quản lý kỳ lương, tính lương tự động từ bảng công & hợp đồng, duyệt chi trả và phát hành phiếu lương PDF/Excel.',
+              'Manage payroll periods, auto-calculate salaries from attendance & contracts, approve payouts, and issue PDF/Excel payslips.',
+            )}
           </p>
         </div>
 
@@ -392,7 +460,7 @@ export default function HrmPayrollPage() {
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            Kỳ lương & Bảng tính
+            {tr('Kỳ lương & Bảng tính', 'Payroll Periods')}
           </button>
           <button
             type="button"
@@ -408,7 +476,7 @@ export default function HrmPayrollPage() {
             }`}
           >
             <IconSettings size={16} />
-            <span>Cấu hình BH & Thuế</span>
+            <span>{tr('Cấu hình BH & Thuế', 'Insurance & PIT Config')}</span>
           </button>
         </div>
       </div>
@@ -419,7 +487,7 @@ export default function HrmPayrollPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                <span>Năm:</span>
+                <span>{tr('Năm:', 'Year:')}</span>
                 <select
                   value={filterYear}
                   onChange={(e) => {
@@ -428,7 +496,7 @@ export default function HrmPayrollPage() {
                   }}
                   className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm text-slate-800 outline-none focus:border-blue-500"
                 >
-                  <option value="">Tất cả</option>
+                  <option value="">{tr('Tất cả', 'All')}</option>
                   {[currentYear + 1, currentYear, currentYear - 1].map((y) => (
                     <option key={y} value={y}>
                       {y}
@@ -438,7 +506,7 @@ export default function HrmPayrollPage() {
               </label>
 
               <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                <span>Trạng thái:</span>
+                <span>{tr('Trạng thái:', 'Status:')}</span>
                 <select
                   value={filterStatus}
                   onChange={(e) => {
@@ -447,11 +515,11 @@ export default function HrmPayrollPage() {
                   }}
                   className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm text-slate-800 outline-none focus:border-blue-500"
                 >
-                  <option value="">Tất cả</option>
-                  <option value="DRAFT">Nháp</option>
-                  <option value="CALCULATED">Đã tính lương</option>
-                  <option value="APPROVED">Đã phê duyệt</option>
-                  <option value="PAID">Đã chi trả</option>
+                  <option value="">{tr('Tất cả', 'All')}</option>
+                  <option value="DRAFT">{tr('Nháp', 'Draft')}</option>
+                  <option value="CALCULATED">{tr('Đã tính lương', 'Calculated')}</option>
+                  <option value="APPROVED">{tr('Đã phê duyệt', 'Approved')}</option>
+                  <option value="PAID">{tr('Đã chi trả', 'Paid')}</option>
                 </select>
               </label>
             </div>
@@ -463,7 +531,7 @@ export default function HrmPayrollPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
               >
                 <IconPlus size={16} />
-                <span>Tạo kỳ lương</span>
+                <span>{tr('Tạo kỳ lương', 'New Payroll Period')}</span>
               </button>
             )}
           </div>
@@ -484,16 +552,22 @@ export default function HrmPayrollPage() {
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
                 >
                   <IconRefresh size={14} />
-                  <span>Thử lại</span>
+                  <span>{tr('Thử lại', 'Retry')}</span>
                 </button>
               </div>
             ) : periods.length === 0 ? (
               <div className="p-10 text-center">
                 <p className="text-sm font-medium text-slate-700">
-                  Chưa có kỳ lương nào phù hợp bộ lọc hiện tại.
+                  {tr(
+                    'Chưa có kỳ lương nào phù hợp bộ lọc hiện tại.',
+                    'No payroll periods match the current filters.',
+                  )}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Khởi tạo kỳ lương mới để bắt đầu tổng hợp công, phụ cấp, BHXH và thuế TNCN.
+                  {tr(
+                    'Khởi tạo kỳ lương mới để bắt đầu tổng hợp công, phụ cấp, BHXH và thuế TNCN.',
+                    'Create a new payroll period to start aggregating attendance, allowances, social insurance, and PIT.',
+                  )}
                 </p>
                 {canManage && (
                   <button
@@ -502,7 +576,7 @@ export default function HrmPayrollPage() {
                     className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                   >
                     <IconPlus size={16} />
-                    <span>Tạo kỳ lương đầu tiên</span>
+                    <span>{tr('Tạo kỳ lương đầu tiên', 'Create First Period')}</span>
                   </button>
                 )}
               </div>
@@ -511,14 +585,14 @@ export default function HrmPayrollPage() {
                 <table className="min-w-full divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                     <tr>
-                      <th className="px-4 py-3">Kỳ lương</th>
-                      <th className="px-4 py-3">Chi nhánh</th>
-                      <th className="px-4 py-3 text-right">Số NV</th>
-                      <th className="px-4 py-3 text-right">Tổng Gross</th>
-                      <th className="px-4 py-3 text-right">BH NLĐ</th>
-                      <th className="px-4 py-3 text-right">Thuế TNCN</th>
-                      <th className="px-4 py-3 text-right">Tổng Thực lĩnh</th>
-                      <th className="px-4 py-3">Trạng thái</th>
+                      <th className="px-4 py-3">{tr('Kỳ lương', 'Period')}</th>
+                      <th className="px-4 py-3">{tr('Chi nhánh', 'Branch')}</th>
+                      <th className="px-4 py-3 text-right">{tr('Số NV', 'Headcount')}</th>
+                      <th className="px-4 py-3 text-right">{tr('Tổng Gross', 'Total Gross')}</th>
+                      <th className="px-4 py-3 text-right">{tr('BH NLĐ', 'Emp. Insurance')}</th>
+                      <th className="px-4 py-3 text-right">{tr('Thuế TNCN', 'PIT')}</th>
+                      <th className="px-4 py-3 text-right">{tr('Tổng Thực lĩnh', 'Total Net')}</th>
+                      <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -542,8 +616,8 @@ export default function HrmPayrollPage() {
                           <td className="px-4 py-3">
                             <div className="font-semibold text-slate-900">{period.name}</div>
                             <div className="text-xs text-slate-500">
-                              {period.code} • Tháng {String(period.month).padStart(2, '0')}/
-                              {period.year}
+                              {period.code} • {tr('Tháng', 'Month')}{' '}
+                              {String(period.month).padStart(2, '0')}/{period.year}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-slate-700">{period.branchName}</td>
@@ -566,7 +640,7 @@ export default function HrmPayrollPage() {
                             <span
                               className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
                             >
-                              {badge.label}
+                              {locale === 'en' ? badge.en : badge.vi}
                             </span>
                           </td>
                         </tr>
@@ -590,16 +664,18 @@ export default function HrmPayrollPage() {
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGES[selectedPeriod.status].className}`}
                     >
-                      {STATUS_BADGES[selectedPeriod.status].label}
+                      {locale === 'en'
+                        ? STATUS_BADGES[selectedPeriod.status].en
+                        : STATUS_BADGES[selectedPeriod.status].vi}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
-                    Mã kỳ: {selectedPeriod.code}
+                    {tr('Mã kỳ:', 'Period Code:')} {selectedPeriod.code}
                     {selectedPeriod.approvedAt
-                      ? ` • Duyệt bởi ${selectedPeriod.approvedByName ?? 'N/A'} (${selectedPeriod.approvedAt})`
+                      ? ` • ${tr('Duyệt bởi', 'Approved by')} ${selectedPeriod.approvedByName ?? 'N/A'} (${selectedPeriod.approvedAt})`
                       : ''}
                     {selectedPeriod.paidAt
-                      ? ` • Chi trả bởi ${selectedPeriod.paidByName ?? 'N/A'} (${selectedPeriod.paidAt})`
+                      ? ` • ${tr('Chi trả bởi', 'Paid by')} ${selectedPeriod.paidByName ?? 'N/A'} (${selectedPeriod.paidAt})`
                       : ''}
                   </p>
                 </div>
@@ -615,7 +691,9 @@ export default function HrmPayrollPage() {
                             checked={includeDraftAttendance}
                             onChange={(e) => setIncludeDraftAttendance(e.target.checked)}
                           />
-                          <span>Gồm công chưa chốt (DRAFT)</span>
+                          <span>
+                            {tr('Gồm công chưa chốt (DRAFT)', 'Include unlocked attendance (DRAFT)')}
+                          </span>
                         </label>
                         <button
                           type="button"
@@ -626,10 +704,10 @@ export default function HrmPayrollPage() {
                           <IconCalculator size={15} />
                           <span>
                             {actionBusy === 'calculate'
-                              ? 'Đang tính lương...'
+                              ? tr('Đang tính lương...', 'Calculating...')
                               : selectedPeriod.status === 'DRAFT'
-                                ? 'Chạy tính lương'
-                                : 'Tính lại bảng lương'}
+                                ? tr('Chạy tính lương', 'Run Payroll')
+                                : tr('Tính lại bảng lương', 'Recalculate Payroll')}
                           </span>
                         </button>
                       </>
@@ -643,7 +721,7 @@ export default function HrmPayrollPage() {
                       className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                     >
                       <IconCheck size={15} />
-                      <span>Phê duyệt kỳ lương</span>
+                      <span>{tr('Phê duyệt kỳ lương', 'Approve Period')}</span>
                     </button>
                   )}
 
@@ -655,7 +733,7 @@ export default function HrmPayrollPage() {
                       className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
                     >
                       <IconLockOpen size={15} />
-                      <span>Mở lại điều chỉnh</span>
+                      <span>{tr('Mở lại điều chỉnh', 'Reopen for Adjustment')}</span>
                     </button>
                   )}
 
@@ -667,7 +745,7 @@ export default function HrmPayrollPage() {
                       className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                     >
                       <IconSend size={15} />
-                      <span>Chi trả & Phát phiếu lương</span>
+                      <span>{tr('Chi trả & Phát phiếu lương', 'Pay & Publish Payslips')}</span>
                     </button>
                   )}
 
@@ -677,7 +755,7 @@ export default function HrmPayrollPage() {
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                     >
                       <IconFileSpreadsheet size={15} />
-                      <span>Xuất Excel</span>
+                      <span>{tr('Xuất Excel', 'Export Excel')}</span>
                     </a>
                   )}
 
@@ -691,7 +769,7 @@ export default function HrmPayrollPage() {
                         className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60"
                       >
                         <IconTrash size={15} />
-                        <span>Xóa kỳ</span>
+                        <span>{tr('Xóa kỳ', 'Delete Period')}</span>
                       </button>
                     )}
                 </div>
@@ -700,26 +778,30 @@ export default function HrmPayrollPage() {
               {/* KPI cards */}
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                  <div className="text-xs text-slate-500">Tổng Quỹ lương Gross</div>
+                  <div className="text-xs text-slate-500">
+                    {tr('Tổng Quỹ lương Gross', 'Total Gross Payroll')}
+                  </div>
                   <div className="mt-1 text-lg font-bold text-slate-900">
                     {formatVND(selectedPeriod.totalGross)}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                  <div className="text-xs text-slate-500">Tổng BHXH/BHYT/BHTN (NLĐ)</div>
+                  <div className="text-xs text-slate-500">
+                    {tr('Tổng BHXH/BHYT/BHTN (NLĐ)', 'Total Employee Insurance')}
+                  </div>
                   <div className="mt-1 text-lg font-bold text-slate-800">
                     {formatVND(selectedPeriod.totalInsuranceEmp)}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                  <div className="text-xs text-slate-500">Tổng Thuế TNCN</div>
+                  <div className="text-xs text-slate-500">{tr('Tổng Thuế TNCN', 'Total PIT')}</div>
                   <div className="mt-1 text-lg font-bold text-amber-700">
                     {formatVND(selectedPeriod.totalPit)}
                   </div>
                 </div>
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-3.5">
                   <div className="text-xs font-medium text-blue-700">
-                    Tổng Thực lĩnh Chi trả (Net)
+                    {tr('Tổng Thực lĩnh Chi trả (Net)', 'Total Net Payout')}
                   </div>
                   <div className="mt-1 text-lg font-bold text-blue-800">
                     {formatVND(selectedPeriod.totalNet)}
@@ -741,7 +823,12 @@ export default function HrmPayrollPage() {
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                   <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
                     <IconAlertTriangle size={16} />
-                    <span>Lưu ý khi tính lương ({actionWarnings.length} trường hợp bỏ qua):</span>
+                    <span>
+                      {tr(
+                        `Lưu ý khi tính lương (${actionWarnings.length} trường hợp bỏ qua):`,
+                        `Calculation notes (${actionWarnings.length} skipped):`,
+                      )}
+                    </span>
                   </div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-800">
                     {actionWarnings.map((w, idx) => (
@@ -765,12 +852,18 @@ export default function HrmPayrollPage() {
                       setPayslipSearch(e.target.value);
                       setIsLoadingDetail(true);
                     }}
-                    placeholder="Tìm theo mã NV hoặc họ tên..."
+                    placeholder={tr(
+                      'Tìm theo mã NV hoặc họ tên...',
+                      'Search by employee code or name...',
+                    )}
                     className="w-full rounded-xl border border-slate-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-blue-500"
                   />
                 </div>
                 <span className="text-xs text-slate-500">
-                  Hiển thị {payslips.length} phiếu lương
+                  {tr(
+                    `Hiển thị ${payslips.length} phiếu lương`,
+                    `Showing ${payslips.length} payslips`,
+                  )}
                 </span>
               </div>
 
@@ -791,28 +884,36 @@ export default function HrmPayrollPage() {
                     className="mt-2 inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white"
                   >
                     <IconRefresh size={14} />
-                    <span>Thử lại</span>
+                    <span>{tr('Thử lại', 'Retry')}</span>
                   </button>
                 </div>
               ) : payslips.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-                  Chưa có phiếu lương trong kỳ này. Hãy đảm bảo đã chốt bảng công tháng và bấm{' '}
-                  <span className="font-semibold text-slate-700">Chạy tính lương</span>.
+                  {tr(
+                    'Chưa có phiếu lương trong kỳ này. Hãy đảm bảo đã chốt bảng công tháng và bấm',
+                    'No payslips in this period yet. Ensure monthly attendance is locked and click',
+                  )}{' '}
+                  <span className="font-semibold text-slate-700">
+                    {tr('Chạy tính lương', 'Run Payroll')}
+                  </span>
+                  .
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm">
                     <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       <tr>
-                        <th className="px-3 py-3">Nhân viên</th>
-                        <th className="px-3 py-3 text-right">Công</th>
-                        <th className="px-3 py-3 text-right">Lương công</th>
-                        <th className="px-3 py-3 text-right">Phụ cấp + OT + Thưởng</th>
-                        <th className="px-3 py-3 text-right">Tổng Gross</th>
-                        <th className="px-3 py-3 text-right">BH (10.5%)</th>
-                        <th className="px-3 py-3 text-right">Thuế TNCN</th>
-                        <th className="px-3 py-3 text-right">Thực lĩnh Net</th>
-                        <th className="px-3 py-3 text-right">Thao tác</th>
+                        <th className="px-3 py-3">{tr('Nhân viên', 'Employee')}</th>
+                        <th className="px-3 py-3 text-right">{tr('Công', 'Days')}</th>
+                        <th className="px-3 py-3 text-right">{tr('Lương công', 'Prorated Pay')}</th>
+                        <th className="px-3 py-3 text-right">
+                          {tr('Phụ cấp + OT + Thưởng', 'Allowances + OT + Bonus')}
+                        </th>
+                        <th className="px-3 py-3 text-right">{tr('Tổng Gross', 'Total Gross')}</th>
+                        <th className="px-3 py-3 text-right">{tr('BH (10.5%)', 'Ins. (10.5%)')}</th>
+                        <th className="px-3 py-3 text-right">{tr('Thuế TNCN', 'PIT')}</th>
+                        <th className="px-3 py-3 text-right">{tr('Thực lĩnh Net', 'Net Pay')}</th>
+                        <th className="px-3 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -855,7 +956,7 @@ export default function HrmPayrollPage() {
                                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
                               >
                                 <IconEye size={14} />
-                                <span>Chi tiết</span>
+                                <span>{tr('Chi tiết', 'Details')}</span>
                               </button>
                               <a
                                 href={`/api/v1/hrm/payroll/payslips/${ps.id}/pdf`}
@@ -895,17 +996,23 @@ export default function HrmPayrollPage() {
                 className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white"
               >
                 <IconRefresh size={14} />
-                <span>Thử lại</span>
+                <span>{tr('Thử lại', 'Retry')}</span>
               </button>
             </div>
           ) : config ? (
             <form onSubmit={(e) => void handleSaveConfig(e)} className="space-y-6">
               <div>
                 <h2 className="text-base font-bold text-slate-900">
-                  Cấu hình Tỷ lệ Bảo hiểm & Thuế TNCN (Việt Nam)
+                  {tr(
+                    'Cấu hình Tỷ lệ Bảo hiểm & Thuế TNCN (Việt Nam)',
+                    'Vietnam Social Insurance & PIT Rate Configuration',
+                  )}
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Mọi kỳ lương đã tính sẽ lưu bản chụp (snapshot) cấu hình tại thời điểm tính để không làm sai lệch lịch sử.
+                  {tr(
+                    'Mọi kỳ lương đã tính sẽ lưu bản chụp (snapshot) cấu hình tại thời điểm tính để không làm sai lệch lịch sử.',
+                    'Calculated payroll periods store a snapshot of these settings so historical payslips remain unaffected.',
+                  )}
                 </p>
               </div>
 
@@ -922,7 +1029,9 @@ export default function HrmPayrollPage() {
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-700">BHXH NLĐ (%)</span>
+                  <span className="text-xs font-semibold text-slate-700">
+                    {tr('BHXH NLĐ (%)', 'Social Insurance – Emp (%)')}
+                  </span>
                   <input
                     type="number"
                     step="0.1"
@@ -937,7 +1046,9 @@ export default function HrmPayrollPage() {
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-700">BHYT NLĐ (%)</span>
+                  <span className="text-xs font-semibold text-slate-700">
+                    {tr('BHYT NLĐ (%)', 'Health Insurance – Emp (%)')}
+                  </span>
                   <input
                     type="number"
                     step="0.1"
@@ -952,7 +1063,9 @@ export default function HrmPayrollPage() {
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-700">BHTN NLĐ (%)</span>
+                  <span className="text-xs font-semibold text-slate-700">
+                    {tr('BHTN NLĐ (%)', 'Unemployment Ins. – Emp (%)')}
+                  </span>
                   <input
                     type="number"
                     step="0.1"
@@ -971,7 +1084,7 @@ export default function HrmPayrollPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-1">
                   <span className="text-xs font-semibold text-slate-700">
-                    Trần lương đóng BHXH / BHYT (VNĐ)
+                    {tr('Trần lương đóng BHXH / BHYT (VNĐ)', 'Social / Health Insurance Cap (VND)')}
                   </span>
                   <input
                     type="number"
@@ -986,7 +1099,7 @@ export default function HrmPayrollPage() {
                 </label>
                 <label className="space-y-1">
                   <span className="text-xs font-semibold text-slate-700">
-                    Trần lương đóng BHTN (VNĐ)
+                    {tr('Trần lương đóng BHTN (VNĐ)', 'Unemployment Insurance Cap (VND)')}
                   </span>
                   <input
                     type="number"
@@ -1001,7 +1114,10 @@ export default function HrmPayrollPage() {
                 </label>
                 <label className="space-y-1">
                   <span className="text-xs font-semibold text-slate-700">
-                    Giảm trừ gia cảnh bản thân (VNĐ/tháng)
+                    {tr(
+                      'Giảm trừ gia cảnh bản thân (VNĐ/tháng)',
+                      'Personal Tax Deduction (VND/month)',
+                    )}
                   </span>
                   <input
                     type="number"
@@ -1016,7 +1132,10 @@ export default function HrmPayrollPage() {
                 </label>
                 <label className="space-y-1">
                   <span className="text-xs font-semibold text-slate-700">
-                    Giảm trừ mỗi người phụ thuộc (VNĐ/tháng)
+                    {tr(
+                      'Giảm trừ mỗi người phụ thuộc (VNĐ/tháng)',
+                      'Dependent Tax Deduction (VND/month)',
+                    )}
                   </span>
                   <input
                     type="number"
@@ -1041,22 +1160,30 @@ export default function HrmPayrollPage() {
                   }
                 />
                 <span>
-                  Bắt buộc Bảng công tháng phải ở trạng thái Đã chốt (LOCKED) mới tính lương
+                  {tr(
+                    'Bắt buộc Bảng công tháng phải ở trạng thái Đã chốt (LOCKED) mới tính lương',
+                    'Require Monthly Attendance Summary to be LOCKED before calculating payroll',
+                  )}
                 </span>
               </label>
 
               {/* Progressive 7 brackets reference table */}
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Biểu thuế TNCN lũy tiến từng phần ({config.pitBrackets.length} bậc)
+                  {tr(
+                    `Biểu thuế TNCN lũy tiến từng phần (${config.pitBrackets.length} bậc)`,
+                    `Progressive PIT Brackets (${config.pitBrackets.length} tiers)`,
+                  )}
                 </h3>
                 <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200">
                   <table className="min-w-full divide-y divide-slate-200 text-xs">
                     <thead className="bg-slate-50 text-left font-semibold text-slate-500">
                       <tr>
-                        <th className="px-4 py-2">Bậc</th>
-                        <th className="px-4 py-2">Phần thu nhập tính thuế / tháng</th>
-                        <th className="px-4 py-2 text-right">Thuế suất</th>
+                        <th className="px-4 py-2">{tr('Bậc', 'Tier')}</th>
+                        <th className="px-4 py-2">
+                          {tr('Phần thu nhập tính thuế / tháng', 'Monthly Taxable Income')}
+                        </th>
+                        <th className="px-4 py-2 text-right">{tr('Thuế suất', 'Tax Rate')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1064,12 +1191,15 @@ export default function HrmPayrollPage() {
                         const prev = idx === 0 ? 0 : config.pitBrackets[idx - 1].upTo ?? 0;
                         const label =
                           b.upTo === null
-                            ? `Trên ${formatVND(prev)}`
-                            : `Từ ${formatVND(prev)} đến ${formatVND(b.upTo)}`;
+                            ? tr(`Trên ${formatVND(prev)}`, `Over ${formatVND(prev)}`)
+                            : tr(
+                                `Từ ${formatVND(prev)} đến ${formatVND(b.upTo)}`,
+                                `From ${formatVND(prev)} to ${formatVND(b.upTo)}`,
+                              );
                         return (
                           <tr key={idx}>
                             <td className="px-4 py-2 font-semibold text-slate-800">
-                              Bậc {idx + 1}
+                              {tr('Bậc', 'Tier')} {idx + 1}
                             </td>
                             <td className="px-4 py-2 text-slate-700">{label}</td>
                             <td className="px-4 py-2 text-right font-semibold text-blue-700">
@@ -1090,7 +1220,9 @@ export default function HrmPayrollPage() {
                     disabled={isSavingConfig}
                     className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                   >
-                    {isSavingConfig ? 'Đang lưu cấu hình...' : 'Lưu cấu hình'}
+                    {isSavingConfig
+                      ? tr('Đang lưu cấu hình...', 'Saving configuration...')
+                      : tr('Lưu cấu hình', 'Save Configuration')}
                   </button>
                 </div>
               )}
@@ -1112,7 +1244,12 @@ export default function HrmPayrollPage() {
           onSuccess={(newId) => {
             setIsCreateModalOpen(false);
             setSelectedPeriodId(newId);
-            setActionMessage('Đã khởi tạo kỳ lương mới. Hãy bấm Chạy tính lương để tổng hợp.');
+            setActionMessage(
+              tr(
+                'Đã khởi tạo kỳ lương mới. Hãy bấm Chạy tính lương để tổng hợp.',
+                'New payroll period created. Click Run Payroll to calculate.',
+              ),
+            );
             triggerReloadAll();
           }}
         />
@@ -1136,9 +1273,21 @@ export default function HrmPayrollPage() {
             onSubmit={(e) => void handleReopenSubmit(e)}
             className="w-full max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
           >
-            <h3 className="text-base font-bold text-slate-900">Mở lại kỳ lương đã duyệt</h3>
+            <h3 className="text-base font-bold text-slate-900">
+              {tr('Mở lại kỳ lương đã duyệt', 'Reopen Approved Payroll Period')}
+            </h3>
             <p className="text-xs text-slate-500">
-              Kỳ lương <strong>{selectedPeriod.name}</strong> sẽ trở về trạng thái Đã tính lương để điều chỉnh. Thao tác này được lưu vết trong Nhật ký hệ thống.
+              {locale === 'en' ? (
+                <>
+                  Payroll period <strong>{selectedPeriod.name}</strong> will return to Calculated
+                  status for adjustments. This action is recorded in the Audit Log.
+                </>
+              ) : (
+                <>
+                  Kỳ lương <strong>{selectedPeriod.name}</strong> sẽ trở về trạng thái Đã tính lương
+                  để điều chỉnh. Thao tác này được lưu vết trong Nhật ký hệ thống.
+                </>
+              )}
             </p>
             <textarea
               rows={3}
@@ -1146,7 +1295,10 @@ export default function HrmPayrollPage() {
               minLength={5}
               value={reopenReason}
               onChange={(e) => setReopenReason(e.target.value)}
-              placeholder="Nhập lý do mở lại kỳ lương (tối thiểu 5 ký tự)..."
+              placeholder={tr(
+                'Nhập lý do mở lại kỳ lương (tối thiểu 5 ký tự)...',
+                'Enter reason for reopening (minimum 5 characters)...',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
             <div className="flex justify-end gap-2">
@@ -1155,14 +1307,16 @@ export default function HrmPayrollPage() {
                 onClick={() => setIsReopenModalOpen(false)}
                 className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
               >
-                Hủy
+                {tr('Hủy', 'Cancel')}
               </button>
               <button
                 type="submit"
                 disabled={actionBusy === 'reopen'}
                 className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-60"
               >
-                {actionBusy === 'reopen' ? 'Đang mở lại...' : 'Xác nhận mở lại'}
+                {actionBusy === 'reopen'
+                  ? tr('Đang mở lại...', 'Reopening...')
+                  : tr('Xác nhận mở lại', 'Confirm Reopen')}
               </button>
             </div>
           </form>
@@ -1174,26 +1328,35 @@ export default function HrmPayrollPage() {
         isOpen={confirmAction !== null}
         title={
           confirmAction === 'approve'
-            ? 'Xác nhận phê duyệt kỳ lương?'
+            ? tr('Xác nhận phê duyệt kỳ lương?', 'Approve Payroll Period?')
             : confirmAction === 'pay'
-              ? 'Xác nhận chi trả & phát hành Phiếu lương?'
-              : 'Xác nhận xóa kỳ lương?'
+              ? tr('Xác nhận chi trả & phát hành Phiếu lương?', 'Confirm Payout & Publish Payslips?')
+              : tr('Xác nhận xóa kỳ lương?', 'Delete Payroll Period?')
         }
         description={
           confirmAction === 'approve'
-            ? `Phê duyệt bảng lương "${selectedPeriod?.name ?? ''}" với tổng thực lĩnh ${formatVND(selectedPeriod?.totalNet ?? 0)}. Sau khi duyệt sẽ không thể chỉnh sửa trừ khi mở lại.`
+            ? tr(
+                `Phê duyệt bảng lương "${selectedPeriod?.name ?? ''}" với tổng thực lĩnh ${formatVND(selectedPeriod?.totalNet ?? 0)}. Sau khi duyệt sẽ không thể chỉnh sửa trừ khi mở lại.`,
+                `Approve payroll "${selectedPeriod?.name ?? ''}" with total net payout ${formatVND(selectedPeriod?.totalNet ?? 0)}. Once approved, edits require reopening the period.`,
+              )
             : confirmAction === 'pay'
-              ? `Kỳ lương "${selectedPeriod?.name ?? ''}" sẽ bị khóa vĩnh viễn (PAID), toàn bộ phiếu lương chuyển sang Đã phát hành và gửi thông báo tới nhân viên.`
-              : `Xóa mềm kỳ lương "${selectedPeriod?.name ?? ''}" và toàn bộ phiếu lương nháp trong kỳ.`
+              ? tr(
+                  `Kỳ lương "${selectedPeriod?.name ?? ''}" sẽ bị khóa vĩnh viễn (PAID), toàn bộ phiếu lương chuyển sang Đã phát hành và gửi thông báo tới nhân viên.`,
+                  `Payroll period "${selectedPeriod?.name ?? ''}" will be permanently locked (PAID), all payslips will be published, and employees will be notified.`,
+                )
+              : tr(
+                  `Xóa mềm kỳ lương "${selectedPeriod?.name ?? ''}" và toàn bộ phiếu lương nháp trong kỳ.`,
+                  `Soft delete payroll period "${selectedPeriod?.name ?? ''}" and all draft payslips in this period.`,
+                )
         }
         confirmLabel={
           confirmAction === 'approve'
-            ? 'Phê duyệt'
+            ? tr('Phê duyệt', 'Approve')
             : confirmAction === 'pay'
-              ? 'Chi trả & Phát phiếu'
-              : 'Xóa kỳ lương'
+              ? tr('Chi trả & Phát phiếu', 'Pay & Publish')
+              : tr('Xóa kỳ lương', 'Delete Period')
         }
-        cancelLabel="Hủy"
+        cancelLabel={tr('Hủy', 'Cancel')}
         variant={confirmAction === 'delete' ? 'danger' : 'primary'}
         isProcessing={actionBusy !== null}
         onConfirm={() => void handleConfirmExecute()}

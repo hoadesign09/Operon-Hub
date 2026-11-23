@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { IconX } from '@tabler/icons-react';
 import type { AssetCategory, AssetStatus } from '@/config/database';
 import type { AssetListItem } from '@/modules/hrm/office/assets.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface BranchOption {
   id: number;
@@ -28,6 +29,7 @@ export function AssetFormModal({
   onClose,
   onSuccess,
 }: AssetFormModalProps) {
+  const { tr } = useI18n();
   const initialBranch =
     asset?.branchId ?? defaultBranchId ?? branches[0]?.id ?? 0;
 
@@ -95,14 +97,19 @@ export function AssetFormModal({
       };
 
       if (!res.ok || !json.success) {
-        setErrorMessage(json.error?.message ?? 'Không thể lưu thông tin tài sản.');
+        setErrorMessage(
+          json.error?.message ??
+            tr('Không thể lưu thông tin tài sản.', 'Unable to save asset information.'),
+        );
         setIsSubmitting(false);
         return;
       }
 
       onSuccess();
     } catch {
-      setErrorMessage('Lỗi kết nối máy chủ khi lưu tài sản.');
+      setErrorMessage(
+        tr('Lỗi kết nối máy chủ khi lưu tài sản.', 'Server connection error while saving asset.'),
+      );
       setIsSubmitting(false);
     }
   }
@@ -113,17 +120,22 @@ export function AssetFormModal({
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              {mode === 'create' ? 'Thêm Tài sản / Thiết bị mới' : `Cập nhật tài sản ${asset?.assetCode}`}
+              {mode === 'create'
+                ? tr('Thêm Tài sản / Thiết bị mới', 'Add New Asset / Equipment')
+                : tr(`Cập nhật tài sản ${asset?.assetCode}`, `Edit Asset ${asset?.assetCode}`)}
             </h2>
             <p className="text-xs text-slate-500">
-              Quản lý danh mục tài sản, số serial, bảo hành và nguyên giá theo chi nhánh.
+              {tr(
+                'Quản lý danh mục tài sản, số serial, bảo hành và nguyên giá theo chi nhánh.',
+                'Manage asset catalog, serial numbers, warranty, and purchase value by branch.',
+              )}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -141,14 +153,16 @@ export function AssetFormModal({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Chi nhánh quản lý *</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Chi nhánh quản lý *', 'Managing Branch *')}
+              </span>
               <select
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
                 required
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="">-- Chọn chi nhánh --</option>
+                <option value="">{tr('-- Chọn chi nhánh --', '-- Select branch --')}</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.code})
@@ -158,13 +172,15 @@ export function AssetFormModal({
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Mã tài sản *</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Mã tài sản *', 'Asset Code *')}
+              </span>
               <input
                 type="text"
                 required
                 value={assetCode}
                 onChange={(e) => setAssetCode(e.target.value)}
-                placeholder="VD: TS-LT-010"
+                placeholder={tr('VD: TS-LT-010', 'e.g. TS-LT-010')}
                 maxLength={50}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase outline-none focus:border-blue-500"
               />
@@ -173,37 +189,43 @@ export function AssetFormModal({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="space-y-1 sm:col-span-2">
-              <span className="text-xs font-semibold text-slate-700">Tên tài sản / Thiết bị *</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Tên tài sản / Thiết bị *', 'Asset / Equipment Name *')}
+              </span>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="VD: MacBook Pro 14 M3 Pro"
+                placeholder={tr('VD: MacBook Pro 14 M3 Pro', 'e.g. MacBook Pro 14 M3 Pro')}
                 maxLength={200}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
               />
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Phân loại *</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Phân loại *', 'Category *')}
+              </span>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as AssetCategory)}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="LAPTOP">Laptop / Máy tính</option>
-                <option value="MONITOR">Màn hình</option>
-                <option value="PHONE">Điện thoại / Di động</option>
-                <option value="FURNITURE">Nội thất văn phòng</option>
-                <option value="OTHER">Thiết bị khác</option>
+                <option value="LAPTOP">{tr('Laptop / Máy tính', 'Laptop / Computer')}</option>
+                <option value="MONITOR">{tr('Màn hình', 'Monitor')}</option>
+                <option value="PHONE">{tr('Điện thoại / Di động', 'Phone / Mobile')}</option>
+                <option value="FURNITURE">{tr('Nội thất văn phòng', 'Office Furniture')}</option>
+                <option value="OTHER">{tr('Thiết bị khác', 'Other Equipment')}</option>
               </select>
             </label>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Hãng sản xuất</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Hãng sản xuất', 'Manufacturer')}
+              </span>
               <input
                 type="text"
                 value={brand}
@@ -225,12 +247,14 @@ export function AssetFormModal({
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Số Serial / IMEI</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Số Serial / IMEI', 'Serial Number / IMEI')}
+              </span>
               <input
                 type="text"
                 value={serialNumber}
                 onChange={(e) => setSerialNumber(e.target.value)}
-                placeholder="S/N thiết bị"
+                placeholder={tr('S/N thiết bị', 'Device S/N')}
                 maxLength={100}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
               />
@@ -239,7 +263,9 @@ export function AssetFormModal({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Ngày mua</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Ngày mua', 'Purchase Date')}
+              </span>
               <input
                 type="date"
                 value={purchaseDate}
@@ -248,7 +274,9 @@ export function AssetFormModal({
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Hạn bảo hành</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Hạn bảo hành', 'Warranty Expiry')}
+              </span>
               <input
                 type="date"
                 value={warrantyExpiryDate}
@@ -257,7 +285,9 @@ export function AssetFormModal({
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Nguyên giá (VNĐ)</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Nguyên giá (VNĐ)', 'Purchase Value (VND)')}
+              </span>
               <input
                 type="number"
                 min={0}
@@ -270,10 +300,15 @@ export function AssetFormModal({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Trạng thái</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Trạng thái', 'Status')}
+              </span>
               {isAssignedLocked ? (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
-                  Đang cấp phát (Thu hồi thiết bị để đổi trạng thái)
+                  {tr(
+                    'Đang cấp phát (Thu hồi thiết bị để đổi trạng thái)',
+                    'Assigned (Return asset to change status)',
+                  )}
                 </div>
               ) : (
                 <select
@@ -281,20 +316,27 @@ export function AssetFormModal({
                   onChange={(e) => setStatus(e.target.value as AssetStatus)}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
                 >
-                  <option value="AVAILABLE">Sẵn sàng cấp phát</option>
-                  <option value="MAINTENANCE">Đang bảo trì / Sửa chữa</option>
-                  <option value="RETIRED">Đã thanh lý / Hỏng</option>
+                  <option value="AVAILABLE">{tr('Sẵn sàng cấp phát', 'Available')}</option>
+                  <option value="MAINTENANCE">
+                    {tr('Đang bảo trì / Sửa chữa', 'Under Maintenance / Repair')}
+                  </option>
+                  <option value="RETIRED">{tr('Đã thanh lý / Hỏng', 'Retired / Damaged')}</option>
                 </select>
               )}
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Ghi chú</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Ghi chú', 'Notes')}
+              </span>
               <input
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Phụ kiện đi kèm, vị trí lưu kho..."
+                placeholder={tr(
+                  'Phụ kiện đi kèm, vị trí lưu kho...',
+                  'Included accessories, storage location...',
+                )}
                 maxLength={2000}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
               />
@@ -308,7 +350,7 @@ export function AssetFormModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -316,10 +358,10 @@ export function AssetFormModal({
               className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting
-                ? 'Đang lưu...'
+                ? tr('Đang lưu...', 'Saving...')
                 : mode === 'create'
-                  ? 'Thêm tài sản'
-                  : 'Lưu thay đổi'}
+                  ? tr('Thêm tài sản', 'Add Asset')
+                  : tr('Lưu thay đổi', 'Save Changes')}
             </button>
           </div>
         </form>

@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 type ApproverType = 'DIRECT_MANAGER' | 'ROLE' | 'SPECIFIC_USER';
 
@@ -62,13 +63,17 @@ interface StepDraft {
   approverUserId: string;
 }
 
-const APPROVER_TYPE_LABELS: Record<ApproverType, string> = {
-  DIRECT_MANAGER: 'Quản lý trực tiếp',
-  ROLE: 'Theo Vai trò',
-  SPECIFIC_USER: 'Người dùng cụ thể',
+const ERR_LOAD_WORKFLOWS = '__ERR_LOAD_WORKFLOWS__';
+const ERR_NETWORK_WORKFLOWS = '__ERR_NETWORK_WORKFLOWS__';
+
+const APPROVER_TYPE_LABELS: Record<ApproverType, { vi: string; en: string }> = {
+  DIRECT_MANAGER: { vi: 'Quản lý trực tiếp', en: 'Direct Manager' },
+  ROLE: { vi: 'Theo Vai trò', en: 'By Role' },
+  SPECIFIC_USER: { vi: 'Người dùng cụ thể', en: 'Specific User' },
 };
 
 export default function WorkflowsSettingsPage() {
+  const { locale, tr } = useI18n();
   const { hasPermission } = usePortalAuth();
   const canManage = hasPermission('core.approvals.workflow_manage');
 
@@ -133,7 +138,7 @@ export default function WorkflowsSettingsPage() {
         ]);
 
         if (!wRes.ok || !wJson?.success) {
-          setErrorMessage(wJson?.error?.message ?? 'Không thể tải danh sách luồng duyệt.');
+          setErrorMessage(wJson?.error?.message ?? ERR_LOAD_WORKFLOWS);
           setViewState('error');
           return;
         }
@@ -148,7 +153,7 @@ export default function WorkflowsSettingsPage() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMessage('Lỗi kết nối khi tải danh sách luồng duyệt.');
+        setErrorMessage(ERR_NETWORK_WORKFLOWS);
         setViewState('error');
       });
 
@@ -257,14 +262,22 @@ export default function WorkflowsSettingsPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setFormError(json?.error?.message ?? 'Không thể lưu quy trình duyệt.');
+        setFormError(
+          json?.error?.message ??
+            tr('Không thể lưu quy trình duyệt.', 'Unable to save approval workflow.'),
+        );
         return;
       }
 
       setIsModalOpen(false);
       triggerReload();
     } catch {
-      setFormError('Lỗi kết nối khi lưu quy trình duyệt.');
+      setFormError(
+        tr(
+          'Lỗi kết nối khi lưu quy trình duyệt.',
+          'Connection error while saving approval workflow.',
+        ),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -280,7 +293,9 @@ export default function WorkflowsSettingsPage() {
         method: 'DELETE',
       });
       if (!res.ok) {
-        setErrorMessage('Không thể xóa quy trình duyệt.');
+        setErrorMessage(
+          tr('Không thể xóa quy trình duyệt.', 'Unable to delete approval workflow.'),
+        );
         setViewState('error');
       } else {
         triggerReload();
@@ -291,13 +306,28 @@ export default function WorkflowsSettingsPage() {
     }
   }
 
+  const resolvedErrorMessage =
+    errorMessage === ERR_LOAD_WORKFLOWS
+      ? tr('Không thể tải danh sách luồng duyệt.', 'Unable to load approval workflows.')
+      : errorMessage === ERR_NETWORK_WORKFLOWS
+        ? tr(
+            'Lỗi kết nối khi tải danh sách luồng duyệt.',
+            'Connection error while loading approval workflows.',
+          )
+        : errorMessage;
+
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Cấu hình Luồng Phê duyệt Đa cấp</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Cấu hình Luồng Phê duyệt Đa cấp', 'Approval Workflows')}
+          </h1>
           <p className="text-sm text-slate-500">
-            Thiết lập chuỗi duyệt dùng chung cho Nghỉ phép, Tăng ca, Công tác (HRM) và Báo giá (CRM).
+            {tr(
+              'Thiết lập chuỗi duyệt dùng chung cho Nghỉ phép, Tăng ca, Công tác (HRM) và Báo giá (CRM).',
+              'Configure multi-level approval chains for Leave, Overtime, Business Trips (HRM), and Quotations (CRM).',
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -309,7 +339,7 @@ export default function WorkflowsSettingsPage() {
             }}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none"
           >
-            <option value="">Tất cả phân hệ</option>
+            <option value="">{tr('Tất cả phân hệ', 'All modules')}</option>
             <option value="hrm">HRM</option>
             <option value="crm">CRM</option>
             <option value="core">Core</option>
@@ -321,7 +351,7 @@ export default function WorkflowsSettingsPage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               <IconPlus size={17} />
-              <span>Thêm luồng duyệt</span>
+              <span>{tr('Thêm luồng duyệt', 'Add Workflow')}</span>
             </button>
           )}
         </div>
@@ -337,14 +367,14 @@ export default function WorkflowsSettingsPage() {
 
       {viewState === 'error' && (
         <div className="flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-5">
-          <span className="text-sm font-medium text-rose-700">{errorMessage}</span>
+          <span className="text-sm font-medium text-rose-700">{resolvedErrorMessage}</span>
           <button
             type="button"
             onClick={triggerReload}
             className="inline-flex items-center gap-1 rounded-xl border border-rose-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-700"
           >
             <IconRefresh size={14} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       )}
@@ -352,7 +382,9 @@ export default function WorkflowsSettingsPage() {
       {viewState === 'success' && workflows.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-14 text-center">
           <IconInbox size={34} className="text-slate-400" />
-          <p className="mt-2 text-sm font-semibold text-slate-800">Chưa có quy trình phê duyệt nào</p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">
+            {tr('Chưa có quy trình phê duyệt nào', 'No approval workflows configured')}
+          </p>
           {canManage && (
             <button
               type="button"
@@ -360,7 +392,7 @@ export default function WorkflowsSettingsPage() {
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-medium text-white"
             >
               <IconPlus size={15} />
-              <span>Tạo quy trình đầu tiên</span>
+              <span>{tr('Tạo quy trình đầu tiên', 'Create First Workflow')}</span>
             </button>
           )}
         </div>
@@ -388,16 +420,21 @@ export default function WorkflowsSettingsPage() {
                           : 'bg-slate-100 text-slate-500'
                       }`}
                     >
-                      {wf.isActive ? 'Đang áp dụng' : 'Tạm ngưng'}
+                      {wf.isActive ? tr('Đang áp dụng', 'Active') : tr('Tạm ngưng', 'Inactive')}
                     </span>
                   </div>
                   {wf.description && (
                     <p className="mt-1 text-xs text-slate-600">{wf.description}</p>
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span>Phạm vi: {wf.branchName ?? 'Toàn công ty'}</span>
+                    <span>
+                      {tr('Phạm vi', 'Scope')}: {wf.branchName ?? tr('Toàn công ty', 'Company-wide')}
+                    </span>
                     {wf.conditions?.minDays !== undefined && wf.conditions?.minDays !== null && (
-                      <span>• Điều kiện: &ge; {wf.conditions.minDays} ngày</span>
+                      <span>
+                        • {tr('Điều kiện', 'Condition')}: &ge; {wf.conditions.minDays}{' '}
+                        {tr('ngày', 'days')}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -408,7 +445,7 @@ export default function WorkflowsSettingsPage() {
                       type="button"
                       onClick={() => openEditModal(wf)}
                       className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-blue-600"
-                      title="Chỉnh sửa"
+                      title={tr('Chỉnh sửa', 'Edit')}
                     >
                       <IconEdit size={16} />
                     </button>
@@ -416,7 +453,7 @@ export default function WorkflowsSettingsPage() {
                       type="button"
                       onClick={() => setDeletingWorkflow(wf)}
                       className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600"
-                      title="Xóa mềm"
+                      title={tr('Xóa mềm', 'Soft delete')}
                     >
                       <IconTrash size={16} />
                     </button>
@@ -428,12 +465,12 @@ export default function WorkflowsSettingsPage() {
                 {wf.steps.map((step, idx) => (
                   <div key={`${wf.id}-s-${step.stepOrder}`} className="flex items-center gap-2">
                     <span className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
-                      Bước {step.stepOrder}:{' '}
+                      {tr('Bước', 'Step')} {step.stepOrder}:{' '}
                       {step.approverType === 'ROLE'
-                        ? step.approverRoleName ?? 'Vai trò'
+                        ? step.approverRoleName ?? tr('Vai trò', 'Role')
                         : step.approverType === 'SPECIFIC_USER'
-                          ? step.approverUserName ?? 'Người dùng'
-                          : 'Quản lý trực tiếp'}
+                          ? step.approverUserName ?? tr('Người dùng', 'User')
+                          : tr('Quản lý trực tiếp', 'Direct Manager')}
                     </span>
                     {idx < wf.steps.length - 1 && (
                       <IconArrowRight size={14} className="text-slate-400" />
@@ -455,7 +492,9 @@ export default function WorkflowsSettingsPage() {
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900">
-                {editingWorkflow ? 'Cập nhật Luồng duyệt' : 'Tạo Luồng duyệt mới'}
+                {editingWorkflow
+                  ? tr('Cập nhật Luồng duyệt', 'Edit Approval Workflow')
+                  : tr('Tạo Luồng duyệt mới', 'Create Approval Workflow')}
               </h2>
               <button
                 type="button"
@@ -476,7 +515,7 @@ export default function WorkflowsSettingsPage() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Tên quy trình *
+                  {tr('Tên quy trình *', 'Workflow Name *')}
                 </label>
                 <input
                   type="text"
@@ -489,7 +528,9 @@ export default function WorkflowsSettingsPage() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-700">Phân hệ *</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Phân hệ *', 'Module *')}
+                  </label>
                   <select
                     value={moduleCode}
                     onChange={(e) => setModuleCode(e.target.value as 'core' | 'hrm' | 'crm')}
@@ -502,7 +543,7 @@ export default function WorkflowsSettingsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Loại yêu cầu *
+                    {tr('Loại yêu cầu *', 'Request Type *')}
                   </label>
                   <input
                     type="text"
@@ -515,14 +556,14 @@ export default function WorkflowsSettingsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Chi nhánh áp dụng
+                    {tr('Chi nhánh áp dụng', 'Applicable Branch')}
                   </label>
                   <select
                     value={branchId}
                     onChange={(e) => setBranchId(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                   >
-                    <option value="">Toàn công ty</option>
+                    <option value="">{tr('Toàn công ty', 'Company-wide')}</option>
                     {branches.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name} ({b.code})
@@ -535,20 +576,25 @@ export default function WorkflowsSettingsPage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Điều kiện số ngày tối thiểu (tùy chọn)
+                    {tr(
+                      'Điều kiện số ngày tối thiểu (tùy chọn)',
+                      'Minimum Days Condition (optional)',
+                    )}
                   </label>
                   <input
                     type="number"
                     min="0"
                     step="0.5"
-                    placeholder="VD: 3"
+                    placeholder={tr('VD: 3', 'e.g. 3')}
                     value={minDays}
                     onChange={(e) => setMinDays(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-700">Mô tả</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Mô tả', 'Description')}
+                  </label>
                   <input
                     type="text"
                     value={description}
@@ -561,7 +607,7 @@ export default function WorkflowsSettingsPage() {
               <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-800">
-                    Các bước phê duyệt tuần tự ({steps.length}/5)
+                    {tr('Các bước phê duyệt tuần tự', 'Sequential Approval Steps')} ({steps.length}/5)
                   </span>
                   {steps.length < 5 && (
                     <button
@@ -570,7 +616,7 @@ export default function WorkflowsSettingsPage() {
                       className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
                     >
                       <IconPlus size={14} />
-                      <span>Thêm bước</span>
+                      <span>{tr('Thêm bước', 'Add Step')}</span>
                     </button>
                   )}
                 </div>
@@ -581,7 +627,7 @@ export default function WorkflowsSettingsPage() {
                     className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-12 sm:items-center"
                   >
                     <div className="text-xs font-semibold text-slate-700 sm:col-span-2">
-                      Bước {idx + 1}
+                      {tr('Bước', 'Step')} {idx + 1}
                     </div>
                     <select
                       value={step.approverType}
@@ -594,7 +640,7 @@ export default function WorkflowsSettingsPage() {
                     >
                       {Object.entries(APPROVER_TYPE_LABELS).map(([k, label]) => (
                         <option key={k} value={k}>
-                          {label}
+                          {locale === 'en' ? label.en : label.vi}
                         </option>
                       ))}
                     </select>
@@ -607,7 +653,7 @@ export default function WorkflowsSettingsPage() {
                           onChange={(e) => updateStep(idx, { approverRoleId: e.target.value })}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
                         >
-                          <option value="">-- Chọn vai trò --</option>
+                          <option value="">{tr('-- Chọn vai trò --', '-- Select role --')}</option>
                           {roles.map((r) => (
                             <option key={r.id} value={r.id}>
                               {r.name} ({r.code})
@@ -622,7 +668,9 @@ export default function WorkflowsSettingsPage() {
                           onChange={(e) => updateStep(idx, { approverUserId: e.target.value })}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
                         >
-                          <option value="">-- Chọn người duyệt --</option>
+                          <option value="">
+                            {tr('-- Chọn người duyệt --', '-- Select approver --')}
+                          </option>
                           {users.map((u) => (
                             <option key={u.id} value={u.id}>
                               {u.fullName} ({u.email})
@@ -636,10 +684,12 @@ export default function WorkflowsSettingsPage() {
                           onChange={(e) => updateStep(idx, { approverRoleId: e.target.value })}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
                         >
-                          <option value="">Không cần vai trò dự phòng</option>
+                          <option value="">
+                            {tr('Không cần vai trò dự phòng', 'No fallback role required')}
+                          </option>
                           {roles.map((r) => (
                             <option key={r.id} value={r.id}>
-                              Dự phòng: {r.name}
+                              {tr('Dự phòng', 'Fallback')}: {r.name}
                             </option>
                           ))}
                         </select>
@@ -652,7 +702,7 @@ export default function WorkflowsSettingsPage() {
                           type="button"
                           onClick={() => removeStep(idx)}
                           className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                          title="Xóa bước"
+                          title={tr('Xóa bước', 'Remove step')}
                         >
                           <IconTrash size={15} />
                         </button>
@@ -669,7 +719,7 @@ export default function WorkflowsSettingsPage() {
                   onChange={(e) => setIsActive(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300"
                 />
-                <span>Kích hoạt áp dụng ngay</span>
+                <span>{tr('Kích hoạt áp dụng ngay', 'Activate immediately')}</span>
               </label>
 
               <div className="flex justify-end gap-2.5 pt-2">
@@ -679,14 +729,16 @@ export default function WorkflowsSettingsPage() {
                   onClick={() => setIsModalOpen(false)}
                   className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
                 >
-                  Hủy
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {isSaving ? 'Đang lưu...' : 'Lưu luồng duyệt'}
+                  {isSaving
+                    ? tr('Đang lưu...', 'Saving...')
+                    : tr('Lưu luồng duyệt', 'Save Workflow')}
                 </button>
               </div>
             </form>
@@ -696,9 +748,12 @@ export default function WorkflowsSettingsPage() {
 
       <ConfirmModal
         isOpen={Boolean(deletingWorkflow)}
-        title="Xác nhận xóa mềm luồng duyệt"
-        description={`Bạn có chắc muốn ngừng áp dụng và ẩn quy trình "${deletingWorkflow?.name ?? ''}"?`}
-        confirmLabel="Xóa luồng duyệt"
+        title={tr('Xác nhận xóa mềm luồng duyệt', 'Confirm Workflow Deletion')}
+        description={tr(
+          `Bạn có chắc muốn ngừng áp dụng và ẩn quy trình "${deletingWorkflow?.name ?? ''}"?`,
+          `Are you sure you want to deactivate and archive workflow "${deletingWorkflow?.name ?? ''}"?`,
+        )}
+        confirmLabel={tr('Xóa luồng duyệt', 'Delete Workflow')}
         isProcessing={isDeleting}
         onCancel={() => setDeletingWorkflow(null)}
         onConfirm={() => void handleConfirmDelete()}

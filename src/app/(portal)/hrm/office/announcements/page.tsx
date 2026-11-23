@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   IconAlertCircle,
   IconCheck,
@@ -26,21 +26,34 @@ import type {
   AnnouncementItem,
   AnnouncementStats,
 } from '@/modules/hrm/office/announcements.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
-const CATEGORY_STYLE: Record<AnnouncementCategory, { label: string; cls: string }> = {
-  GENERAL: { label: 'Thông báo chung', cls: 'bg-slate-100 text-slate-700' },
-  HR_POLICY: { label: 'Chính sách HR', cls: 'bg-blue-50 text-blue-700' },
-  EVENT: { label: 'Sự kiện nội bộ', cls: 'bg-emerald-50 text-emerald-700' },
-  URGENT: { label: 'Khẩn cấp', cls: 'bg-rose-100 text-rose-700' },
+const CATEGORY_STYLE: Record<
+  AnnouncementCategory,
+  { vi: string; en: string; cls: string }
+> = {
+  GENERAL: { vi: 'Thông báo chung', en: 'General', cls: 'bg-slate-100 text-slate-700' },
+  HR_POLICY: { vi: 'Chính sách HR', en: 'HR Policy', cls: 'bg-blue-50 text-blue-700' },
+  EVENT: { vi: 'Sự kiện nội bộ', en: 'Internal Event', cls: 'bg-emerald-50 text-emerald-700' },
+  URGENT: { vi: 'Khẩn cấp', en: 'Urgent', cls: 'bg-rose-100 text-rose-700' },
 };
 
-const STATUS_STYLE: Record<AnnouncementStatus, { label: string; cls: string }> = {
-  DRAFT: { label: 'Bản nháp', cls: 'bg-amber-50 text-amber-700' },
-  PUBLISHED: { label: 'Đã xuất bản', cls: 'bg-emerald-50 text-emerald-700' },
-  ARCHIVED: { label: 'Đã lưu trữ', cls: 'bg-slate-100 text-slate-500' },
+const STATUS_STYLE: Record<
+  AnnouncementStatus,
+  { vi: string; en: string; cls: string }
+> = {
+  DRAFT: { vi: 'Bản nháp', en: 'Draft', cls: 'bg-amber-50 text-amber-700' },
+  PUBLISHED: { vi: 'Đã xuất bản', en: 'Published', cls: 'bg-emerald-50 text-emerald-700' },
+  ARCHIVED: { vi: 'Đã lưu trữ', en: 'Archived', cls: 'bg-slate-100 text-slate-500' },
 };
 
 export default function AnnouncementsPage() {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const { user, selectedBranchId, hasPermission } = usePortalAuth();
   const canManage = hasPermission('hrm.announcements.manage');
 
@@ -113,7 +126,13 @@ export default function AnnouncementsPage() {
         } | null;
 
         if (!res.ok || !json?.success || !json.data) {
-          throw new Error(json?.error?.message ?? 'Không thể tải danh sách thông báo nội bộ.');
+          throw new Error(
+            json?.error?.message ??
+              trRef.current(
+                'Không thể tải danh sách thông báo nội bộ.',
+                'Failed to load internal announcements.',
+              ),
+          );
         }
 
         setItems(json.data.items);
@@ -123,7 +142,12 @@ export default function AnnouncementsPage() {
           return;
         }
         setErrorMessage(
-          err instanceof Error ? err.message : 'Lỗi kết nối khi tải bản tin nội bộ.',
+          err instanceof Error
+            ? err.message
+            : trRef.current(
+                'Lỗi kết nối khi tải bản tin nội bộ.',
+                'Connection error while loading announcements.',
+              ),
         );
       } finally {
         setIsLoading(false);
@@ -145,13 +169,20 @@ export default function AnnouncementsPage() {
         error?: { message?: string };
       } | null;
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể xuất bản thông báo.');
+        setErrorMessage(
+          json?.error?.message ??
+            tr('Không thể xuất bản thông báo.', 'Failed to publish announcement.'),
+        );
         return;
       }
-      showToast(`Đã xuất bản thông báo "${item.title}".`);
+      showToast(
+        tr(`Đã xuất bản thông báo "${item.title}".`, `Published announcement "${item.title}".`),
+      );
       setReloadTick((v) => v + 1);
     } catch {
-      setErrorMessage('Lỗi kết nối khi xuất bản thông báo.');
+      setErrorMessage(
+        tr('Lỗi kết nối khi xuất bản thông báo.', 'Connection error while publishing announcement.'),
+      );
     } finally {
       setActionBusyId(null);
     }
@@ -169,13 +200,20 @@ export default function AnnouncementsPage() {
         error?: { message?: string };
       } | null;
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể đánh dấu đã đọc.');
+        setErrorMessage(
+          json?.error?.message ?? tr('Không thể đánh dấu đã đọc.', 'Failed to mark as read.'),
+        );
         return;
       }
-      showToast('Đã xác nhận đọc thông báo.');
+      showToast(tr('Đã xác nhận đọc thông báo.', 'Announcement marked as read.'));
       setReloadTick((v) => v + 1);
     } catch {
-      setErrorMessage('Lỗi kết nối khi cập nhật trạng thái đọc.');
+      setErrorMessage(
+        tr(
+          'Lỗi kết nối khi cập nhật trạng thái đọc.',
+          'Connection error while updating read status.',
+        ),
+      );
     } finally {
       setActionBusyId(null);
     }
@@ -195,14 +233,18 @@ export default function AnnouncementsPage() {
         error?: { message?: string };
       } | null;
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể xóa thông báo.');
+        setErrorMessage(
+          json?.error?.message ?? tr('Không thể xóa thông báo.', 'Failed to delete announcement.'),
+        );
         return;
       }
       setDeletingItem(null);
-      showToast('Đã xóa thông báo nội bộ.');
+      showToast(tr('Đã xóa thông báo nội bộ.', 'Internal announcement deleted.'));
       setReloadTick((v) => v + 1);
     } catch {
-      setErrorMessage('Lỗi kết nối khi xóa thông báo.');
+      setErrorMessage(
+        tr('Lỗi kết nối khi xóa thông báo.', 'Connection error while deleting announcement.'),
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -217,9 +259,14 @@ export default function AnnouncementsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Bản tin & Thông báo Nội bộ</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {tr('Bản tin & Thông báo Nội bộ', 'Internal Announcements')}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Cập nhật chính sách nhân sự, sự kiện và thông báo khẩn cấp từ doanh nghiệp & chi nhánh
+            {tr(
+              'Cập nhật chính sách nhân sự, sự kiện và thông báo khẩn cấp từ doanh nghiệp & chi nhánh',
+              'Stay updated with HR policies, company events, and urgent branch announcements',
+            )}
           </p>
         </div>
         {canManage && (
@@ -232,7 +279,7 @@ export default function AnnouncementsPage() {
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
           >
             <IconPlus size={17} />
-            <span>Tạo thông báo mới</span>
+            <span>{tr('Tạo thông báo mới', 'New Announcement')}</span>
           </button>
         )}
       </div>
@@ -247,7 +294,7 @@ export default function AnnouncementsPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>Tổng bản tin</span>
+            <span>{tr('Tổng bản tin', 'Total Posts')}</span>
             <IconSpeakerphone size={18} className="text-blue-600" />
           </div>
           <div className="mt-2 text-2xl font-bold text-slate-900">{stats.total}</div>
@@ -255,7 +302,7 @@ export default function AnnouncementsPage() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>Tin chưa đọc</span>
+            <span>{tr('Tin chưa đọc', 'Unread')}</span>
             <IconEye size={18} className="text-amber-600" />
           </div>
           <div className="mt-2 text-2xl font-bold text-amber-600">{stats.unreadCount}</div>
@@ -263,7 +310,7 @@ export default function AnnouncementsPage() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>Đang ghim</span>
+            <span>{tr('Đang ghim', 'Pinned')}</span>
             <IconPin size={18} className="text-indigo-600" />
           </div>
           <div className="mt-2 text-2xl font-bold text-slate-900">{stats.pinnedCount}</div>
@@ -271,7 +318,7 @@ export default function AnnouncementsPage() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>Thông báo khẩn</span>
+            <span>{tr('Thông báo khẩn', 'Urgent')}</span>
             <IconAlertCircle size={18} className="text-rose-600" />
           </div>
           <div className="mt-2 text-2xl font-bold text-rose-600">{stats.urgentCount}</div>
@@ -289,7 +336,10 @@ export default function AnnouncementsPage() {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Tìm theo tiêu đề hoặc nội dung thông báo..."
+            placeholder={tr(
+              'Tìm theo tiêu đề hoặc nội dung thông báo...',
+              'Search by announcement title or content...',
+            )}
             className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500"
           />
         </div>
@@ -299,11 +349,11 @@ export default function AnnouncementsPage() {
           onChange={(e) => setCategoryFilter(e.target.value)}
           className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
         >
-          <option value="">Tất cả phân loại</option>
-          <option value="GENERAL">Thông báo chung</option>
-          <option value="HR_POLICY">Chính sách HR</option>
-          <option value="EVENT">Sự kiện nội bộ</option>
-          <option value="URGENT">Khẩn cấp</option>
+          <option value="">{tr('Tất cả phân loại', 'All Categories')}</option>
+          <option value="GENERAL">{tr('Thông báo chung', 'General')}</option>
+          <option value="HR_POLICY">{tr('Chính sách HR', 'HR Policy')}</option>
+          <option value="EVENT">{tr('Sự kiện nội bộ', 'Internal Event')}</option>
+          <option value="URGENT">{tr('Khẩn cấp', 'Urgent')}</option>
         </select>
 
         <select
@@ -311,9 +361,9 @@ export default function AnnouncementsPage() {
           onChange={(e) => setReadFilter(e.target.value as 'all' | 'unread' | 'read')}
           className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
         >
-          <option value="all">Tất cả trạng thái đọc</option>
-          <option value="unread">Chưa đọc</option>
-          <option value="read">Đã đọc</option>
+          <option value="all">{tr('Tất cả trạng thái đọc', 'All Read Statuses')}</option>
+          <option value="unread">{tr('Chưa đọc', 'Unread')}</option>
+          <option value="read">{tr('Đã đọc', 'Read')}</option>
         </select>
 
         {canManage && (
@@ -322,10 +372,10 @@ export default function AnnouncementsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
           >
-            <option value="">Mọi trạng thái tin</option>
-            <option value="PUBLISHED">Đã xuất bản</option>
-            <option value="DRAFT">Bản nháp</option>
-            <option value="ARCHIVED">Đã lưu trữ</option>
+            <option value="">{tr('Mọi trạng thái tin', 'All Statuses')}</option>
+            <option value="PUBLISHED">{tr('Đã xuất bản', 'Published')}</option>
+            <option value="DRAFT">{tr('Bản nháp', 'Draft')}</option>
+            <option value="ARCHIVED">{tr('Đã lưu trữ', 'Archived')}</option>
           </select>
         )}
       </div>
@@ -346,12 +396,17 @@ export default function AnnouncementsPage() {
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-          <p className="text-sm text-slate-500">Không có thông báo nội bộ nào phù hợp bộ lọc.</p>
+          <p className="text-sm text-slate-500">
+            {tr(
+              'Không có thông báo nội bộ nào phù hợp bộ lọc.',
+              'No internal announcements match the current filters.',
+            )}
+          </p>
           {canManage && (
             <button
               type="button"
@@ -362,7 +417,7 @@ export default function AnnouncementsPage() {
               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               <IconPlus size={16} />
-              <span>Soạn thông báo mới</span>
+              <span>{tr('Soạn thông báo mới', 'Compose Announcement')}</span>
             </button>
           )}
         </div>
@@ -390,29 +445,29 @@ export default function AnnouncementsPage() {
                       {item.isPinned && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
                           <IconPin size={12} />
-                          Ghim
+                          {tr('Ghim', 'Pinned')}
                         </span>
                       )}
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${cat.cls}`}>
-                        {cat.label}
+                        {locale === 'en' ? cat.en : cat.vi}
                       </span>
                       {canManage && (
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.cls}`}>
-                          {st.label}
+                          {locale === 'en' ? st.en : st.vi}
                         </span>
                       )}
                       <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                        {item.branchName ?? 'Toàn công ty'}
+                        {item.branchName ?? tr('Toàn công ty', 'Company-wide')}
                       </span>
                       {item.status === 'PUBLISHED' &&
                         (item.isReadByMe ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
                             <IconCheck size={12} />
-                            Đã đọc
+                            {tr('Đã đọc', 'Read')}
                           </span>
                         ) : (
                           <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-semibold text-white">
-                            Mới • Chưa đọc
+                            {tr('Mới • Chưa đọc', 'New • Unread')}
                           </span>
                         ))}
                     </div>
@@ -431,18 +486,25 @@ export default function AnnouncementsPage() {
 
                     <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-slate-500">
                       <span>
-                        Người đăng: <strong className="text-slate-700">{item.authorName}</strong>
+                        {tr('Người đăng:', 'Posted by:')}{' '}
+                        <strong className="text-slate-700">{item.authorName}</strong>
                       </span>
                       <span>
                         {item.publishedAt
-                          ? `Xuất bản: ${formatDateTimeVN(item.publishedAt)}`
-                          : `Tạo lúc: ${formatDateTimeVN(item.createdAt)}`}
+                          ? tr(
+                              `Xuất bản: ${formatDateTimeVN(item.publishedAt)}`,
+                              `Published: ${formatDateTimeVN(item.publishedAt)}`,
+                            )
+                          : tr(
+                              `Tạo lúc: ${formatDateTimeVN(item.createdAt)}`,
+                              `Created: ${formatDateTimeVN(item.createdAt)}`,
+                            )}
                       </span>
                       <span className="inline-flex items-center gap-1.5">
                         <IconUsers size={14} className="text-slate-400" />
                         <span>
-                          Đã đọc: <strong>{item.readCount}</strong>/{item.targetEmployeeCount} (
-                          {item.readRatePercent}%)
+                          {tr('Đã đọc:', 'Read:')} <strong>{item.readCount}</strong>/
+                          {item.targetEmployeeCount} ({item.readRatePercent}%)
                         </span>
                       </span>
                     </div>
@@ -466,7 +528,7 @@ export default function AnnouncementsPage() {
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     >
                       <IconEye size={14} />
-                      <span>Xem chi tiết</span>
+                      <span>{tr('Xem chi tiết', 'View Details')}</span>
                     </button>
 
                     {item.status === 'PUBLISHED' && !item.isReadByMe && (
@@ -481,7 +543,7 @@ export default function AnnouncementsPage() {
                         ) : (
                           <IconCheck size={14} />
                         )}
-                        <span>Đã đọc</span>
+                        <span>{tr('Đã đọc', 'Mark Read')}</span>
                       </button>
                     )}
 
@@ -497,7 +559,7 @@ export default function AnnouncementsPage() {
                         ) : (
                           <IconSend size={14} />
                         )}
-                        <span>Xuất bản</span>
+                        <span>{tr('Xuất bản', 'Publish')}</span>
                       </button>
                     )}
 
@@ -510,7 +572,7 @@ export default function AnnouncementsPage() {
                             setIsFormModalOpen(true);
                           }}
                           className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
-                          title="Chỉnh sửa thông báo"
+                          title={tr('Chỉnh sửa thông báo', 'Edit Announcement')}
                         >
                           <IconEdit size={16} />
                         </button>
@@ -518,7 +580,7 @@ export default function AnnouncementsPage() {
                           type="button"
                           onClick={() => setDeletingItem(item)}
                           className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
-                          title="Xóa mềm thông báo"
+                          title={tr('Xóa mềm thông báo', 'Delete Announcement')}
                         >
                           <IconTrash size={16} />
                         </button>
@@ -545,8 +607,8 @@ export default function AnnouncementsPage() {
             setIsFormModalOpen(false);
             showToast(
               editingItem
-                ? 'Đã cập nhật thông báo nội bộ.'
-                : 'Đã lưu thông báo nội bộ thành công.',
+                ? tr('Đã cập nhật thông báo nội bộ.', 'Announcement updated.')
+                : tr('Đã lưu thông báo nội bộ thành công.', 'Announcement saved successfully.'),
             );
             setReloadTick((v) => v + 1);
           }}
@@ -565,14 +627,17 @@ export default function AnnouncementsPage() {
 
       <ConfirmModal
         isOpen={Boolean(deletingItem)}
-        title="Xóa thông báo nội bộ?"
+        title={tr('Xóa thông báo nội bộ?', 'Delete Announcement?')}
         description={
           deletingItem
-            ? `Bạn có chắc chắn muốn xóa mềm thông báo "${deletingItem.title}"? Nhân viên sẽ không còn nhìn thấy bản tin này.`
+            ? tr(
+                `Bạn có chắc chắn muốn xóa mềm thông báo "${deletingItem.title}"? Nhân viên sẽ không còn nhìn thấy bản tin này.`,
+                `Are you sure you want to soft delete "${deletingItem.title}"? Employees will no longer see this announcement.`,
+              )
             : ''
         }
-        confirmLabel="Xác nhận xóa"
-        cancelLabel="Hủy"
+        confirmLabel={tr('Xác nhận xóa', 'Confirm Delete')}
+        cancelLabel={tr('Hủy', 'Cancel')}
         variant="danger"
         isProcessing={isDeleting}
         onConfirm={() => void handleConfirmDelete()}

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { IconCheck, IconKey, IconX } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface ChangePasswordModalProps {
 }
 
 export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProps) {
+  const { t } = useI18n();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,11 +36,11 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
     setErrorMessage('');
 
     if (newPassword.length < 8) {
-      setErrorMessage('Mật khẩu mới phải có tối thiểu 8 ký tự.');
+      setErrorMessage(t('passwordModal.minLengthError'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setErrorMessage('Xác nhận mật khẩu mới không khớp.');
+      setErrorMessage(t('passwordModal.mismatchError'));
       return;
     }
 
@@ -55,7 +57,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
       } | null;
 
       if (!response.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể đổi mật khẩu. Vui lòng thử lại.');
+        setErrorMessage(json?.error?.message ?? t('passwordModal.failedError'));
         return;
       }
 
@@ -64,7 +66,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
       setNewPassword('');
       setConfirmPassword('');
     } catch {
-      setErrorMessage('Lỗi kết nối máy chủ. Vui lòng thử lại.');
+      setErrorMessage(t('passwordModal.networkError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -84,14 +86,14 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
               <IconKey size={18} />
             </div>
             <h2 id="change-password-title" className="text-base font-semibold text-slate-900">
-              Đổi mật khẩu tài khoản
+              {t('passwordModal.title')}
             </h2>
           </div>
           <button
             type="button"
             disabled={isSubmitting}
             onClick={resetAndClose}
-            aria-label="Đóng"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >
             <IconX size={18} />
@@ -102,7 +104,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
           <div className="mt-5 space-y-4">
             <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-800">
               <IconCheck size={18} className="shrink-0 text-emerald-600" />
-              <span>Đổi mật khẩu thành công. Các phiên đăng nhập cũ đã được thu hồi.</span>
+              <span>{t('passwordModal.success')}</span>
             </div>
             <div className="flex justify-end">
               <button
@@ -110,7 +112,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                 onClick={resetAndClose}
                 className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
               >
-                Đóng
+                {t('common.close')}
               </button>
             </div>
           </div>
@@ -124,7 +126,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Mật khẩu hiện tại
+                {t('passwordModal.currentLabel')}
               </label>
               <input
                 type="password"
@@ -137,7 +139,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Mật khẩu mới (tối thiểu 8 ký tự)
+                {t('passwordModal.newLabel')}
               </label>
               <input
                 type="password"
@@ -151,7 +153,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Nhập lại mật khẩu mới
+                {t('passwordModal.confirmLabel')}
               </label>
               <input
                 type="password"
@@ -170,14 +172,14 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                 onClick={resetAndClose}
                 className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
-                Hủy
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
                 className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSubmitting ? 'Đang lưu...' : 'Cập nhật mật khẩu'}
+                {isSubmitting ? t('common.saving') : t('passwordModal.submit')}
               </button>
             </div>
           </form>

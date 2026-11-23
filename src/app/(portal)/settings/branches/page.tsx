@@ -14,6 +14,7 @@ import {
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import type { PaginationMeta } from '@/lib/portable/pagination';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface BranchRow {
   id: number;
@@ -36,6 +37,9 @@ interface BranchFormState {
   isActive: boolean;
 }
 
+const ERR_LOAD_BRANCHES = '__ERR_LOAD_BRANCHES__';
+const ERR_NETWORK_BRANCHES = '__ERR_NETWORK_BRANCHES__';
+
 const EMPTY_FORM: BranchFormState = {
   code: '',
   name: '',
@@ -47,6 +51,7 @@ const EMPTY_FORM: BranchFormState = {
 };
 
 export default function BranchesSettingsPage() {
+  const { tr } = useI18n();
   const { hasPermission } = usePortalAuth();
   const canCreate = hasPermission('core.branches.create');
   const canUpdate = hasPermission('core.branches.update');
@@ -104,7 +109,7 @@ export default function BranchesSettingsPage() {
           return;
         }
         if (!res.ok || !json?.success) {
-          setErrorMessage(json?.error?.message ?? 'Không thể tải danh sách chi nhánh.');
+          setErrorMessage(json?.error?.message ?? ERR_LOAD_BRANCHES);
           setViewState('error');
           return;
         }
@@ -117,7 +122,7 @@ export default function BranchesSettingsPage() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMessage('Lỗi kết nối khi tải danh sách chi nhánh.');
+        setErrorMessage(ERR_NETWORK_BRANCHES);
         setViewState('error');
       });
 
@@ -182,14 +187,21 @@ export default function BranchesSettingsPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setFormError(json?.error?.message ?? 'Không thể lưu chi nhánh.');
+        setFormError(
+          json?.error?.message ?? tr('Không thể lưu chi nhánh.', 'Unable to save branch.'),
+        );
         return;
       }
 
       setIsModalOpen(false);
       triggerReload();
     } catch {
-      setFormError('Lỗi kết nối máy chủ khi lưu chi nhánh.');
+      setFormError(
+        tr(
+          'Lỗi kết nối máy chủ khi lưu chi nhánh.',
+          'Server connection error while saving branch.',
+        ),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -210,7 +222,9 @@ export default function BranchesSettingsPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể xóa chi nhánh.');
+        setErrorMessage(
+          json?.error?.message ?? tr('Không thể xóa chi nhánh.', 'Unable to delete branch.'),
+        );
         setViewState('error');
         setDeletingBranch(null);
         return;
@@ -218,7 +232,12 @@ export default function BranchesSettingsPage() {
       setDeletingBranch(null);
       triggerReload();
     } catch {
-      setErrorMessage('Lỗi kết nối máy chủ khi xóa chi nhánh.');
+      setErrorMessage(
+        tr(
+          'Lỗi kết nối máy chủ khi xóa chi nhánh.',
+          'Server connection error while deleting branch.',
+        ),
+      );
       setViewState('error');
       setDeletingBranch(null);
     } finally {
@@ -226,13 +245,28 @@ export default function BranchesSettingsPage() {
     }
   }
 
+  const resolvedErrorMessage =
+    errorMessage === ERR_LOAD_BRANCHES
+      ? tr('Không thể tải danh sách chi nhánh.', 'Unable to load branches.')
+      : errorMessage === ERR_NETWORK_BRANCHES
+        ? tr(
+            'Lỗi kết nối khi tải danh sách chi nhánh.',
+            'Connection error while loading branches.',
+          )
+        : errorMessage;
+
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Quản lý Chi nhánh</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Quản lý Chi nhánh', 'Branches')}
+          </h1>
           <p className="text-sm text-slate-500">
-            Cấu hình trụ sở chính và các chi nhánh/văn phòng thuộc doanh nghiệp.
+            {tr(
+              'Cấu hình trụ sở chính và các chi nhánh/văn phòng thuộc doanh nghiệp.',
+              'Configure company headquarters and branch offices.',
+            )}
           </p>
         </div>
         {canCreate && (
@@ -242,7 +276,7 @@ export default function BranchesSettingsPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
           >
             <IconPlus size={18} />
-            <span>Thêm chi nhánh</span>
+            <span>{tr('Thêm chi nhánh', 'Add Branch')}</span>
           </button>
         )}
       </div>
@@ -255,7 +289,7 @@ export default function BranchesSettingsPage() {
           />
           <input
             type="text"
-            placeholder="Tìm theo mã hoặc tên chi nhánh..."
+            placeholder={tr('Tìm theo mã hoặc tên chi nhánh...', 'Search by branch code or name...')}
             value={searchInput}
             onChange={(e) => {
               setSearchInput(e.target.value);
@@ -273,9 +307,9 @@ export default function BranchesSettingsPage() {
           }}
           className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
         >
-          <option value="">Tất cả trạng thái</option>
-          <option value="true">Đang hoạt động</option>
-          <option value="false">Ngừng hoạt động</option>
+          <option value="">{tr('Tất cả trạng thái', 'All statuses')}</option>
+          <option value="true">{tr('Đang hoạt động', 'Active')}</option>
+          <option value="false">{tr('Ngừng hoạt động', 'Inactive')}</option>
         </select>
       </div>
 
@@ -289,14 +323,14 @@ export default function BranchesSettingsPage() {
 
       {viewState === 'error' && (
         <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-6 sm:flex-row">
-          <p className="text-sm font-medium text-rose-700">{errorMessage}</p>
+          <p className="text-sm font-medium text-rose-700">{resolvedErrorMessage}</p>
           <button
             type="button"
             onClick={triggerReload}
             className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       )}
@@ -304,9 +338,14 @@ export default function BranchesSettingsPage() {
       {viewState === 'success' && items.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
           <IconInbox size={36} className="text-slate-400" />
-          <p className="mt-3 text-sm font-semibold text-slate-800">Không tìm thấy chi nhánh nào</p>
+          <p className="mt-3 text-sm font-semibold text-slate-800">
+            {tr('Không tìm thấy chi nhánh nào', 'No branches found')}
+          </p>
           <p className="mt-1 text-xs text-slate-500">
-            Thử đổi bộ lọc tìm kiếm hoặc thêm chi nhánh mới cho doanh nghiệp.
+            {tr(
+              'Thử đổi bộ lọc tìm kiếm hoặc thêm chi nhánh mới cho doanh nghiệp.',
+              'Try adjusting your search filters or add a new branch.',
+            )}
           </p>
           {canCreate && (
             <button
@@ -315,7 +354,7 @@ export default function BranchesSettingsPage() {
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
             >
               <IconPlus size={15} />
-              <span>Thêm chi nhánh</span>
+              <span>{tr('Thêm chi nhánh', 'Add Branch')}</span>
             </button>
           )}
         </div>
@@ -327,11 +366,11 @@ export default function BranchesSettingsPage() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Mã</th>
-                  <th className="px-4 py-3">Tên chi nhánh</th>
-                  <th className="px-4 py-3">MST / Điện thoại</th>
-                  <th className="px-4 py-3">Trạng thái</th>
-                  <th className="px-4 py-3 text-right">Thao tác</th>
+                  <th className="px-4 py-3">{tr('Mã', 'Code')}</th>
+                  <th className="px-4 py-3">{tr('Tên chi nhánh', 'Branch Name')}</th>
+                  <th className="px-4 py-3">{tr('MST / Điện thoại', 'Tax ID / Phone')}</th>
+                  <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                  <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -346,7 +385,7 @@ export default function BranchesSettingsPage() {
                         <span>{branch.name}</span>
                         {branch.isHeadquarters && (
                           <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                            Trụ sở chính
+                            {tr('Trụ sở chính', 'Headquarters')}
                           </span>
                         )}
                       </div>
@@ -357,8 +396,12 @@ export default function BranchesSettingsPage() {
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
-                      <div>MST: {branch.taxCode ?? '-'}</div>
-                      <div>ĐT: {branch.phone ?? '-'}</div>
+                      <div>
+                        {tr('MST', 'Tax ID')}: {branch.taxCode ?? '-'}
+                      </div>
+                      <div>
+                        {tr('ĐT', 'Phone')}: {branch.phone ?? '-'}
+                      </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <span
@@ -368,7 +411,9 @@ export default function BranchesSettingsPage() {
                             : 'bg-slate-100 text-slate-600'
                         }`}
                       >
-                        {branch.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                        {branch.isActive
+                          ? tr('Đang hoạt động', 'Active')
+                          : tr('Ngừng hoạt động', 'Inactive')}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -378,7 +423,7 @@ export default function BranchesSettingsPage() {
                             type="button"
                             onClick={() => openEditModal(branch)}
                             className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-blue-600"
-                            title="Chỉnh sửa"
+                            title={tr('Chỉnh sửa', 'Edit')}
                           >
                             <IconEdit size={16} />
                           </button>
@@ -388,7 +433,7 @@ export default function BranchesSettingsPage() {
                             type="button"
                             onClick={() => setDeletingBranch(branch)}
                             className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600"
-                            title="Xóa mềm"
+                            title={tr('Xóa mềm', 'Soft delete')}
                           >
                             <IconTrash size={16} />
                           </button>
@@ -404,7 +449,10 @@ export default function BranchesSettingsPage() {
           {meta && meta.totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
               <span>
-                Trang {meta.page}/{meta.totalPages} (Tổng {meta.total} chi nhánh)
+                {tr(
+                  `Trang ${meta.page}/${meta.totalPages} (Tổng ${meta.total} chi nhánh)`,
+                  `Page ${meta.page}/${meta.totalPages} (${meta.total} branches)`,
+                )}
               </span>
               <div className="flex gap-2">
                 <button
@@ -416,7 +464,7 @@ export default function BranchesSettingsPage() {
                   }}
                   className="rounded-lg border border-slate-300 px-3 py-1 disabled:opacity-50"
                 >
-                  Trước
+                  {tr('Trước', 'Previous')}
                 </button>
                 <button
                   type="button"
@@ -427,7 +475,7 @@ export default function BranchesSettingsPage() {
                   }}
                   className="rounded-lg border border-slate-300 px-3 py-1 disabled:opacity-50"
                 >
-                  Sau
+                  {tr('Sau', 'Next')}
                 </button>
               </div>
             </div>
@@ -444,7 +492,9 @@ export default function BranchesSettingsPage() {
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900">
-                {editingBranch ? 'Cập nhật Chi nhánh' : 'Thêm Chi nhánh mới'}
+                {editingBranch
+                  ? tr('Cập nhật Chi nhánh', 'Edit Branch')
+                  : tr('Thêm Chi nhánh mới', 'Add New Branch')}
               </h2>
               <button
                 type="button"
@@ -466,12 +516,12 @@ export default function BranchesSettingsPage() {
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Mã chi nhánh *
+                    {tr('Mã chi nhánh *', 'Branch Code *')}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="VD: HN-01"
+                    placeholder={tr('VD: HN-01', 'e.g. HQ-01')}
                     value={form.code}
                     onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase outline-none focus:border-blue-500"
@@ -479,12 +529,12 @@ export default function BranchesSettingsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Tên chi nhánh *
+                    {tr('Tên chi nhánh *', 'Branch Name *')}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="VD: Chi nhánh Hà Nội"
+                    placeholder={tr('VD: Chi nhánh Hà Nội', 'e.g. Hanoi Branch')}
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
@@ -494,7 +544,9 @@ export default function BranchesSettingsPage() {
 
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-700">Mã số thuế</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Mã số thuế', 'Tax ID')}
+                  </label>
                   <input
                     type="text"
                     value={form.taxCode}
@@ -503,7 +555,9 @@ export default function BranchesSettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-700">Điện thoại</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Điện thoại', 'Phone')}
+                  </label>
                   <input
                     type="text"
                     value={form.phone}
@@ -514,7 +568,9 @@ export default function BranchesSettingsPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">Địa chỉ</label>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  {tr('Địa chỉ', 'Address')}
+                </label>
                 <input
                   type="text"
                   value={form.address}
@@ -531,7 +587,7 @@ export default function BranchesSettingsPage() {
                     onChange={(e) => setForm((f) => ({ ...f, isHeadquarters: e.target.checked }))}
                     className="h-4 w-4 rounded border-slate-300"
                   />
-                  <span>Đặt làm Trụ sở chính</span>
+                  <span>{tr('Đặt làm Trụ sở chính', 'Set as Headquarters')}</span>
                 </label>
                 <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
                   <input
@@ -540,7 +596,7 @@ export default function BranchesSettingsPage() {
                     onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
                     className="h-4 w-4 rounded border-slate-300"
                   />
-                  <span>Đang hoạt động</span>
+                  <span>{tr('Đang hoạt động', 'Active')}</span>
                 </label>
               </div>
 
@@ -551,14 +607,14 @@ export default function BranchesSettingsPage() {
                   onClick={() => setIsModalOpen(false)}
                   className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  Hủy
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {isSaving ? 'Đang lưu...' : 'Lưu chi nhánh'}
+                  {isSaving ? tr('Đang lưu...', 'Saving...') : tr('Lưu chi nhánh', 'Save Branch')}
                 </button>
               </div>
             </form>
@@ -568,9 +624,12 @@ export default function BranchesSettingsPage() {
 
       <ConfirmModal
         isOpen={Boolean(deletingBranch)}
-        title="Xác nhận xóa mềm chi nhánh"
-        description={`Bạn có chắc chắn muốn ngừng và ẩn chi nhánh "${deletingBranch?.name ?? ''}" (${deletingBranch?.code ?? ''})?`}
-        confirmLabel="Xóa chi nhánh"
+        title={tr('Xác nhận xóa mềm chi nhánh', 'Confirm Branch Deletion')}
+        description={tr(
+          `Bạn có chắc chắn muốn ngừng và ẩn chi nhánh "${deletingBranch?.name ?? ''}" (${deletingBranch?.code ?? ''})?`,
+          `Are you sure you want to deactivate and archive branch "${deletingBranch?.name ?? ''}" (${deletingBranch?.code ?? ''})?`,
+        )}
+        confirmLabel={tr('Xóa chi nhánh', 'Delete Branch')}
         isProcessing={isDeleting}
         onCancel={() => setDeletingBranch(null)}
         onConfirm={() => void handleConfirmDelete()}

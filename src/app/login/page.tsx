@@ -12,9 +12,12 @@ import {
   IconShieldCheck,
   IconUsersGroup,
 } from '@tabler/icons-react';
+import { LanguageSwitcher } from '@/components/portal/LanguageSwitcher';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,16 +42,14 @@ export default function LoginPage() {
       } | null;
 
       if (!response.ok || !json?.success) {
-        setErrorMessage(
-          json?.error?.message ?? 'Đăng nhập không thành công. Vui lòng kiểm tra lại.',
-        );
+        setErrorMessage(json?.error?.message ?? t('login.failedError'));
         return;
       }
 
       router.replace('/dashboard');
       router.refresh();
     } catch {
-      setErrorMessage('Không thể kết nối tới máy chủ. Vui lòng thử lại sau.');
+      setErrorMessage(t('login.networkError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -67,7 +68,7 @@ export default function LoginPage() {
           </div>
           <div>
             <p className="text-[11px] font-semibold tracking-widest text-cyan-300 uppercase">
-              Operon Command
+              {t('app.commandBrand')}
             </p>
             <p className="text-lg font-bold tracking-tight text-white">Operon Hub</p>
           </div>
@@ -75,32 +76,29 @@ export default function LoginPage() {
 
         <div className="relative z-10 max-w-xl space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3.5 py-1 text-xs font-semibold text-cyan-300">
-            Enterprise Operations Portal • Đa chi nhánh
+            {t('login.badge')}
           </div>
           <h1 className="text-4xl font-bold leading-tight tracking-tight text-white">
-            Trung tâm điều hành Nhân sự & Vận hành Doanh nghiệp trên một nền tảng duy nhất.
+            {t('login.heroTitle')}
           </h1>
-          <p className="text-sm leading-relaxed text-slate-300">
-            Quản trị tập trung hồ sơ nhân sự 360°, chấm công, tính lương, phê duyệt đa cấp, tài sản
-            và phòng họp — sẵn sàng mở rộng CRM & Tài chính theo kiến trúc Modular Monolith.
-          </p>
+          <p className="text-sm leading-relaxed text-slate-300">{t('login.heroDesc')}</p>
 
           <div className="grid grid-cols-3 gap-3 pt-2">
             {[
               {
                 icon: IconUsersGroup,
-                title: 'HRM Toàn diện',
-                desc: 'Tổ chức, công & bảng lương',
+                title: t('login.feature.hrmTitle'),
+                desc: t('login.feature.hrmDesc'),
               },
               {
                 icon: IconChecklist,
-                title: 'Duyệt đa cấp',
-                desc: 'Approval Engine tự động',
+                title: t('login.feature.approvalTitle'),
+                desc: t('login.feature.approvalDesc'),
               },
               {
                 icon: IconShieldCheck,
-                title: 'RBAC & Scope',
-                desc: 'Phân quyền theo chi nhánh',
+                title: t('login.feature.rbacTitle'),
+                desc: t('login.feature.rbacDesc'),
               },
             ].map((item) => {
               const Icon = item.icon;
@@ -118,27 +116,27 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="relative z-10 text-xs text-slate-400">
-          © 2026 Operon Hub • Nền tảng vận hành chuẩn SME Việt Nam
-        </div>
+        <div className="relative z-10 text-xs text-slate-400">{t('login.footer')}</div>
       </section>
 
       {/* Right Login Form Panel */}
-      <section className="flex flex-col items-center justify-center px-4 py-12 sm:px-8 lg:col-span-6 xl:col-span-5">
+      <section className="relative flex flex-col items-center justify-center px-4 py-12 sm:px-8 lg:col-span-6 xl:col-span-5">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+          <LanguageSwitcher variant="light" />
+        </div>
+
         <div className="w-full max-w-md rounded-2xl border border-slate-200/90 bg-white p-8 shadow-sm">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/20 lg:hidden">
               <IconBuildingSkyscraper size={24} />
             </div>
             <span className="mt-3 text-[11px] font-bold tracking-widest text-blue-600 uppercase lg:mt-0">
-              Đăng nhập hệ thống
+              {t('login.eyebrow')}
             </span>
             <h2 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900">
-              Chào mừng trở lại
+              {t('login.welcome')}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Sử dụng tài khoản nội bộ để truy cập không gian làm việc Operon Hub.
-            </p>
+            <p className="mt-1 text-sm text-slate-500">{t('login.subtitle')}</p>
           </div>
 
           <form onSubmit={(e) => void handleSubmit(e)} className="mt-7 space-y-4">
@@ -157,7 +155,7 @@ export default function LoginPage() {
                 htmlFor="login-email"
                 className="mb-1.5 block text-xs font-semibold text-slate-700"
               >
-                Email công việc
+                {t('login.emailLabel')}
               </label>
               <input
                 id="login-email"
@@ -176,7 +174,7 @@ export default function LoginPage() {
                 htmlFor="login-password"
                 className="mb-1.5 block text-xs font-semibold text-slate-700"
               >
-                Mật khẩu
+                {t('login.passwordLabel')}
               </label>
               <div className="relative">
                 <input
@@ -192,7 +190,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                   className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-slate-700"
                 >
                   {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
@@ -206,7 +204,7 @@ export default function LoginPage() {
               className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F172A] via-blue-700 to-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <IconLogin size={18} />
-              <span>{isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập vào Portal'}</span>
+              <span>{isSubmitting ? t('login.submitting') : t('login.submit')}</span>
             </button>
           </form>
         </div>

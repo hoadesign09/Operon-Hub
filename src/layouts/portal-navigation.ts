@@ -1,4 +1,6 @@
 import type { PortalModuleDefinition, PortalNavItem } from '@/modules/registry';
+import { DEFAULT_LOCALE, type AppLocale } from '@/shared/i18n/config';
+import { translateApp, type TranslationKey } from '@/shared/i18n/translator';
 
 export type PortalRailKey = 'workspace' | 'hrm' | 'admin' | 'crm';
 
@@ -16,6 +18,42 @@ const ADMIN_PREFIXES = ['/settings/'] as const;
 const HRM_PREFIXES = ['/hrm/'] as const;
 const CRM_PREFIXES = ['/crm'] as const;
 
+const NAV_HREF_TRANSLATION_KEYS: Record<string, TranslationKey> = {
+  '/dashboard': 'nav.item.dashboard',
+  '/my/profile': 'nav.item.myProfile',
+  '/my/requests': 'nav.item.myRequests',
+  '/my/attendance': 'nav.item.myAttendance',
+  '/my/payslips': 'nav.item.myPayslips',
+  '/my/assets': 'nav.item.myAssets',
+  '/approvals': 'nav.item.approvals',
+  '/settings/branches': 'nav.item.settingsBranches',
+  '/settings/users-roles': 'nav.item.settingsUsersRoles',
+  '/settings/workflows': 'nav.item.settingsWorkflows',
+  '/settings/audit-logs': 'nav.item.settingsAuditLogs',
+  '/hrm/organization': 'nav.item.hrmOrganization',
+  '/hrm/employees': 'nav.item.hrmEmployees',
+  '/hrm/contracts': 'nav.item.hrmContracts',
+  '/hrm/requests': 'nav.item.hrmRequests',
+  '/hrm/attendance': 'nav.item.hrmAttendance',
+  '/hrm/payroll': 'nav.item.hrmPayroll',
+  '/hrm/office/assets': 'nav.item.hrmOfficeAssets',
+  '/hrm/office/meeting-rooms': 'nav.item.hrmOfficeMeetingRooms',
+  '/hrm/office/announcements': 'nav.item.hrmOfficeAnnouncements',
+};
+
+function localizeNavItems(
+  items: readonly PortalNavItem[],
+  locale: AppLocale,
+): PortalNavItem[] {
+  return items.map((item) => {
+    const key = NAV_HREF_TRANSLATION_KEYS[item.href];
+    return {
+      ...item,
+      label: key ? translateApp(locale, key) : item.label,
+    };
+  });
+}
+
 export function resolveActiveRailKey(pathname: string): PortalRailKey {
   if (HRM_PREFIXES.some((prefix) => pathname === '/hrm' || pathname.startsWith(prefix))) {
     return 'hrm';
@@ -32,28 +70,37 @@ export function resolveActiveRailKey(pathname: string): PortalRailKey {
   return 'workspace';
 }
 
-export function buildDualRailGroups(modules: readonly PortalModuleDefinition[]): PortalRailGroup[] {
+export function buildDualRailGroups(
+  modules: readonly PortalModuleDefinition[],
+  locale: AppLocale = DEFAULT_LOCALE,
+): PortalRailGroup[] {
   const coreModule = modules.find((m) => m.code === 'core');
   const hrmModule = modules.find((m) => m.code === 'hrm');
   const crmModule = modules.find((m) => m.code === 'crm');
 
   const coreItems = coreModule?.navItems ?? [];
-  const personalAndApprovalItems: PortalNavItem[] = [
-    { label: 'Tổng quan Portal', href: '/dashboard' },
-    ...coreItems.filter(
-      (item) => item.href.startsWith('/my/') || item.href.startsWith('/approvals'),
-    ),
-  ];
+  const personalAndApprovalItems: PortalNavItem[] = localizeNavItems(
+    [
+      { label: translateApp(locale, 'nav.item.dashboard'), href: '/dashboard' },
+      ...coreItems.filter(
+        (item) => item.href.startsWith('/my/') || item.href.startsWith('/approvals'),
+      ),
+    ],
+    locale,
+  );
 
-  const adminItems = coreItems.filter((item) => item.href.startsWith('/settings/'));
-  const hrmItems = hrmModule?.navItems ?? [];
+  const adminItems = localizeNavItems(
+    coreItems.filter((item) => item.href.startsWith('/settings/')),
+    locale,
+  );
+  const hrmItems = localizeNavItems(hrmModule?.navItems ?? [], locale);
 
   const groups: PortalRailGroup[] = [
     {
       key: 'workspace',
-      shortLabel: 'Tổng',
-      title: 'Điều hành & Cá nhân',
-      subtitle: 'Tổng quan, tự phục vụ (ESS) & phê duyệt',
+      shortLabel: translateApp(locale, 'nav.rail.workspace.short'),
+      title: translateApp(locale, 'nav.rail.workspace.title'),
+      subtitle: translateApp(locale, 'nav.rail.workspace.subtitle'),
       items: personalAndApprovalItems,
     },
   ];
@@ -61,9 +108,9 @@ export function buildDualRailGroups(modules: readonly PortalModuleDefinition[]):
   if (hrmItems.length > 0) {
     groups.push({
       key: 'hrm',
-      shortLabel: 'HRM',
-      title: 'Hành chính Nhân sự',
-      subtitle: 'Tổ chức, nhân viên, công, lương & văn phòng',
+      shortLabel: translateApp(locale, 'nav.rail.hrm.short'),
+      title: translateApp(locale, 'nav.rail.hrm.title'),
+      subtitle: translateApp(locale, 'nav.rail.hrm.subtitle'),
       items: hrmItems,
     });
   }
@@ -71,9 +118,9 @@ export function buildDualRailGroups(modules: readonly PortalModuleDefinition[]):
   if (adminItems.length > 0) {
     groups.push({
       key: 'admin',
-      shortLabel: 'Core',
-      title: 'Quản trị Hệ thống',
-      subtitle: 'Chi nhánh, RBAC, luồng duyệt & kiểm toán',
+      shortLabel: translateApp(locale, 'nav.rail.admin.short'),
+      title: translateApp(locale, 'nav.rail.admin.title'),
+      subtitle: translateApp(locale, 'nav.rail.admin.subtitle'),
       items: adminItems,
     });
   }
@@ -81,11 +128,11 @@ export function buildDualRailGroups(modules: readonly PortalModuleDefinition[]):
   if (crmModule) {
     groups.push({
       key: 'crm',
-      shortLabel: 'CRM',
-      title: crmModule.name,
-      subtitle: 'Phân hệ mở rộng Giai đoạn 2',
+      shortLabel: translateApp(locale, 'nav.rail.crm.short'),
+      title: translateApp(locale, 'nav.rail.crm.title'),
+      subtitle: translateApp(locale, 'nav.rail.crm.subtitle'),
       isComingSoon: crmModule.status === 'COMING_SOON',
-      items: crmModule.navItems,
+      items: localizeNavItems(crmModule.navItems, locale),
     });
   }
 
@@ -106,13 +153,20 @@ export function getUserInitials(fullName: string): string {
 export function resolvePageContextLabel(
   pathname: string,
   groups: readonly PortalRailGroup[],
+  locale: AppLocale = DEFAULT_LOCALE,
 ): { groupTitle: string; itemLabel: string } {
   for (const group of groups) {
     for (const item of group.items) {
-      if (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`))) {
+      if (
+        pathname === item.href ||
+        (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`))
+      ) {
         return { groupTitle: group.title, itemLabel: item.label };
       }
     }
   }
-  return { groupTitle: 'Operon Hub', itemLabel: 'Cổng Vận hành Doanh nghiệp' };
+  return {
+    groupTitle: 'Operon Hub',
+    itemLabel: translateApp(locale, 'app.portalTagline'),
+  };
 }

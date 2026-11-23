@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { IconLoader2, IconX } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface WorkShiftRecord {
   id: number;
@@ -41,6 +42,7 @@ export function WorkShiftFormModal({
   onClose,
   onSuccess,
 }: WorkShiftFormModalProps) {
+  const { tr } = useI18n();
   const isEdit = Boolean(initialData);
   const [code, setCode] = useState(initialData?.code ?? '');
   const [name, setName] = useState(initialData?.name ?? '');
@@ -102,14 +104,21 @@ export function WorkShiftFormModal({
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setErrorMsg(json.error?.message ?? 'Không thể lưu ca làm việc.');
+        setErrorMsg(
+          json.error?.message ?? tr('Không thể lưu ca làm việc.', 'Unable to save work shift.'),
+        );
         setIsSubmitting(false);
         return;
       }
 
       onSuccess();
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ khi lưu ca làm việc.');
+      setErrorMsg(
+        tr(
+          'Lỗi kết nối máy chủ khi lưu ca làm việc.',
+          'Server connection error while saving work shift.',
+        ),
+      );
       setIsSubmitting(false);
     }
   }
@@ -119,14 +128,19 @@ export function WorkShiftFormModal({
       <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h3 className="text-base font-semibold text-slate-900">
-            {isEdit ? `Cập nhật ca làm việc (${initialData?.code})` : 'Tạo ca làm việc mới'}
+            {isEdit
+              ? tr(
+                  `Cập nhật ca làm việc (${initialData?.code})`,
+                  `Update Work Shift (${initialData?.code})`,
+                )
+              : tr('Tạo ca làm việc mới', 'Create New Work Shift')}
           </h3>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -142,7 +156,7 @@ export function WorkShiftFormModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Mã ca <span className="text-rose-500">*</span>
+                {tr('Mã ca', 'Shift code')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -150,14 +164,14 @@ export function WorkShiftFormModal({
                 disabled={isEdit || isSubmitting}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="VD: HC, CA_CHIEU"
+                placeholder={tr('VD: HC, CA_CHIEU', 'e.g. DAY, NIGHT_SHIFT')}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase outline-none focus:border-blue-500 disabled:bg-slate-100"
               />
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Chi nhánh áp dụng
+                {tr('Chi nhánh áp dụng', 'Applicable branch')}
               </label>
               <select
                 value={branchId}
@@ -165,7 +179,7 @@ export function WorkShiftFormModal({
                 onChange={(e) => setBranchId(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="">Toàn công ty</option>
+                <option value="">{tr('Toàn công ty', 'All Branches')}</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.code})
@@ -177,7 +191,7 @@ export function WorkShiftFormModal({
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-700">
-              Tên ca làm việc <span className="text-rose-500">*</span>
+              {tr('Tên ca làm việc', 'Shift name')} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -185,7 +199,7 @@ export function WorkShiftFormModal({
               disabled={isSubmitting}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Ca Hành chính chuẩn"
+              placeholder={tr('VD: Ca Hành chính chuẩn', 'e.g. Standard Office Shift')}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
           </div>
@@ -193,7 +207,7 @@ export function WorkShiftFormModal({
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Giờ bắt đầu *
+                {tr('Giờ bắt đầu *', 'Start time *')}
               </label>
               <input
                 type="time"
@@ -206,7 +220,7 @@ export function WorkShiftFormModal({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Giờ kết thúc *
+                {tr('Giờ kết thúc *', 'End time *')}
               </label>
               <input
                 type="time"
@@ -219,7 +233,7 @@ export function WorkShiftFormModal({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Nghỉ trưa từ
+                {tr('Nghỉ trưa từ', 'Break start')}
               </label>
               <input
                 type="time"
@@ -231,7 +245,7 @@ export function WorkShiftFormModal({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Nghỉ trưa đến
+                {tr('Nghỉ trưa đến', 'Break end')}
               </label>
               <input
                 type="time"
@@ -246,7 +260,7 @@ export function WorkShiftFormModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Dung sai đi muộn (phút)
+                {tr('Dung sai đi muộn (phút)', 'Late grace period (min)')}
               </label>
               <input
                 type="number"
@@ -260,7 +274,7 @@ export function WorkShiftFormModal({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Dung sai về sớm (phút)
+                {tr('Dung sai về sớm (phút)', 'Early leave grace (min)')}
               </label>
               <input
                 type="number"
@@ -275,13 +289,18 @@ export function WorkShiftFormModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Mô tả</label>
+            <label className="mb-1 block text-xs font-medium text-slate-700">
+              {tr('Mô tả', 'Description')}
+            </label>
             <textarea
               rows={2}
               disabled={isSubmitting}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ghi chú thêm về quy định áp dụng ca..."
+              placeholder={tr(
+                'Ghi chú thêm về quy định áp dụng ca...',
+                'Additional notes about shift rules...',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
           </div>
@@ -295,7 +314,7 @@ export function WorkShiftFormModal({
                 onChange={(e) => setIsDefault(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600"
               />
-              <span>Đặt làm ca mặc định</span>
+              <span>{tr('Đặt làm ca mặc định', 'Set as default shift')}</span>
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
@@ -305,7 +324,7 @@ export function WorkShiftFormModal({
                 onChange={(e) => setIsActive(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600"
               />
-              <span>Đang hoạt động</span>
+              <span>{tr('Đang hoạt động', 'Active')}</span>
             </label>
           </div>
 
@@ -316,7 +335,7 @@ export function WorkShiftFormModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -324,7 +343,11 @@ export function WorkShiftFormModal({
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
-              <span>{isEdit ? 'Lưu thay đổi' : 'Tạo ca làm việc'}</span>
+              <span>
+                {isEdit
+                  ? tr('Lưu thay đổi', 'Save Changes')
+                  : tr('Tạo ca làm việc', 'Create Work Shift')}
+              </span>
             </button>
           </div>
         </form>

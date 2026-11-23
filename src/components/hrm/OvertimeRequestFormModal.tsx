@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import { IconAlertCircle, IconClockPlus, IconLoader2, IconSend, IconX } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface EditableOvertimeRequest {
   id: number;
@@ -19,16 +20,34 @@ interface OvertimeRequestFormModalProps {
   onSaved: () => void;
 }
 
-function previewOvertime(workDate: string, startTime: string, endTime: string, isHoliday: boolean) {
+function previewOvertime(
+  workDate: string,
+  startTime: string,
+  endTime: string,
+  isHoliday: boolean,
+  tr: (vi: string, en: string) => string,
+) {
   const rateLabel = (() => {
     if (isHoliday) {
-      return { code: 'HOLIDAY_300', label: 'Ngày lễ (300%)', color: 'text-rose-700 bg-rose-50' };
+      return {
+        code: 'HOLIDAY_300',
+        label: tr('Ngày lễ (300%)', 'Holiday (300%)'),
+        color: 'text-rose-700 bg-rose-50',
+      };
     }
     const day = dayjs(workDate).day();
     if (day === 0 || day === 6) {
-      return { code: 'WEEKEND_200', label: 'Cuối tuần (200%)', color: 'text-amber-700 bg-amber-50' };
+      return {
+        code: 'WEEKEND_200',
+        label: tr('Cuối tuần (200%)', 'Weekend (200%)'),
+        color: 'text-amber-700 bg-amber-50',
+      };
     }
-    return { code: 'WEEKDAY_150', label: 'Ngày thường (150%)', color: 'text-blue-700 bg-blue-50' };
+    return {
+      code: 'WEEKDAY_150',
+      label: tr('Ngày thường (150%)', 'Weekday (150%)'),
+      color: 'text-blue-700 bg-blue-50',
+    };
   })();
 
   const parseMin = (t: string): number | null => {
@@ -44,10 +63,21 @@ function previewOvertime(workDate: string, startTime: string, endTime: string, i
   const s = parseMin(startTime);
   const e = parseMin(endTime);
   if (s === null || e === null) {
-    return { hours: 0, rate: rateLabel, error: 'Định dạng giờ không hợp lệ (HH:mm).' };
+    return {
+      hours: 0,
+      rate: rateLabel,
+      error: tr('Định dạng giờ không hợp lệ (HH:mm).', 'Invalid time format (HH:mm).'),
+    };
   }
   if (e <= s) {
-    return { hours: 0, rate: rateLabel, error: 'Giờ kết thúc phải lớn hơn giờ bắt đầu.' };
+    return {
+      hours: 0,
+      rate: rateLabel,
+      error: tr(
+        'Giờ kết thúc phải lớn hơn giờ bắt đầu.',
+        'End time must be later than start time.',
+      ),
+    };
   }
 
   const hours = Math.round(((e - s) / 60 + Number.EPSILON) * 100) / 100;
@@ -55,7 +85,10 @@ function previewOvertime(workDate: string, startTime: string, endTime: string, i
     return {
       hours,
       rate: rateLabel,
-      error: 'Thời lượng tăng ca mỗi đơn phải từ 0.5 giờ đến tối đa 12 giờ.',
+      error: tr(
+        'Thời lượng tăng ca mỗi đơn phải từ 0.5 giờ đến tối đa 12 giờ.',
+        'Overtime duration per request must be between 0.5 and 12 hours.',
+      ),
     };
   }
 
@@ -67,6 +100,7 @@ export function OvertimeRequestFormModal({
   onClose,
   onSaved,
 }: OvertimeRequestFormModalProps) {
+  const { tr } = useI18n();
   const todayIso = new Date().toISOString().slice(0, 10);
   const [workDate, setWorkDate] = useState(editingRequest?.workDate ?? todayIso);
   const [startTime, setStartTime] = useState(editingRequest?.startTime ?? '18:00');
@@ -77,8 +111,8 @@ export function OvertimeRequestFormModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const preview = useMemo(
-    () => previewOvertime(workDate, startTime, endTime, isHoliday),
-    [workDate, startTime, endTime, isHoliday],
+    () => previewOvertime(workDate, startTime, endTime, isHoliday, tr),
+    [workDate, startTime, endTime, isHoliday, tr],
   );
 
   async function handleSubmit(submitNow: boolean) {
@@ -87,7 +121,12 @@ export function OvertimeRequestFormModal({
       return;
     }
     if (reason.trim().length < 3) {
-      setErrorMsg('Vui lòng nhập lý do tăng ca tối thiểu 3 ký tự.');
+      setErrorMsg(
+        tr(
+          'Vui lòng nhập lý do tăng ca tối thiểu 3 ký tự.',
+          'Please enter an overtime reason of at least 3 characters.',
+        ),
+      );
       return;
     }
 
@@ -114,7 +153,10 @@ export function OvertimeRequestFormModal({
       };
 
       if (!res.ok || !json.success) {
-        setErrorMsg(json.error?.message ?? 'Không thể lưu đơn tăng ca.');
+        setErrorMsg(
+          json.error?.message ??
+            tr('Không thể lưu đơn tăng ca.', 'Unable to save overtime request.'),
+        );
         setSubmittingMode(null);
         return;
       }
@@ -129,7 +171,13 @@ export function OvertimeRequestFormModal({
           error?: { message?: string };
         };
         if (!submitRes.ok || !submitJson.success) {
-          setErrorMsg(submitJson.error?.message ?? 'Đã lưu nháp nhưng gửi duyệt thất bại.');
+          setErrorMsg(
+            submitJson.error?.message ??
+              tr(
+                'Đã lưu nháp nhưng gửi duyệt thất bại.',
+                'Saved as draft, but failed to submit for approval.',
+              ),
+          );
           setSubmittingMode(null);
           return;
         }
@@ -137,7 +185,9 @@ export function OvertimeRequestFormModal({
 
       onSaved();
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ. Vui lòng thử lại.');
+      setErrorMsg(
+        tr('Lỗi kết nối máy chủ. Vui lòng thử lại.', 'Server connection error. Please try again.'),
+      );
       setSubmittingMode(null);
     }
   }
@@ -152,10 +202,15 @@ export function OvertimeRequestFormModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                {editingRequest ? 'Chỉnh sửa đơn tăng ca (OT)' : 'Tạo đơn làm thêm giờ (OT)'}
+                {editingRequest
+                  ? tr('Chỉnh sửa đơn tăng ca (OT)', 'Edit Overtime Request (OT)')
+                  : tr('Tạo đơn làm thêm giờ (OT)', 'New Overtime Request (OT)')}
               </h2>
               <p className="text-xs text-slate-500">
-                Tự động phân loại hệ số 150% / 200% / 300% theo ngày làm việc
+                {tr(
+                  'Tự động phân loại hệ số 150% / 200% / 300% theo ngày làm việc',
+                  'Automatically classifies 150% / 200% / 300% rate by work date',
+                )}
               </p>
             </div>
           </div>
@@ -164,7 +219,7 @@ export function OvertimeRequestFormModal({
             onClick={onClose}
             disabled={submittingMode !== null}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -181,7 +236,7 @@ export function OvertimeRequestFormModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Ngày tăng ca <span className="text-rose-500">*</span>
+                {tr('Ngày tăng ca', 'Overtime date')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -199,13 +254,13 @@ export function OvertimeRequestFormModal({
                   onChange={(e) => setIsHoliday(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 text-blue-600"
                 />
-                <span>Làm việc ngày Lễ (300%)</span>
+                <span>{tr('Làm việc ngày Lễ (300%)', 'Public Holiday (300%)')}</span>
               </label>
             </div>
 
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Giờ bắt đầu <span className="text-rose-500">*</span>
+                {tr('Giờ bắt đầu', 'Start time')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="time"
@@ -217,7 +272,7 @@ export function OvertimeRequestFormModal({
 
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Giờ kết thúc <span className="text-rose-500">*</span>
+                {tr('Giờ kết thúc', 'End time')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="time"
@@ -236,7 +291,12 @@ export function OvertimeRequestFormModal({
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold">Tổng giờ OT dự kiến: {preview.hours} giờ</span>
+              <span className="font-semibold">
+                {tr(
+                  `Tổng giờ OT dự kiến: ${preview.hours} giờ`,
+                  `Estimated OT hours: ${preview.hours} hrs`,
+                )}
+              </span>
               <span
                 className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${preview.rate.color}`}
               >
@@ -248,13 +308,17 @@ export function OvertimeRequestFormModal({
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Nội dung công việc / Lý do tăng ca <span className="text-rose-500">*</span>
+              {tr('Nội dung công việc / Lý do tăng ca', 'Work details / Overtime reason')}{' '}
+              <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Mô tả hạng mục công việc cần xử lý ngoài giờ..."
+              placeholder={tr(
+                'Mô tả hạng mục công việc cần xử lý ngoài giờ...',
+                'Describe the tasks to be performed during overtime...',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             />
           </div>
@@ -267,7 +331,7 @@ export function OvertimeRequestFormModal({
             disabled={submittingMode !== null}
             className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
-            Đóng
+            {tr('Đóng', 'Close')}
           </button>
           <button
             type="button"
@@ -276,7 +340,7 @@ export function OvertimeRequestFormModal({
             className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
           >
             {submittingMode === 'DRAFT' && <IconLoader2 size={16} className="animate-spin" />}
-            <span>Lưu nháp</span>
+            <span>{tr('Lưu nháp', 'Save Draft')}</span>
           </button>
           <button
             type="button"
@@ -289,7 +353,7 @@ export function OvertimeRequestFormModal({
             ) : (
               <IconSend size={16} />
             )}
-            <span>Gửi duyệt ngay</span>
+            <span>{tr('Gửi duyệt ngay', 'Submit Now')}</span>
           </button>
         </div>
       </div>

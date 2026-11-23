@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   IconEdit,
   IconFileCertificate,
@@ -15,6 +15,7 @@ import {
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface EmployeeContractView extends EditableContractData {
   totalAllowances: number;
@@ -22,21 +23,21 @@ export interface EmployeeContractView extends EditableContractData {
   daysRemaining: number | null;
 }
 
-const TYPE_LABELS: Record<EmployeeContractView['contractType'], string> = {
-  PROBATION: 'Thử việc',
-  FIXED_TERM: 'Xác định thời hạn',
-  INDEFINITE: 'Không thời hạn',
-  PART_TIME: 'Bán thời gian / CTV',
+const TYPE_LABELS: Record<EmployeeContractView['contractType'], { vi: string; en: string }> = {
+  PROBATION: { vi: 'Thử việc', en: 'Probation' },
+  FIXED_TERM: { vi: 'Xác định thời hạn', en: 'Fixed-Term' },
+  INDEFINITE: { vi: 'Không thời hạn', en: 'Indefinite' },
+  PART_TIME: { vi: 'Bán thời gian / CTV', en: 'Part-Time / Contractor' },
 };
 
 const STATUS_STYLES: Record<
   EmployeeContractView['status'],
-  { label: string; className: string }
+  { vi: string; en: string; className: string }
 > = {
-  DRAFT: { label: 'Nháp', className: 'bg-slate-100 text-slate-600' },
-  ACTIVE: { label: 'Đang hiệu lực', className: 'bg-emerald-50 text-emerald-700' },
-  EXPIRED: { label: 'Hết hạn', className: 'bg-amber-50 text-amber-700' },
-  TERMINATED: { label: 'Đã chấm dứt', className: 'bg-rose-50 text-rose-700' },
+  DRAFT: { vi: 'Nháp', en: 'Draft', className: 'bg-slate-100 text-slate-600' },
+  ACTIVE: { vi: 'Đang hiệu lực', en: 'Active', className: 'bg-emerald-50 text-emerald-700' },
+  EXPIRED: { vi: 'Hết hạn', en: 'Expired', className: 'bg-amber-50 text-amber-700' },
+  TERMINATED: { vi: 'Đã chấm dứt', en: 'Terminated', className: 'bg-rose-50 text-rose-700' },
 };
 
 interface EmployeeContractsPanelProps {
@@ -48,6 +49,12 @@ export function EmployeeContractsPanel({
   employeeId,
   canManage,
 }: EmployeeContractsPanelProps) {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const [contracts, setContracts] = useState<EmployeeContractView[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -68,14 +75,24 @@ export function EmployeeContractsPanel({
           error?: { message?: string };
         };
         if (!res.ok || !json.success) {
-          throw new Error(json.error?.message ?? 'Không thể tải danh sách hợp đồng.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải danh sách hợp đồng.',
+                'Failed to load labor contracts.',
+              ),
+          );
         }
         setContracts(json.data ?? []);
         setErrorMessage(null);
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === 'AbortError') return;
-        setErrorMessage(err instanceof Error ? err.message : 'Lỗi kết nối.');
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi kết nối.', 'Connection error.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
@@ -125,7 +142,7 @@ export function EmployeeContractsPanel({
           className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
         >
           <IconRefresh size={14} />
-          <span>Thử lại</span>
+          <span>{tr('Thử lại', 'Retry')}</span>
         </button>
       </div>
     );
@@ -144,7 +161,7 @@ export function EmployeeContractsPanel({
             className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
           >
             <IconPlus size={15} />
-            <span>Thêm hợp đồng mới</span>
+            <span>{tr('Thêm hợp đồng mới', 'Add Labor Contract')}</span>
           </button>
         </div>
       )}
@@ -153,7 +170,10 @@ export function EmployeeContractsPanel({
         <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
           <IconFileCertificate size={32} className="mx-auto text-slate-300" />
           <p className="mt-2 text-sm font-medium text-slate-700">
-            Chưa có hợp đồng lao động nào được ghi nhận
+            {tr(
+              'Chưa có hợp đồng lao động nào được ghi nhận',
+              'No labor contracts recorded yet',
+            )}
           </p>
         </div>
       ) : (
@@ -172,31 +192,45 @@ export function EmployeeContractsPanel({
                         {contract.contractNo}
                       </span>
                       <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
-                        {TYPE_LABELS[contract.contractType]}
+                        {locale === 'en'
+                          ? TYPE_LABELS[contract.contractType].en
+                          : TYPE_LABELS[contract.contractType].vi}
                       </span>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.className}`}>
-                        {st.label}
+                        {locale === 'en' ? st.en : st.vi}
                       </span>
                       {contract.expiryLevel === 'OVERDUE' && (
                         <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">
-                          Quá hạn {Math.abs(contract.daysRemaining ?? 0)} ngày
+                          {tr(
+                            `Quá hạn ${Math.abs(contract.daysRemaining ?? 0)} ngày`,
+                            `Overdue by ${Math.abs(contract.daysRemaining ?? 0)} days`,
+                          )}
                         </span>
                       )}
                       {contract.expiryLevel === 'URGENT_15D' && (
                         <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700">
-                          Sắp hết hạn ({contract.daysRemaining} ngày)
+                          {tr(
+                            `Sắp hết hạn (${contract.daysRemaining} ngày)`,
+                            `Expiring soon (${contract.daysRemaining} days)`,
+                          )}
                         </span>
                       )}
                       {contract.expiryLevel === 'WARNING_30D' && (
                         <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-                          Còn {contract.daysRemaining} ngày
+                          {tr(
+                            `Còn ${contract.daysRemaining} ngày`,
+                            `${contract.daysRemaining} days left`,
+                          )}
                         </span>
                       )}
                     </div>
                     <div className="mt-1.5 text-xs text-slate-500">
-                      Hiệu lực: <strong>{formatDateVN(contract.startDate)}</strong> →{' '}
+                      {tr('Hiệu lực:', 'Effective:')}{' '}
+                      <strong>{formatDateVN(contract.startDate)}</strong> →{' '}
                       <strong>
-                        {contract.endDate ? formatDateVN(contract.endDate) : 'Không xác định thời hạn'}
+                        {contract.endDate
+                          ? formatDateVN(contract.endDate)
+                          : tr('Không xác định thời hạn', 'Indefinite')}
                       </strong>
                     </div>
                   </div>
@@ -212,10 +246,12 @@ export function EmployeeContractsPanel({
                         className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                       >
                         <IconEdit size={14} />
-                        <span>Sửa</span>
+                        <span>{tr('Sửa', 'Edit')}</span>
                       </button>
                       <button
                         type="button"
+                        title={tr('Xóa hợp đồng', 'Delete contract')}
+                        aria-label={tr('Xóa hợp đồng', 'Delete contract')}
                         onClick={() => setDeletingContract(contract)}
                         className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
                       >
@@ -227,17 +263,23 @@ export function EmployeeContractsPanel({
 
                 <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 text-xs sm:grid-cols-3">
                   <div>
-                    <span className="text-slate-500">Lương cơ bản: </span>
+                    <span className="text-slate-500">
+                      {tr('Lương cơ bản: ', 'Base Salary: ')}
+                    </span>
                     <strong className="text-slate-900">{formatVND(contract.baseSalary)}</strong>
                   </div>
                   <div>
-                    <span className="text-slate-500">Lương đóng BHXH: </span>
+                    <span className="text-slate-500">
+                      {tr('Lương đóng BHXH: ', 'Insurance Salary: ')}
+                    </span>
                     <strong className="text-slate-900">
                       {formatVND(contract.insuranceSalary)}
                     </strong>
                   </div>
                   <div>
-                    <span className="text-slate-500">Tổng phụ cấp: </span>
+                    <span className="text-slate-500">
+                      {tr('Tổng phụ cấp: ', 'Total Allowances: ')}
+                    </span>
                     <strong className="text-emerald-700">
                       {formatVND(contract.totalAllowances)}
                     </strong>
@@ -282,13 +324,16 @@ export function EmployeeContractsPanel({
 
       <ConfirmModal
         isOpen={deletingContract !== null}
-        title="Xác nhận xóa hợp đồng lao động"
+        title={tr('Xác nhận xóa hợp đồng lao động', 'Confirm Contract Deletion')}
         description={
           deletingContract
-            ? `Bạn có chắc muốn xóa mềm hợp đồng "${deletingContract.contractNo}"?`
+            ? tr(
+                `Bạn có chắc muốn xóa mềm hợp đồng "${deletingContract.contractNo}"?`,
+                `Are you sure you want to delete contract "${deletingContract.contractNo}"?`,
+              )
             : ''
         }
-        confirmLabel="Xóa hợp đồng"
+        confirmLabel={tr('Xóa hợp đồng', 'Delete Contract')}
         isProcessing={isDeleting}
         onCancel={() => setDeletingContract(null)}
         onConfirm={() => void handleDelete()}

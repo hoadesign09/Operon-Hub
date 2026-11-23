@@ -9,6 +9,7 @@ import {
   IconRefresh,
 } from '@tabler/icons-react';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface NotificationRow {
   id: number;
@@ -30,6 +31,7 @@ interface NotificationsResponse {
 
 export function NotificationBell() {
   const router = useRouter();
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +55,7 @@ export function NotificationBell() {
           return;
         }
         if (!res.ok || !json?.success || !json?.data) {
-          setErrorMessage(json?.error?.message ?? 'Không thể tải thông báo.');
+          setErrorMessage(json?.error?.message ?? '');
           setViewState('error');
           return;
         }
@@ -66,7 +68,7 @@ export function NotificationBell() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMessage('Lỗi kết nối khi tải thông báo.');
+        setErrorMessage('NETWORK_ERROR');
         setViewState('error');
       });
 
@@ -90,7 +92,7 @@ export function NotificationBell() {
     const nextOpen = !isOpen;
     setIsOpen(nextOpen);
     if (nextOpen) {
-      setReloadTick((t) => t + 1);
+      setReloadTick((tick) => tick + 1);
     }
   }
 
@@ -124,13 +126,18 @@ export function NotificationBell() {
   }
 
   const badgeText = unreadCount > 99 ? '99+' : String(unreadCount);
+  const resolvedError =
+    errorMessage === 'NETWORK_ERROR'
+      ? t('notifications.networkError')
+      : errorMessage || t('notifications.loadError');
 
   return (
     <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={handleToggle}
-        aria-label="Thông báo"
+        aria-label={t('notifications.aria')}
+        title={t('notifications.aria')}
         className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
       >
         <IconBell size={18} />
@@ -145,7 +152,7 @@ export function NotificationBell() {
         <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:w-96">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-900">
-              Thông báo ({unreadCount} chưa đọc)
+              {t('notifications.header', { count: unreadCount })}
             </h3>
             {unreadCount > 0 && (
               <button
@@ -155,7 +162,7 @@ export function NotificationBell() {
                 className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
               >
                 <IconCheck size={14} />
-                <span>Đọc tất cả</span>
+                <span>{t('notifications.markAllRead')}</span>
               </button>
             )}
           </div>
@@ -171,17 +178,17 @@ export function NotificationBell() {
 
             {viewState === 'error' && (
               <div className="p-5 text-center">
-                <p className="text-xs text-rose-600">{errorMessage}</p>
+                <p className="text-xs text-rose-600">{resolvedError}</p>
                 <button
                   type="button"
                   onClick={() => {
                     setViewState('loading');
-                    setReloadTick((t) => t + 1);
+                    setReloadTick((tick) => tick + 1);
                   }}
                   className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-700"
                 >
                   <IconRefresh size={13} />
-                  <span>Thử lại</span>
+                  <span>{t('common.retry')}</span>
                 </button>
               </div>
             )}
@@ -190,7 +197,7 @@ export function NotificationBell() {
               <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
                 <IconInbox size={26} className="text-slate-300" />
                 <p className="mt-2 text-xs font-medium text-slate-500">
-                  Bạn chưa có thông báo nào
+                  {t('notifications.empty')}
                 </p>
               </div>
             )}

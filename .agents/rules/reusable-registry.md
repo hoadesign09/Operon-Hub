@@ -20,4 +20,5 @@ description: Mục lục các hàm và module tái sử dụng hiện có của 
 | `buildExcelBuffer` | `src/lib/portable/excel-exporter.ts` | `Cross-Project` | `exceljs` (MIT) | Xuất mảng dữ liệu ra `.xlsx` chuẩn tiếng Việt, auto-width, styled header, freeze & autoFilter |
 | `parseExcelBuffer` | `src/lib/portable/excel-importer.ts` | `Cross-Project` | `exceljs` (MIT) | Đọc và chuẩn hóa dữ liệu từ `.xlsx` an toàn, tự dò dòng header và giới hạn dòng chống DoS |
 | `generatePdfBuffer`, `buildStructuredPdfDocument` | `src/lib/portable/pdf-generator.ts` | `Cross-Project` | `pdfmake` (MIT) | Sinh file PDF tiếng Việt chuẩn Unicode (font Roboto tích hợp, khổ A4/A5) cho phiếu lương & biên bản |
+| `normalizeLocale`, `parseCookieValue`, `interpolateTemplate`, `createTranslator` | `src/lib/portable/i18n-engine.ts` | `Cross-Project` | `None` | Engine đa ngôn ngữ thuần túy: chuẩn hóa locale, đọc cookie, nội suy `{param}` và tra từ điển có fallback |
 | `ok`, `created`, `fail`, `AppError`, `withErrorHandler` | `src/shared/api-response.ts` | `Project-Only` | `next`, `zod` | Chuẩn hóa JSON Response & bắt lỗi thống nhất cho Next.js Route Handlers |

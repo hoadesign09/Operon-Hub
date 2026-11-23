@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   IconCopy,
@@ -23,6 +23,7 @@ import {
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface EmployeeRow {
   id: number;
@@ -52,17 +53,22 @@ interface PaginationMeta {
 
 const STATUS_BADGES: Record<
   EmployeeRow['employmentStatus'],
-  { label: string; className: string }
+  { vi: string; en: string; className: string }
 > = {
-  PROBATION: { label: 'Thử việc', className: 'bg-amber-50 text-amber-700' },
-  ACTIVE: { label: 'Chính thức', className: 'bg-emerald-50 text-emerald-700' },
-  ON_LEAVE: { label: 'Tạm nghỉ', className: 'bg-sky-50 text-sky-700' },
-  RESIGNED: { label: 'Đã nghỉ việc', className: 'bg-slate-100 text-slate-600' },
-  TERMINATED: { label: 'Chấm dứt HĐ', className: 'bg-rose-50 text-rose-700' },
+  PROBATION: { vi: 'Thử việc', en: 'Probation', className: 'bg-amber-50 text-amber-700' },
+  ACTIVE: { vi: 'Chính thức', en: 'Active', className: 'bg-emerald-50 text-emerald-700' },
+  ON_LEAVE: { vi: 'Tạm nghỉ', en: 'On Leave', className: 'bg-sky-50 text-sky-700' },
+  RESIGNED: { vi: 'Đã nghỉ việc', en: 'Resigned', className: 'bg-slate-100 text-slate-600' },
+  TERMINATED: { vi: 'Chấm dứt HĐ', en: 'Terminated', className: 'bg-rose-50 text-rose-700' },
 };
 
 export default function EmployeesPage() {
   const { user, selectedBranchId, hasPermission } = usePortalAuth();
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
   const canCreate = hasPermission('hrm.employees.create');
   const canDelete = hasPermission('hrm.employees.delete');
   const canExport = hasPermission('hrm.employees.export');
@@ -149,7 +155,13 @@ export default function EmployeesPage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success) {
-          throw new Error(json.error?.message ?? 'Không thể tải danh sách nhân viên.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải danh sách nhân viên.',
+                'Failed to load employee directory.',
+              ),
+          );
         }
         setEmployees(json.data ?? []);
         if (json.meta) {
@@ -162,7 +174,12 @@ export default function EmployeesPage() {
           return;
         }
         setErrorMessage(
-          err instanceof Error ? err.message : 'Lỗi kết nối khi tải danh sách nhân viên.',
+          err instanceof Error
+            ? err.message
+            : trRef.current(
+                'Lỗi kết nối khi tải danh sách nhân viên.',
+                'Connection error while loading employee directory.',
+              ),
         );
       })
       .finally(() => {
@@ -203,7 +220,9 @@ export default function EmployeesPage() {
         const json = (await res.json().catch(() => null)) as {
           error?: { message?: string };
         } | null;
-        setErrorMessage(json?.error?.message ?? 'Không thể xuất file Excel.');
+        setErrorMessage(
+          json?.error?.message ?? tr('Không thể xuất file Excel.', 'Failed to export Excel file.'),
+        );
         return;
       }
 
@@ -221,7 +240,9 @@ export default function EmployeesPage() {
       anchor.remove();
       URL.revokeObjectURL(objectUrl);
     } catch {
-      setErrorMessage('Lỗi kết nối khi xuất file Excel.');
+      setErrorMessage(
+        tr('Lỗi kết nối khi xuất file Excel.', 'Connection error while exporting Excel file.'),
+      );
     } finally {
       setIsExporting(false);
     }
@@ -239,7 +260,10 @@ export default function EmployeesPage() {
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setErrorMessage(json.error?.message ?? 'Không thể xóa hồ sơ nhân viên.');
+        setErrorMessage(
+          json.error?.message ??
+            tr('Không thể xóa hồ sơ nhân viên.', 'Failed to delete employee profile.'),
+        );
         return;
       }
       setDeletingEmployee(null);
@@ -261,9 +285,14 @@ export default function EmployeesPage() {
             <IconIdBadge2 size={24} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Hồ sơ Nhân viên 360°</h1>
+            <h1 className="text-xl font-bold text-slate-900">
+              {tr('Hồ sơ Nhân viên 360°', 'Employee Directory')}
+            </h1>
             <p className="text-sm text-slate-500">
-              Quản lý danh sách nhân sự, liên kết tài khoản Portal và xuất báo cáo Excel
+              {tr(
+                'Quản lý danh sách nhân sự, liên kết tài khoản Portal và xuất báo cáo Excel',
+                'Manage employee records, Portal account links, and Excel reports',
+              )}
             </p>
           </div>
         </div>
@@ -281,7 +310,11 @@ export default function EmployeesPage() {
               ) : (
                 <IconFileSpreadsheet size={16} />
               )}
-              <span>{isExporting ? 'Đang xuất...' : 'Xuất Excel (.xlsx)'}</span>
+              <span>
+                {isExporting
+                  ? tr('Đang xuất...', 'Exporting...')
+                  : tr('Xuất Excel (.xlsx)', 'Export Excel (.xlsx)')}
+              </span>
             </button>
           )}
           {canCreate && (
@@ -291,7 +324,7 @@ export default function EmployeesPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
             >
               <IconPlus size={16} />
-              <span>Thêm nhân viên</span>
+              <span>{tr('Thêm nhân viên', 'Add Employee')}</span>
             </button>
           )}
         </div>
@@ -302,18 +335,30 @@ export default function EmployeesPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="font-bold">
-                Đã tự động khởi tạo tài khoản đăng nhập Portal cho nhân viên mới!
+                {tr(
+                  'Đã tự động khởi tạo tài khoản đăng nhập Portal cho nhân viên mới!',
+                  'A Portal login account has been automatically provisioned for the new employee!',
+                )}
               </div>
               <p className="mt-1 text-xs text-emerald-800">
-                Thông tin mật khẩu tạm thời chỉ hiển thị <strong>duy nhất 1 lần</strong>. Vui lòng
-                sao chép và gửi cho nhân viên đổi mật khẩu sau lần đăng nhập đầu tiên.
+                {locale === 'en' ? (
+                  <>
+                    This temporary password is shown <strong>only once</strong>. Please copy and
+                    share it with the employee to change after their first login.
+                  </>
+                ) : (
+                  <>
+                    Thông tin mật khẩu tạm thời chỉ hiển thị <strong>duy nhất 1 lần</strong>. Vui
+                    lòng sao chép và gửi cho nhân viên đổi mật khẩu sau lần đăng nhập đầu tiên.
+                  </>
+                )}
               </p>
               <div className="mt-2.5 flex flex-wrap items-center gap-4 text-xs">
                 <span>
                   Email: <strong className="font-mono">{provisionedBanner.email}</strong>
                 </span>
                 <span>
-                  Mật khẩu tạm:{' '}
+                  {tr('Mật khẩu tạm:', 'Temporary password:')}{' '}
                   <strong className="rounded bg-white px-2 py-0.5 font-mono text-emerald-950">
                     {provisionedBanner.temporaryPassword}
                   </strong>
@@ -322,7 +367,7 @@ export default function EmployeesPage() {
                   type="button"
                   onClick={() => {
                     void navigator.clipboard.writeText(
-                      `Email: ${provisionedBanner.email}\nMật khẩu tạm: ${provisionedBanner.temporaryPassword}`,
+                      `Email: ${provisionedBanner.email}\n${tr('Mật khẩu tạm', 'Temporary password')}: ${provisionedBanner.temporaryPassword}`,
                     );
                     setCopiedPwd(true);
                     window.setTimeout(() => setCopiedPwd(false), 2000);
@@ -330,7 +375,11 @@ export default function EmployeesPage() {
                   className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-1 font-medium text-white hover:bg-emerald-800"
                 >
                   <IconCopy size={13} />
-                  <span>{copiedPwd ? 'Đã sao chép' : 'Sao chép thông tin'}</span>
+                  <span>
+                    {copiedPwd
+                      ? tr('Đã sao chép', 'Copied')
+                      : tr('Sao chép thông tin', 'Copy credentials')}
+                  </span>
                 </button>
               </div>
             </div>
@@ -338,7 +387,7 @@ export default function EmployeesPage() {
               type="button"
               onClick={() => setProvisionedBanner(null)}
               className="rounded-lg p-1 text-emerald-700 hover:bg-emerald-100"
-              aria-label="Đóng thông báo"
+              aria-label={tr('Đóng thông báo', 'Dismiss notification')}
             >
               <IconX size={16} />
             </button>
@@ -360,7 +409,10 @@ export default function EmployeesPage() {
                 setIsLoading(true);
                 setSearchInput(e.target.value);
               }}
-              placeholder="Tìm theo Mã NV, Họ tên, Email, SĐT..."
+              placeholder={tr(
+                'Tìm theo Mã NV, Họ tên, Email, SĐT...',
+                'Search by Employee Code, Name, Email, Phone...',
+              )}
               className="w-full rounded-xl border border-slate-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-blue-500"
             />
           </div>
@@ -374,7 +426,7 @@ export default function EmployeesPage() {
             }}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
           >
-            <option value="">Tất cả phòng ban</option>
+            <option value="">{tr('Tất cả phòng ban', 'All departments')}</option>
             {visibleDepartments.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name} ({d.code})
@@ -391,7 +443,7 @@ export default function EmployeesPage() {
             }}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
           >
-            <option value="">Tất cả chức danh</option>
+            <option value="">{tr('Tất cả chức danh', 'All positions')}</option>
             {positions.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -408,12 +460,12 @@ export default function EmployeesPage() {
             }}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
           >
-            <option value="">Tất cả trạng thái</option>
-            <option value="PROBATION">Thử việc</option>
-            <option value="ACTIVE">Chính thức</option>
-            <option value="ON_LEAVE">Tạm nghỉ</option>
-            <option value="RESIGNED">Đã nghỉ việc</option>
-            <option value="TERMINATED">Chấm dứt HĐ</option>
+            <option value="">{tr('Tất cả trạng thái', 'All statuses')}</option>
+            <option value="PROBATION">{tr('Thử việc', 'Probation')}</option>
+            <option value="ACTIVE">{tr('Chính thức', 'Active')}</option>
+            <option value="ON_LEAVE">{tr('Tạm nghỉ', 'On Leave')}</option>
+            <option value="RESIGNED">{tr('Đã nghỉ việc', 'Resigned')}</option>
+            <option value="TERMINATED">{tr('Chấm dứt HĐ', 'Terminated')}</option>
           </select>
         </div>
       </div>
@@ -427,7 +479,7 @@ export default function EmployeesPage() {
             className="mt-3 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       ) : isLoading ? (
@@ -440,10 +492,13 @@ export default function EmployeesPage() {
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
           <IconIdBadge2 size={38} className="mx-auto text-slate-300" />
           <h3 className="mt-3 text-base font-semibold text-slate-900">
-            Không tìm thấy hồ sơ nhân viên nào
+            {tr('Không tìm thấy hồ sơ nhân viên nào', 'No employee records found')}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            Thử thay đổi bộ lọc hoặc thêm nhân viên mới vào hệ thống.
+            {tr(
+              'Thử thay đổi bộ lọc hoặc thêm nhân viên mới vào hệ thống.',
+              'Try adjusting your filters or adding a new employee.',
+            )}
           </p>
           {canCreate && (
             <button
@@ -452,7 +507,7 @@ export default function EmployeesPage() {
               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
               <IconPlus size={16} />
-              <span>Thêm nhân viên đầu tiên</span>
+              <span>{tr('Thêm nhân viên đầu tiên', 'Add First Employee')}</span>
             </button>
           )}
         </div>
@@ -462,13 +517,13 @@ export default function EmployeesPage() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Nhân viên</th>
-                  <th className="px-4 py-3">Chi nhánh / Phòng ban</th>
-                  <th className="px-4 py-3">Chức danh</th>
-                  <th className="px-4 py-3">Ngày vào làm</th>
-                  <th className="px-4 py-3">Trạng thái</th>
-                  <th className="px-4 py-3">Tài khoản Portal</th>
-                  <th className="px-4 py-3 text-right">Thao tác</th>
+                  <th className="px-4 py-3">{tr('Nhân viên', 'Employee')}</th>
+                  <th className="px-4 py-3">{tr('Chi nhánh / Phòng ban', 'Branch / Department')}</th>
+                  <th className="px-4 py-3">{tr('Chức danh', 'Position')}</th>
+                  <th className="px-4 py-3">{tr('Ngày vào làm', 'Hire Date')}</th>
+                  <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                  <th className="px-4 py-3">{tr('Tài khoản Portal', 'Portal Account')}</th>
+                  <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -511,19 +566,21 @@ export default function EmployeesPage() {
                         <span
                           className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusCfg.className}`}
                         >
-                          {statusCfg.label}
+                          {locale === 'en' ? statusCfg.en : statusCfg.vi}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {emp.userId === null ? (
-                          <span className="text-slate-400">Chưa liên kết</span>
+                          <span className="text-slate-400">
+                            {tr('Chưa liên kết', 'Not linked')}
+                          </span>
                         ) : emp.userStatus === 'LOCKED' ? (
                           <span className="rounded-lg bg-rose-50 px-2 py-0.5 font-medium text-rose-700">
-                            Đã khóa
+                            {tr('Đã khóa', 'Locked')}
                           </span>
                         ) : (
                           <span className="rounded-lg bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
-                            Hoạt động
+                            {tr('Hoạt động', 'Active')}
                           </span>
                         )}
                       </td>
@@ -534,14 +591,14 @@ export default function EmployeesPage() {
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                           >
                             <IconEye size={14} />
-                            <span>Chi tiết</span>
+                            <span>{tr('Chi tiết', 'Details')}</span>
                           </Link>
                           {canDelete && (
                             <button
                               type="button"
                               onClick={() => setDeletingEmployee(emp)}
                               className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                              title="Xóa mềm hồ sơ"
+                              title={tr('Xóa mềm hồ sơ', 'Soft delete profile')}
                             >
                               <IconTrash size={14} />
                             </button>
@@ -557,7 +614,17 @@ export default function EmployeesPage() {
 
           <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-4 py-3 text-xs text-slate-600">
             <div>
-              Hiển thị <strong>{employees.length}</strong> / <strong>{meta.total}</strong> nhân sự
+              {locale === 'en' ? (
+                <>
+                  Showing <strong>{employees.length}</strong> of <strong>{meta.total}</strong>{' '}
+                  employees
+                </>
+              ) : (
+                <>
+                  Hiển thị <strong>{employees.length}</strong> / <strong>{meta.total}</strong> nhân
+                  sự
+                </>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -569,10 +636,10 @@ export default function EmployeesPage() {
                 }}
                 className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
-                Trang trước
+                {tr('Trang trước', 'Previous')}
               </button>
               <span>
-                Trang <strong>{meta.page}</strong> / {meta.totalPages}
+                {tr('Trang', 'Page')} <strong>{meta.page}</strong> / {meta.totalPages}
               </span>
               <button
                 type="button"
@@ -583,7 +650,7 @@ export default function EmployeesPage() {
                 }}
                 className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
-                Trang sau
+                {tr('Trang sau', 'Next')}
               </button>
             </div>
           </div>
@@ -613,13 +680,16 @@ export default function EmployeesPage() {
 
       <ConfirmModal
         isOpen={deletingEmployee !== null}
-        title="Xác nhận xóa mềm hồ sơ nhân viên"
+        title={tr('Xác nhận xóa mềm hồ sơ nhân viên', 'Confirm Soft Delete Employee')}
         description={
           deletingEmployee
-            ? `Bạn có chắc muốn xóa hồ sơ "${deletingEmployee.fullName}" (${deletingEmployee.employeeCode})? Tài khoản Portal liên kết (nếu có) cũng sẽ bị khóa.`
+            ? tr(
+                `Bạn có chắc muốn xóa hồ sơ "${deletingEmployee.fullName}" (${deletingEmployee.employeeCode})? Tài khoản Portal liên kết (nếu có) cũng sẽ bị khóa.`,
+                `Are you sure you want to delete "${deletingEmployee.fullName}" (${deletingEmployee.employeeCode})? Any linked Portal account will also be locked.`,
+              )
             : ''
         }
-        confirmLabel="Xác nhận xóa"
+        confirmLabel={tr('Xác nhận xóa', 'Confirm Delete')}
         isProcessing={isDeleting}
         onCancel={() => setDeletingEmployee(null)}
         onConfirm={() => void handleConfirmDelete()}

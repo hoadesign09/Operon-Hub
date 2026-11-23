@@ -102,7 +102,7 @@ async function fetchMeWithRefresh(signal: AbortSignal): Promise<{
       status: 'error',
       user: null,
       modules: [],
-      error: json?.error?.message ?? 'Không thể tải thông tin phiên làm việc.',
+      error: json?.error?.message ?? '__SESSION_LOAD_ERROR__',
     };
   }
 
@@ -159,7 +159,7 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setError('Lỗi kết nối tới máy chủ xác thực.');
+        setError('__AUTH_SERVER_ERROR__');
         setIsLoading(false);
       });
 
@@ -176,7 +176,7 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
       const result = await fetchMeWithRefresh(controller.signal);
       applySessionResult(result);
     } catch {
-      setError('Lỗi kết nối tới máy chủ xác thực.');
+      setError('__AUTH_SERVER_ERROR__');
       setIsLoading(false);
     }
   }, [applySessionResult]);
@@ -234,7 +234,7 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
 export function usePortalAuth(): PortalAuthContextValue {
   const ctx = useContext(PortalAuthContext);
   if (!ctx) {
-    throw new Error('usePortalAuth phải được dùng bên trong PortalAuthProvider.');
+    throw new Error('usePortalAuth must be used within a PortalAuthProvider.');
   }
   return ctx;
 }

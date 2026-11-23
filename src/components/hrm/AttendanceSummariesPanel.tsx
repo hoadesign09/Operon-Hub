@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   IconCalculator,
   IconDownload,
@@ -17,6 +17,7 @@ import {
   type AttendanceSummaryRecord,
 } from '@/components/hrm/AttendanceSummaryEditModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface SummaryPeriodStats {
   totalEmployees: number;
@@ -46,6 +47,12 @@ export function AttendanceSummariesPanel({
   canLock,
   canExport,
 }: AttendanceSummariesPanelProps) {
+  const { tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -115,7 +122,13 @@ export function AttendanceSummariesPanel({
           error?: { message?: string };
         };
         if (!res.ok || !json.success || !json.data) {
-          throw new Error(json.error?.message ?? 'Không thể tải bảng công tổng hợp tháng.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải bảng công tổng hợp tháng.',
+                'Unable to load monthly attendance summary.',
+              ),
+          );
         }
         setItems(json.data.items);
         setStats(json.data.stats);
@@ -124,7 +137,14 @@ export function AttendanceSummariesPanel({
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setErrorMsg(err instanceof Error ? err.message : 'Lỗi tải bảng công tháng.');
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : trRef.current(
+                'Lỗi tải bảng công tháng.',
+                'Error loading monthly attendance summary.',
+              ),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
@@ -167,7 +187,9 @@ export function AttendanceSummariesPanel({
       if (!res.ok || !json.success || !json.data) {
         setBanner({
           type: 'error',
-          message: json.error?.message ?? 'Tổng hợp công tháng thất bại.',
+          message:
+            json.error?.message ??
+            tr('Tổng hợp công tháng thất bại.', 'Failed to calculate monthly attendance.'),
         });
         setIsCalculating(false);
         return;
@@ -176,12 +198,23 @@ export function AttendanceSummariesPanel({
       const d = json.data;
       setIsCalculating(false);
       refreshList(
-        `Đã tổng hợp bảng công Tháng ${month}/${year}: ${d.createdCount} tạo mới, ${d.updatedCount} cập nhật${
-          d.skippedLockedCount > 0 ? `, bỏ qua ${d.skippedLockedCount} bản ghi đã chốt` : ''
-        }.`,
+        tr(
+          `Đã tổng hợp bảng công Tháng ${month}/${year}: ${d.createdCount} tạo mới, ${d.updatedCount} cập nhật${
+            d.skippedLockedCount > 0 ? `, bỏ qua ${d.skippedLockedCount} bản ghi đã chốt` : ''
+          }.`,
+          `Calculated attendance summary for ${month}/${year}: ${d.createdCount} created, ${d.updatedCount} updated${
+            d.skippedLockedCount > 0 ? `, skipped ${d.skippedLockedCount} locked records` : ''
+          }.`,
+        ),
       );
     } catch {
-      setBanner({ type: 'error', message: 'Lỗi kết nối máy chủ khi tổng hợp công tháng.' });
+      setBanner({
+        type: 'error',
+        message: tr(
+          'Lỗi kết nối máy chủ khi tổng hợp công tháng.',
+          'Server connection error while calculating monthly attendance.',
+        ),
+      });
       setIsCalculating(false);
     }
   }
@@ -207,7 +240,9 @@ export function AttendanceSummariesPanel({
       if (!res.ok || !json.success || !json.data) {
         setBanner({
           type: 'error',
-          message: json.error?.message ?? 'Chốt bảng công thất bại.',
+          message:
+            json.error?.message ??
+            tr('Chốt bảng công thất bại.', 'Failed to lock attendance summary.'),
         });
         setIsLocking(false);
         setIsLockModalOpen(false);
@@ -216,9 +251,20 @@ export function AttendanceSummariesPanel({
 
       setIsLocking(false);
       setIsLockModalOpen(false);
-      refreshList(`Đã chốt khóa ${json.data.lockedCount} bản ghi bảng công Tháng ${month}/${year}.`);
+      refreshList(
+        tr(
+          `Đã chốt khóa ${json.data.lockedCount} bản ghi bảng công Tháng ${month}/${year}.`,
+          `Locked ${json.data.lockedCount} attendance summary records for ${month}/${year}.`,
+        ),
+      );
     } catch {
-      setBanner({ type: 'error', message: 'Lỗi kết nối máy chủ khi chốt bảng công.' });
+      setBanner({
+        type: 'error',
+        message: tr(
+          'Lỗi kết nối máy chủ khi chốt bảng công.',
+          'Server connection error while locking attendance summary.',
+        ),
+      });
       setIsLocking(false);
       setIsLockModalOpen(false);
     }
@@ -228,7 +274,12 @@ export function AttendanceSummariesPanel({
     e.preventDefault();
     setUnlockError(null);
     if (unlockReason.trim().length < 3) {
-      setUnlockError('Vui lòng nhập lý do mở khóa (tối thiểu 3 ký tự).');
+      setUnlockError(
+        tr(
+          'Vui lòng nhập lý do mở khóa (tối thiểu 3 ký tự).',
+          'Please enter an unlock reason (at least 3 characters).',
+        ),
+      );
       return;
     }
 
@@ -250,7 +301,10 @@ export function AttendanceSummariesPanel({
         error?: { message?: string };
       };
       if (!res.ok || !json.success || !json.data) {
-        setUnlockError(json.error?.message ?? 'Mở khóa kỳ công thất bại.');
+        setUnlockError(
+          json.error?.message ??
+            tr('Mở khóa kỳ công thất bại.', 'Failed to unlock attendance period.'),
+        );
         setIsUnlocking(false);
         return;
       }
@@ -259,10 +313,18 @@ export function AttendanceSummariesPanel({
       setIsUnlockModalOpen(false);
       setUnlockReason('');
       refreshList(
-        `Đã mở khóa ${json.data.unlockedCount} bản ghi bảng công Tháng ${month}/${year} về trạng thái Nháp.`,
+        tr(
+          `Đã mở khóa ${json.data.unlockedCount} bản ghi bảng công Tháng ${month}/${year} về trạng thái Nháp.`,
+          `Unlocked ${json.data.unlockedCount} attendance summary records for ${month}/${year} back to Draft.`,
+        ),
       );
     } catch {
-      setUnlockError('Lỗi kết nối máy chủ khi mở khóa kỳ công.');
+      setUnlockError(
+        tr(
+          'Lỗi kết nối máy chủ khi mở khóa kỳ công.',
+          'Server connection error while unlocking attendance period.',
+        ),
+      );
       setIsUnlocking(false);
     }
   }
@@ -293,7 +355,7 @@ export function AttendanceSummariesPanel({
           >
             {Array.from({ length: 12 }, (_, idx) => idx + 1).map((m) => (
               <option key={m} value={m}>
-                Tháng {m}
+                {tr(`Tháng ${m}`, `Month ${m}`)}
               </option>
             ))}
           </select>
@@ -308,7 +370,7 @@ export function AttendanceSummariesPanel({
           >
             {[2025, 2026, 2027].map((y) => (
               <option key={y} value={y}>
-                Năm {y}
+                {tr(`Năm ${y}`, `Year ${y}`)}
               </option>
             ))}
           </select>
@@ -321,9 +383,9 @@ export function AttendanceSummariesPanel({
             }}
             className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500"
           >
-            <option value="">Tất cả trạng thái</option>
-            <option value="DRAFT">Đang rà soát (Nháp)</option>
-            <option value="LOCKED">Đã chốt công (LOCKED)</option>
+            <option value="">{tr('Tất cả trạng thái', 'All statuses')}</option>
+            <option value="DRAFT">{tr('Đang rà soát (Nháp)', 'In Review (Draft)')}</option>
+            <option value="LOCKED">{tr('Đã chốt công (LOCKED)', 'Locked (LOCKED)')}</option>
           </select>
           <div className="relative">
             <IconSearch size={14} className="absolute left-3 top-2 text-slate-400" />
@@ -331,7 +393,7 @@ export function AttendanceSummariesPanel({
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm mã NV / họ tên..."
+              placeholder={tr('Tìm mã NV / họ tên...', 'Search emp. code / name...')}
               className="rounded-xl border border-slate-300 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-blue-500"
             />
           </div>
@@ -350,7 +412,11 @@ export function AttendanceSummariesPanel({
               ) : (
                 <IconCalculator size={15} />
               )}
-              <span>{isCalculating ? 'Đang tổng hợp...' : 'Tổng hợp công tháng'}</span>
+              <span>
+                {isCalculating
+                  ? tr('Đang tổng hợp...', 'Calculating...')
+                  : tr('Tổng hợp công tháng', 'Calculate Monthly Summary')}
+              </span>
             </button>
           )}
           {canLock && stats.draftCount > 0 && (
@@ -360,7 +426,7 @@ export function AttendanceSummariesPanel({
               className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
             >
               <IconLock size={15} />
-              <span>Chốt công ({stats.draftCount})</span>
+              <span>{tr(`Chốt công (${stats.draftCount})`, `Lock (${stats.draftCount})`)}</span>
             </button>
           )}
           {canLock && stats.lockedCount > 0 && (
@@ -374,7 +440,7 @@ export function AttendanceSummariesPanel({
               className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
             >
               <IconLockOpen size={15} />
-              <span>Mở khóa ({stats.lockedCount})</span>
+              <span>{tr(`Mở khóa (${stats.lockedCount})`, `Unlock (${stats.lockedCount})`)}</span>
             </button>
           )}
           {canExport && (
@@ -384,7 +450,7 @@ export function AttendanceSummariesPanel({
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               <IconDownload size={15} />
-              <span>Xuất Excel</span>
+              <span>{tr('Xuất Excel', 'Export Excel')}</span>
             </a>
           )}
         </div>
@@ -404,25 +470,35 @@ export function AttendanceSummariesPanel({
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">Nhân sự kỳ {month}/{year}</div>
+          <div className="text-xs text-slate-500">
+            {tr(`Nhân sự kỳ ${month}/${year}`, `Employees (${month}/${year})`)}
+          </div>
           <div className="mt-1 text-2xl font-bold text-slate-900">{stats.totalEmployees}</div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">Trạng thái chốt</div>
+          <div className="text-xs text-slate-500">{tr('Trạng thái chốt', 'Lock Status')}</div>
           <div className="mt-1 text-lg font-bold">
-            <span className="text-emerald-600">{stats.lockedCount} đã chốt</span>
+            <span className="text-emerald-600">
+              {tr(`${stats.lockedCount} đã chốt`, `${stats.lockedCount} locked`)}
+            </span>
             <span className="mx-1.5 text-slate-300">/</span>
-            <span className="text-amber-600">{stats.draftCount} nháp</span>
+            <span className="text-amber-600">
+              {tr(`${stats.draftCount} nháp`, `${stats.draftCount} draft`)}
+            </span>
           </div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">Tổng công hưởng lương</div>
+          <div className="text-xs text-slate-500">
+            {tr('Tổng công hưởng lương', 'Total Payable Days')}
+          </div>
           <div className="mt-1 font-mono text-2xl font-bold text-blue-700">
             {stats.totalPayableDays.toFixed(2)}
           </div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">Tổng giờ OT đã duyệt</div>
+          <div className="text-xs text-slate-500">
+            {tr('Tổng giờ OT đã duyệt', 'Total Approved OT Hours')}
+          </div>
           <div className="mt-1 font-mono text-2xl font-bold text-purple-700">
             {stats.totalOtHours.toFixed(2)}h
           </div>
@@ -445,16 +521,22 @@ export function AttendanceSummariesPanel({
               className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white"
             >
               <IconRefresh size={15} />
-              <span>Thử lại</span>
+              <span>{tr('Thử lại', 'Retry')}</span>
             </button>
           </div>
         ) : items.length === 0 ? (
           <div className="p-10 text-center">
             <p className="text-sm font-medium text-slate-700">
-              Chưa có bảng công tổng hợp cho Tháng {month}/{year}.
+              {tr(
+                `Chưa có bảng công tổng hợp cho Tháng ${month}/${year}.`,
+                `No attendance summary found for ${month}/${year}.`,
+              )}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Bấm &ldquo;Tổng hợp công tháng&rdquo; để hệ thống tự động tính công từ chấm công ngày, ngày lễ, nghỉ phép, OT và công tác đã duyệt.
+              {tr(
+                'Bấm "Tổng hợp công tháng" để hệ thống tự động tính công từ chấm công ngày, ngày lễ, nghỉ phép, OT và công tác đã duyệt.',
+                'Click "Calculate Monthly Summary" to automatically compute workdays from daily attendance, holidays, approved leaves, OT, and business trips.',
+              )}
             </p>
             {canManage && (
               <button
@@ -464,7 +546,12 @@ export function AttendanceSummariesPanel({
                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
               >
                 <IconCalculator size={15} />
-                <span>Chạy tổng hợp công Tháng {month}/{year}</span>
+                <span>
+                  {tr(
+                    `Chạy tổng hợp công Tháng ${month}/${year}`,
+                    `Calculate Summary for ${month}/${year}`,
+                  )}
+                </span>
               </button>
             )}
           </div>
@@ -474,17 +561,27 @@ export function AttendanceSummariesPanel({
               <table className="w-full min-w-[1060px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50 uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Nhân viên</th>
-                    <th className="px-3 py-3 font-semibold">Phòng ban</th>
-                    <th className="px-3 py-3 text-right font-semibold">Chuẩn</th>
-                    <th className="px-3 py-3 text-right font-semibold">Thực tế</th>
-                    <th className="px-3 py-3 text-right font-semibold">Phép CL / KL</th>
-                    <th className="px-3 py-3 text-right font-semibold">Lễ</th>
-                    <th className="px-3 py-3 text-right font-semibold text-blue-700">Hưởng lương</th>
+                    <th className="px-4 py-3 font-semibold">{tr('Nhân viên', 'Employee')}</th>
+                    <th className="px-3 py-3 font-semibold">{tr('Phòng ban', 'Department')}</th>
+                    <th className="px-3 py-3 text-right font-semibold">{tr('Chuẩn', 'Standard')}</th>
+                    <th className="px-3 py-3 text-right font-semibold">{tr('Thực tế', 'Actual')}</th>
+                    <th className="px-3 py-3 text-right font-semibold">
+                      {tr('Phép CL / KL', 'Paid / Unpaid Leave')}
+                    </th>
+                    <th className="px-3 py-3 text-right font-semibold">{tr('Lễ', 'Holiday')}</th>
+                    <th className="px-3 py-3 text-right font-semibold text-blue-700">
+                      {tr('Hưởng lương', 'Payable')}
+                    </th>
                     <th className="px-3 py-3 text-right font-semibold">OT (150/200/300)</th>
-                    <th className="px-3 py-3 text-right font-semibold">Đi muộn</th>
-                    <th className="px-3 py-3 text-center font-semibold">Trạng thái</th>
-                    {canManage && <th className="px-4 py-3 text-right font-semibold">Thao tác</th>}
+                    <th className="px-3 py-3 text-right font-semibold">{tr('Đi muộn', 'Late')}</th>
+                    <th className="px-3 py-3 text-center font-semibold">
+                      {tr('Trạng thái', 'Status')}
+                    </th>
+                    {canManage && (
+                      <th className="px-4 py-3 text-right font-semibold">
+                        {tr('Thao tác', 'Actions')}
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -502,7 +599,7 @@ export function AttendanceSummariesPanel({
                         {row.actualWorkDays.toFixed(2)}
                         {row.businessTripDays > 0 && (
                           <div className="text-[10px] font-normal text-slate-400">
-                            (CT: {row.businessTripDays})
+                            {tr(`(CT: ${row.businessTripDays})`, `(Trip: ${row.businessTripDays})`)}
                           </div>
                         )}
                       </td>
@@ -523,7 +620,10 @@ export function AttendanceSummariesPanel({
                       <td className="px-3 py-3 text-right">
                         {row.lateCount > 0 ? (
                           <span className="font-semibold text-amber-600">
-                            {row.lateCount} lần ({row.totalLateMinutes}p)
+                            {tr(
+                              `${row.lateCount} lần (${row.totalLateMinutes}p)`,
+                              `${row.lateCount}x (${row.totalLateMinutes}m)`,
+                            )}
                           </span>
                         ) : (
                           <span className="text-slate-400">0</span>
@@ -535,16 +635,19 @@ export function AttendanceSummariesPanel({
                             className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700"
                             title={
                               row.lockedAt
-                                ? `Chốt lúc ${row.lockedAt} bởi ${row.lockedByName ?? ''}`
-                                : 'Đã chốt công'
+                                ? tr(
+                                    `Chốt lúc ${row.lockedAt} bởi ${row.lockedByName ?? ''}`,
+                                    `Locked at ${row.lockedAt} by ${row.lockedByName ?? ''}`,
+                                  )
+                                : tr('Đã chốt công', 'Locked')
                             }
                           >
                             <IconLock size={12} />
-                            <span>Đã chốt</span>
+                            <span>{tr('Đã chốt', 'Locked')}</span>
                           </span>
                         ) : (
                           <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
-                            Nháp
+                            {tr('Nháp', 'Draft')}
                           </span>
                         )}
                       </td>
@@ -557,12 +660,15 @@ export function AttendanceSummariesPanel({
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                             title={
                               row.status === 'LOCKED'
-                                ? 'Cần mở khóa kỳ công trước khi điều chỉnh'
-                                : 'Điều chỉnh bảng công'
+                                ? tr(
+                                    'Cần mở khóa kỳ công trước khi điều chỉnh',
+                                    'Unlock attendance period before editing',
+                                  )
+                                : tr('Điều chỉnh bảng công', 'Adjust attendance summary')
                             }
                           >
                             <IconEdit size={14} />
-                            <span>Sửa</span>
+                            <span>{tr('Sửa', 'Edit')}</span>
                           </button>
                         </td>
                       )}
@@ -575,7 +681,10 @@ export function AttendanceSummariesPanel({
             {meta.totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
                 <span>
-                  Trang {meta.page}/{meta.totalPages} ({meta.total} bản ghi)
+                  {tr(
+                    `Trang ${meta.page}/${meta.totalPages} (${meta.total} bản ghi)`,
+                    `Page ${meta.page}/${meta.totalPages} (${meta.total} records)`,
+                  )}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -587,7 +696,7 @@ export function AttendanceSummariesPanel({
                     }}
                     className="rounded-lg border border-slate-200 px-3 py-1 disabled:opacity-40"
                   >
-                    Trước
+                    {tr('Trước', 'Previous')}
                   </button>
                   <button
                     type="button"
@@ -598,7 +707,7 @@ export function AttendanceSummariesPanel({
                     }}
                     className="rounded-lg border border-slate-200 px-3 py-1 disabled:opacity-40"
                   >
-                    Sau
+                    {tr('Sau', 'Next')}
                   </button>
                 </div>
               </div>
@@ -614,17 +723,28 @@ export function AttendanceSummariesPanel({
           onClose={() => setEditingSummary(null)}
           onSuccess={() => {
             setEditingSummary(null);
-            refreshList('Đã lưu điều chỉnh bảng công và ghi Audit Log.');
+            refreshList(
+              tr(
+                'Đã lưu điều chỉnh bảng công và ghi Audit Log.',
+                'Saved attendance summary adjustment and recorded Audit Log.',
+              ),
+            );
           }}
         />
       )}
 
       <ConfirmModal
         isOpen={isLockModalOpen}
-        title={`Chốt bảng công Tháng ${month}/${year}`}
-        description={`Bạn sắp chốt khóa ${stats.draftCount} bản ghi bảng công ở trạng thái Nháp sang LOCKED. Sau khi chốt, dữ liệu chấm công trong tháng này sẽ được bảo vệ để phục vụ tính lương.`}
-        confirmLabel="Xác nhận Chốt công"
-        cancelLabel="Hủy"
+        title={tr(
+          `Chốt bảng công Tháng ${month}/${year}`,
+          `Lock Attendance Summary for ${month}/${year}`,
+        )}
+        description={tr(
+          `Bạn sắp chốt khóa ${stats.draftCount} bản ghi bảng công ở trạng thái Nháp sang LOCKED. Sau khi chốt, dữ liệu chấm công trong tháng này sẽ được bảo vệ để phục vụ tính lương.`,
+          `You are about to lock ${stats.draftCount} draft attendance summary records to LOCKED. Once locked, this month's attendance data will be protected for payroll calculation.`,
+        )}
+        confirmLabel={tr('Xác nhận Chốt công', 'Confirm Lock')}
+        cancelLabel={tr('Hủy', 'Cancel')}
         variant="primary"
         isProcessing={isLocking}
         onConfirm={() => void handleConfirmLock()}
@@ -636,14 +756,17 @@ export function AttendanceSummariesPanel({
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <h3 className="text-sm font-semibold text-slate-900">
-                Mở khóa Bảng công Tháng {month}/{year}
+                {tr(
+                  `Mở khóa Bảng công Tháng ${month}/${year}`,
+                  `Unlock Attendance Summary for ${month}/${year}`,
+                )}
               </h3>
               <button
                 type="button"
                 disabled={isUnlocking}
                 onClick={() => setIsUnlockModalOpen(false)}
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
-                aria-label="Đóng"
+                aria-label={tr('Đóng', 'Close')}
               >
                 <IconX size={18} />
               </button>
@@ -655,11 +778,14 @@ export function AttendanceSummariesPanel({
                 </div>
               )}
               <p className="text-xs text-slate-600">
-                Thao tác mở khóa sẽ chuyển {stats.lockedCount} bản ghi đã chốt về trạng thái Nháp để điều chỉnh và được ghi nhận vào Audit Log.
+                {tr(
+                  `Thao tác mở khóa sẽ chuyển ${stats.lockedCount} bản ghi đã chốt về trạng thái Nháp để điều chỉnh và được ghi nhận vào Audit Log.`,
+                  `Unlocking will revert ${stats.lockedCount} locked records to Draft status for adjustment and will be recorded in the Audit Log.`,
+                )}
               </p>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Lý do mở khóa *
+                  {tr('Lý do mở khóa *', 'Unlock Reason *')}
                 </label>
                 <textarea
                   rows={3}
@@ -668,7 +794,10 @@ export function AttendanceSummariesPanel({
                   disabled={isUnlocking}
                   value={unlockReason}
                   onChange={(e) => setUnlockReason(e.target.value)}
-                  placeholder="VD: Bổ sung đơn nghỉ phép đã duyệt trễ cho nhân viên phòng Kỹ thuật"
+                  placeholder={tr(
+                    'VD: Bổ sung đơn nghỉ phép đã duyệt trễ cho nhân viên phòng Kỹ thuật',
+                    'e.g. Adding late-approved leave request for Engineering employee',
+                  )}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-blue-500"
                 />
               </div>
@@ -679,7 +808,7 @@ export function AttendanceSummariesPanel({
                   onClick={() => setIsUnlockModalOpen(false)}
                   className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-700"
                 >
-                  Hủy
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -687,7 +816,7 @@ export function AttendanceSummariesPanel({
                   className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
                 >
                   {isUnlocking && <IconLoader2 size={14} className="animate-spin" />}
-                  <span>Xác nhận Mở khóa</span>
+                  <span>{tr('Xác nhận Mở khóa', 'Confirm Unlock')}</span>
                 </button>
               </div>
             </form>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { IconInbox, IconRefresh, IconShieldLock } from '@tabler/icons-react';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import type { PaginationMeta } from '@/lib/portable/pagination';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface AuditLogRow {
   id: number;
@@ -17,7 +18,11 @@ interface AuditLogRow {
   createdAt: string;
 }
 
+const ERR_LOAD_AUDIT_LOGS = '__ERR_LOAD_AUDIT_LOGS__';
+const ERR_NETWORK_AUDIT_LOGS = '__ERR_NETWORK_AUDIT_LOGS__';
+
 export default function AuditLogsSettingsPage() {
+  const { tr } = useI18n();
   const [items, setItems] = useState<AuditLogRow[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [viewState, setViewState] = useState<'loading' | 'success' | 'error'>('loading');
@@ -48,7 +53,7 @@ export default function AuditLogsSettingsPage() {
           return;
         }
         if (!res.ok || !json?.success) {
-          setErrorMessage(json?.error?.message ?? 'Không thể tải nhật ký kiểm toán.');
+          setErrorMessage(json?.error?.message ?? ERR_LOAD_AUDIT_LOGS);
           setViewState('error');
           return;
         }
@@ -61,7 +66,7 @@ export default function AuditLogsSettingsPage() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMessage('Lỗi kết nối khi tải nhật ký kiểm toán.');
+        setErrorMessage(ERR_NETWORK_AUDIT_LOGS);
         setViewState('error');
       });
 
@@ -73,13 +78,28 @@ export default function AuditLogsSettingsPage() {
     setReloadTick((t) => t + 1);
   }
 
+  const resolvedErrorMessage =
+    errorMessage === ERR_LOAD_AUDIT_LOGS
+      ? tr('Không thể tải nhật ký kiểm toán.', 'Unable to load audit logs.')
+      : errorMessage === ERR_NETWORK_AUDIT_LOGS
+        ? tr(
+            'Lỗi kết nối khi tải nhật ký kiểm toán.',
+            'Connection error while loading audit logs.',
+          )
+        : errorMessage;
+
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Nhật ký Kiểm toán Hệ thống</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Nhật ký Kiểm toán Hệ thống', 'Audit Logs')}
+          </h1>
           <p className="text-sm text-slate-500">
-            Theo dõi lịch sử đăng nhập và mọi thao tác thay đổi dữ liệu quan trọng.
+            {tr(
+              'Theo dõi lịch sử đăng nhập và mọi thao tác thay đổi dữ liệu quan trọng.',
+              'Track sign-in history and all critical data modification events.',
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -92,7 +112,7 @@ export default function AuditLogsSettingsPage() {
             }}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
           >
-            <option value="">Tất cả phân hệ</option>
+            <option value="">{tr('Tất cả phân hệ', 'All modules')}</option>
             <option value="core">Core</option>
             <option value="hrm">HRM</option>
           </select>
@@ -103,7 +123,7 @@ export default function AuditLogsSettingsPage() {
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
             <IconRefresh size={16} />
-            <span>Tải lại</span>
+            <span>{tr('Tải lại', 'Reload')}</span>
           </button>
         </div>
       </div>
@@ -118,13 +138,13 @@ export default function AuditLogsSettingsPage() {
 
       {viewState === 'error' && (
         <div className="flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-5">
-          <span className="text-sm font-medium text-rose-700">{errorMessage}</span>
+          <span className="text-sm font-medium text-rose-700">{resolvedErrorMessage}</span>
           <button
             type="button"
             onClick={triggerReload}
             className="rounded-xl border border-rose-300 bg-white px-3.5 py-1.5 text-xs font-medium text-rose-700"
           >
-            Thử lại
+            {tr('Thử lại', 'Retry')}
           </button>
         </div>
       )}
@@ -132,7 +152,9 @@ export default function AuditLogsSettingsPage() {
       {viewState === 'success' && items.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-14 text-center">
           <IconInbox size={32} className="text-slate-400" />
-          <p className="mt-2 text-sm font-medium text-slate-700">Chưa có bản ghi nhật ký nào</p>
+          <p className="mt-2 text-sm font-medium text-slate-700">
+            {tr('Chưa có bản ghi nhật ký nào', 'No audit log entries yet')}
+          </p>
         </div>
       )}
 
@@ -142,10 +164,10 @@ export default function AuditLogsSettingsPage() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Thời gian</th>
-                  <th className="px-4 py-3">Người thực hiện</th>
-                  <th className="px-4 py-3">Phân hệ / Hành động</th>
-                  <th className="px-4 py-3">Đối tượng</th>
+                  <th className="px-4 py-3">{tr('Thời gian', 'Timestamp')}</th>
+                  <th className="px-4 py-3">{tr('Người thực hiện', 'Actor')}</th>
+                  <th className="px-4 py-3">{tr('Phân hệ / Hành động', 'Module / Action')}</th>
+                  <th className="px-4 py-3">{tr('Đối tượng', 'Target Entity')}</th>
                   <th className="px-4 py-3">IP</th>
                 </tr>
               </thead>
@@ -157,7 +179,7 @@ export default function AuditLogsSettingsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-xs font-medium text-slate-900">
-                        {log.actorName ?? 'Hệ thống'}
+                        {log.actorName ?? tr('Hệ thống', 'System')}
                       </div>
                       <div className="text-[11px] text-slate-500">{log.actorEmail ?? '-'}</div>
                     </td>
@@ -183,7 +205,10 @@ export default function AuditLogsSettingsPage() {
           {meta && meta.totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
               <span>
-                Trang {meta.page}/{meta.totalPages} (Tổng {meta.total} bản ghi)
+                {tr(
+                  `Trang ${meta.page}/${meta.totalPages} (Tổng ${meta.total} bản ghi)`,
+                  `Page ${meta.page}/${meta.totalPages} (${meta.total} entries)`,
+                )}
               </span>
               <div className="flex gap-2">
                 <button
@@ -195,7 +220,7 @@ export default function AuditLogsSettingsPage() {
                   }}
                   className="rounded-lg border border-slate-300 px-3 py-1 disabled:opacity-50"
                 >
-                  Trước
+                  {tr('Trước', 'Previous')}
                 </button>
                 <button
                   type="button"
@@ -206,7 +231,7 @@ export default function AuditLogsSettingsPage() {
                   }}
                   className="rounded-lg border border-slate-300 px-3 py-1 disabled:opacity-50"
                 >
-                  Sau
+                  {tr('Sau', 'Next')}
                 </button>
               </div>
             </div>

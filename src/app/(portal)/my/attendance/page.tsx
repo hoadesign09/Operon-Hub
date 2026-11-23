@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   IconAlertCircle,
   IconCalendarTime,
@@ -14,6 +14,7 @@ import {
 import type { AttendanceSummaryRecord } from '@/components/hrm/AttendanceSummaryEditModal';
 import type { AttendanceLogRecord } from '@/components/hrm/ManualAttendanceModal';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface MyAttendanceData {
   employee: {
@@ -48,18 +49,38 @@ interface MyAttendanceData {
   logs: AttendanceLogRecord[];
 }
 
-const STATUS_BADGE_MAP: Record<string, { label: string; className: string }> = {
-  PRESENT: { label: 'Đúng giờ', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  LATE: { label: 'Đi muộn', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  ABSENT: { label: 'Vắng mặt', className: 'bg-rose-50 text-rose-700 border-rose-200' },
-  LEAVE: { label: 'Nghỉ phép', className: 'bg-blue-50 text-blue-700 border-blue-200' },
-  HOLIDAY: { label: 'Ngày lễ', className: 'bg-purple-50 text-purple-700 border-purple-200' },
+const STATUS_BADGE_MAP: Record<string, { vi: string; en: string; className: string }> = {
+  PRESENT: {
+    vi: 'Đúng giờ',
+    en: 'On Time',
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  },
+  LATE: {
+    vi: 'Đi muộn',
+    en: 'Late',
+    className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  ABSENT: {
+    vi: 'Vắng mặt',
+    en: 'Absent',
+    className: 'bg-rose-50 text-rose-700 border-rose-200',
+  },
+  LEAVE: {
+    vi: 'Nghỉ phép',
+    en: 'On Leave',
+    className: 'bg-blue-50 text-blue-700 border-blue-200',
+  },
+  HOLIDAY: {
+    vi: 'Ngày lễ',
+    en: 'Holiday',
+    className: 'bg-purple-50 text-purple-700 border-purple-200',
+  },
 };
 
-const SOURCE_LABEL_MAP: Record<string, string> = {
-  WEB: 'Web ESS',
-  IMPORT: 'Import Excel',
-  MANUAL: 'HR chỉnh tay',
+const SOURCE_LABEL_MAP: Record<string, { vi: string; en: string }> = {
+  WEB: { vi: 'Web ESS', en: 'Web ESS' },
+  IMPORT: { vi: 'Import Excel', en: 'Excel Import' },
+  MANUAL: { vi: 'HR chỉnh tay', en: 'HR Manual' },
 };
 
 function getCurrentVnTimeString(): string {
@@ -73,6 +94,12 @@ function getCurrentVnTimeString(): string {
 }
 
 export default function MyAttendancePage() {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -110,7 +137,13 @@ export default function MyAttendancePage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success || !json.data) {
-          throw new Error(json.error?.message ?? 'Không thể tải dữ liệu chấm công cá nhân.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải dữ liệu chấm công cá nhân.',
+                'Failed to load your attendance data.',
+              ),
+          );
         }
         return json.data;
       }),
@@ -136,7 +169,11 @@ export default function MyAttendancePage() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMsg(err instanceof Error ? err.message : 'Lỗi tải dữ liệu chấm công.');
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi tải dữ liệu chấm công.', 'Error loading attendance data.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -176,7 +213,9 @@ export default function MyAttendancePage() {
           type: 'error',
           message:
             json.error?.message ??
-            (type === 'check-in' ? 'Check-in thất bại.' : 'Check-out thất bại.'),
+            (type === 'check-in'
+              ? tr('Check-in thất bại.', 'Check-in failed.')
+              : tr('Check-out thất bại.', 'Check-out failed.')),
         });
         setIsActing(false);
         return;
@@ -187,15 +226,24 @@ export default function MyAttendancePage() {
         type: 'success',
         message:
           type === 'check-in'
-            ? `Đã Check-in thành công lúc ${json.data?.log?.checkInTime ?? ''}.`
-            : `Đã Check-out thành công lúc ${json.data?.log?.checkOutTime ?? ''} (${json.data?.log?.workedHours ?? 0} giờ).`,
+            ? tr(
+                `Đã Check-in thành công lúc ${json.data?.log?.checkInTime ?? ''}.`,
+                `Checked in successfully at ${json.data?.log?.checkInTime ?? ''}.`,
+              )
+            : tr(
+                `Đã Check-out thành công lúc ${json.data?.log?.checkOutTime ?? ''} (${json.data?.log?.workedHours ?? 0} giờ).`,
+                `Checked out successfully at ${json.data?.log?.checkOutTime ?? ''} (${json.data?.log?.workedHours ?? 0} hrs).`,
+              ),
       });
       setIsActing(false);
       triggerReload();
     } catch {
       setActionBanner({
         type: 'error',
-        message: 'Lỗi kết nối máy chủ khi chấm công.',
+        message: tr(
+          'Lỗi kết nối máy chủ khi chấm công.',
+          'Server connection error while recording attendance.',
+        ),
       });
       setIsActing(false);
     }
@@ -208,9 +256,14 @@ export default function MyAttendancePage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Chấm công của tôi (ESS)</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Chấm công của tôi (ESS)', 'My Attendance (ESS)')}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Check-in / Check-out trực tuyến và theo dõi bảng nhật ký chấm công cá nhân theo tháng.
+            {tr(
+              'Check-in / Check-out trực tuyến và theo dõi bảng nhật ký chấm công cá nhân theo tháng.',
+              'Online Check-in / Check-out and monthly personal attendance log tracking.',
+            )}
           </p>
         </div>
 
@@ -218,22 +271,24 @@ export default function MyAttendancePage() {
           <select
             value={month}
             onChange={(e) => triggerReload(year, Number(e.target.value))}
+            aria-label={tr('Chọn tháng', 'Select month')}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-blue-500"
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
-                Tháng {m}
+                {tr(`Tháng ${m}`, `Month ${m}`)}
               </option>
             ))}
           </select>
           <select
             value={year}
             onChange={(e) => triggerReload(Number(e.target.value), month)}
+            aria-label={tr('Chọn năm', 'Select year')}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-blue-500"
           >
             {[2025, 2026, 2027].map((y) => (
               <option key={y} value={y}>
-                Năm {y}
+                {tr(`Năm ${y}`, `Year ${y}`)}
               </option>
             ))}
           </select>
@@ -260,7 +315,7 @@ export default function MyAttendancePage() {
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       ) : data ? (
@@ -270,10 +325,12 @@ export default function MyAttendancePage() {
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                   <IconCalendarTime size={15} />
-                  <span>Hôm nay: {formatDateVN(data.todayDate)}</span>
+                  <span>
+                    {tr('Hôm nay:', 'Today:')} {formatDateVN(data.todayDate)}
+                  </span>
                   {data.isTodayHoliday && (
                     <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[11px] text-purple-700">
-                      Ngày lễ
+                      {tr('Ngày lễ', 'Holiday')}
                     </span>
                   )}
                 </div>
@@ -290,18 +347,21 @@ export default function MyAttendancePage() {
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  Ca áp dụng:{' '}
+                  {tr('Ca áp dụng:', 'Assigned shift:')}{' '}
                   {data.todayShift ? (
                     <span className="font-semibold text-slate-700">
                       {data.todayShift.code} — {data.todayShift.name} ({data.todayShift.startTime}–
                       {data.todayShift.endTime}
                       {data.todayShift.breakStartTime && data.todayShift.breakEndTime
-                        ? `, nghỉ trưa ${data.todayShift.breakStartTime}–${data.todayShift.breakEndTime}`
+                        ? tr(
+                            `, nghỉ trưa ${data.todayShift.breakStartTime}–${data.todayShift.breakEndTime}`,
+                            `, break ${data.todayShift.breakStartTime}–${data.todayShift.breakEndTime}`,
+                          )
                         : ''}
                       )
                     </span>
                   ) : (
-                    <span>Chưa thiết lập ca mặc định</span>
+                    <span>{tr('Chưa thiết lập ca mặc định', 'No default shift configured')}</span>
                   )}
                 </div>
               </div>
@@ -309,13 +369,17 @@ export default function MyAttendancePage() {
               <div className="w-full max-w-md space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="grid grid-cols-2 gap-3 text-center">
                   <div className="rounded-xl bg-white p-3 border border-slate-200">
-                    <div className="text-[11px] font-medium uppercase text-slate-400">Giờ vào</div>
+                    <div className="text-[11px] font-medium uppercase text-slate-400">
+                      {tr('Giờ vào', 'Check-in')}
+                    </div>
                     <div className="mt-1 font-mono text-xl font-bold text-emerald-700">
                       {data.todayLog?.checkInTime ?? '--:--'}
                     </div>
                   </div>
                   <div className="rounded-xl bg-white p-3 border border-slate-200">
-                    <div className="text-[11px] font-medium uppercase text-slate-400">Giờ ra</div>
+                    <div className="text-[11px] font-medium uppercase text-slate-400">
+                      {tr('Giờ ra', 'Check-out')}
+                    </div>
                     <div className="mt-1 font-mono text-xl font-bold text-blue-700">
                       {data.todayLog?.checkOutTime ?? '--:--'}
                     </div>
@@ -327,7 +391,10 @@ export default function MyAttendancePage() {
                   value={actionNote}
                   disabled={isActing}
                   onChange={(e) => setActionNote(e.target.value)}
-                  placeholder="Ghi chú chấm công (tùy chọn, VD: Làm việc tại văn phòng)..."
+                  placeholder={tr(
+                    'Ghi chú chấm công (tùy chọn, VD: Làm việc tại văn phòng)...',
+                    'Attendance note (optional, e.g. Working from office)...',
+                  )}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500"
                 />
 
@@ -343,7 +410,7 @@ export default function MyAttendancePage() {
                     ) : (
                       <IconClockPlay size={17} />
                     )}
-                    <span>{hasCheckedInToday ? 'Đã Check-in' : 'Check-in'}</span>
+                    <span>{hasCheckedInToday ? tr('Đã Check-in', 'Checked In') : 'Check-in'}</span>
                   </button>
 
                   <button
@@ -357,7 +424,11 @@ export default function MyAttendancePage() {
                     ) : (
                       <IconClockStop size={17} />
                     )}
-                    <span>{hasCheckedOutToday ? 'Cập nhật Check-out' : 'Check-out'}</span>
+                    <span>
+                      {hasCheckedOutToday
+                        ? tr('Cập nhật Check-out', 'Update Check-out')
+                        : 'Check-out'}
+                    </span>
                   </button>
                 </div>
 
@@ -378,29 +449,47 @@ export default function MyAttendancePage() {
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-xs font-medium text-slate-500">Ngày có chấm công</div>
+              <div className="text-xs font-medium text-slate-500">
+                {tr('Ngày có chấm công', 'Days Present')}
+              </div>
               <div className="mt-1.5 text-2xl font-bold text-slate-900">
-                {data.stats.presentDays} <span className="text-sm font-normal text-slate-500">ngày</span>
+                {data.stats.presentDays}{' '}
+                <span className="text-sm font-normal text-slate-500">
+                  {tr('ngày', data.stats.presentDays === 1 ? 'day' : 'days')}
+                </span>
               </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-xs font-medium text-slate-500">Tổng giờ làm việc</div>
+              <div className="text-xs font-medium text-slate-500">
+                {tr('Tổng giờ làm việc', 'Total Worked Hours')}
+              </div>
               <div className="mt-1.5 text-2xl font-bold text-blue-700">
                 {data.stats.totalWorkedHours.toFixed(2)}{' '}
-                <span className="text-sm font-normal text-slate-500">giờ</span>
+                <span className="text-sm font-normal text-slate-500">
+                  {tr('giờ', 'hrs')}
+                </span>
               </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-xs font-medium text-slate-500">Số lần đi muộn</div>
+              <div className="text-xs font-medium text-slate-500">
+                {tr('Số lần đi muộn', 'Late Arrivals')}
+              </div>
               <div className="mt-1.5 text-2xl font-bold text-amber-600">
-                {data.stats.lateDays} <span className="text-sm font-normal text-slate-500">lần</span>
+                {data.stats.lateDays}{' '}
+                <span className="text-sm font-normal text-slate-500">
+                  {tr('lần', data.stats.lateDays === 1 ? 'time' : 'times')}
+                </span>
               </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-xs font-medium text-slate-500">Tổng phút đi muộn</div>
+              <div className="text-xs font-medium text-slate-500">
+                {tr('Tổng phút đi muộn', 'Total Late Minutes')}
+              </div>
               <div className="mt-1.5 text-2xl font-bold text-rose-600">
                 {data.stats.totalLateMinutes}{' '}
-                <span className="text-sm font-normal text-slate-500">phút</span>
+                <span className="text-sm font-normal text-slate-500">
+                  {tr('phút', 'mins')}
+                </span>
               </div>
             </div>
           </div>
@@ -410,51 +499,67 @@ export default function MyAttendancePage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900">
-                    Bảng công tổng hợp Tháng {monthlySummary.month}/{monthlySummary.year}
+                    {tr(
+                      `Bảng công tổng hợp Tháng ${monthlySummary.month}/${monthlySummary.year}`,
+                      `Monthly Timesheet Summary — ${monthlySummary.month}/${monthlySummary.year}`,
+                    )}
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Số liệu tổng hợp phục vụ tính lương (bao gồm chấm công, phép hưởng lương, ngày lễ và OT đã duyệt).
+                    {tr(
+                      'Số liệu tổng hợp phục vụ tính lương (bao gồm chấm công, phép hưởng lương, ngày lễ và OT đã duyệt).',
+                      'Consolidated payroll figures (including attendance, paid leave, holidays, and approved OT).',
+                    )}
                   </p>
                 </div>
                 {monthlySummary.status === 'LOCKED' ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     <IconLock size={13} />
-                    <span>Đã chốt công</span>
+                    <span>{tr('Đã chốt công', 'Locked')}</span>
                   </span>
                 ) : (
                   <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                    Đang rà soát (Nháp)
+                    {tr('Đang rà soát (Nháp)', 'In Review (Draft)')}
                   </span>
                 )}
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <div className="text-[11px] text-slate-500">Công chuẩn</div>
+                  <div className="text-[11px] text-slate-500">
+                    {tr('Công chuẩn', 'Standard Days')}
+                  </div>
                   <div className="mt-0.5 font-mono text-base font-bold text-slate-800">
                     {monthlySummary.standardWorkDays.toFixed(1)}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <div className="text-[11px] text-slate-500">Công thực tế</div>
+                  <div className="text-[11px] text-slate-500">
+                    {tr('Công thực tế', 'Actual Days')}
+                  </div>
                   <div className="mt-0.5 font-mono text-base font-bold text-slate-900">
                     {monthlySummary.actualWorkDays.toFixed(2)}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <div className="text-[11px] text-slate-500">Phép hưởng lương</div>
+                  <div className="text-[11px] text-slate-500">
+                    {tr('Phép hưởng lương', 'Paid Leave')}
+                  </div>
                   <div className="mt-0.5 font-mono text-base font-bold text-emerald-700">
                     {monthlySummary.paidLeaveDays.toFixed(1)}
                   </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <div className="text-[11px] text-slate-500">Ngày lễ</div>
+                  <div className="text-[11px] text-slate-500">
+                    {tr('Ngày lễ', 'Holidays')}
+                  </div>
                   <div className="mt-0.5 font-mono text-base font-bold text-purple-700">
                     {monthlySummary.holidayDays.toFixed(1)}
                   </div>
                 </div>
                 <div className="rounded-xl border border-blue-200 bg-white p-3">
-                  <div className="text-[11px] font-medium text-blue-700">Công hưởng lương</div>
+                  <div className="text-[11px] font-medium text-blue-700">
+                    {tr('Công hưởng lương', 'Payable Days')}
+                  </div>
                   <div className="mt-0.5 font-mono text-base font-bold text-blue-700">
                     {monthlySummary.payableDays.toFixed(2)}
                   </div>
@@ -474,19 +579,31 @@ export default function MyAttendancePage() {
               <div className="flex items-center gap-2">
                 <IconClockCheck size={18} className="text-blue-600" />
                 <h2 className="text-sm font-semibold text-slate-900">
-                  Nhật ký chấm công tháng {data.month}/{data.year}
+                  {tr(
+                    `Nhật ký chấm công tháng ${data.month}/${data.year}`,
+                    `Attendance Log — ${data.month}/${data.year}`,
+                  )}
                 </h2>
               </div>
-              <span className="text-xs text-slate-500">{data.logs.length} bản ghi</span>
+              <span className="text-xs text-slate-500">
+                {data.logs.length}{' '}
+                {tr('bản ghi', data.logs.length === 1 ? 'record' : 'records')}
+              </span>
             </div>
 
             {data.logs.length === 0 ? (
               <div className="p-10 text-center">
                 <p className="text-sm font-medium text-slate-700">
-                  Chưa có bản ghi chấm công nào trong tháng {data.month}/{data.year}.
+                  {tr(
+                    `Chưa có bản ghi chấm công nào trong tháng ${data.month}/${data.year}.`,
+                    `No attendance records for ${data.month}/${data.year}.`,
+                  )}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Bấm nút Check-in phía trên để bắt đầu ghi nhận ngày làm việc hôm nay.
+                  {tr(
+                    'Bấm nút Check-in phía trên để bắt đầu ghi nhận ngày làm việc hôm nay.',
+                    'Click the Check-in button above to start recording today’s workday.',
+                  )}
                 </p>
               </div>
             ) : (
@@ -494,24 +611,40 @@ export default function MyAttendancePage() {
                 <table className="w-full min-w-[780px] text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">Ngày công</th>
-                      <th className="px-4 py-3 font-semibold">Ca làm việc</th>
-                      <th className="px-4 py-3 text-center font-semibold">Giờ vào</th>
-                      <th className="px-4 py-3 text-center font-semibold">Giờ ra</th>
-                      <th className="px-4 py-3 text-right font-semibold">Đi muộn</th>
-                      <th className="px-4 py-3 text-right font-semibold">Về sớm</th>
-                      <th className="px-4 py-3 text-right font-semibold">Giờ công</th>
-                      <th className="px-4 py-3 text-center font-semibold">Nguồn</th>
-                      <th className="px-4 py-3 text-center font-semibold">Trạng thái</th>
-                      <th className="px-4 py-3 font-semibold">Ghi chú</th>
+                      <th className="px-4 py-3 font-semibold">{tr('Ngày công', 'Work Date')}</th>
+                      <th className="px-4 py-3 font-semibold">{tr('Ca làm việc', 'Shift')}</th>
+                      <th className="px-4 py-3 text-center font-semibold">
+                        {tr('Giờ vào', 'Check-in')}
+                      </th>
+                      <th className="px-4 py-3 text-center font-semibold">
+                        {tr('Giờ ra', 'Check-out')}
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold">
+                        {tr('Đi muộn', 'Late')}
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold">
+                        {tr('Về sớm', 'Early Leave')}
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold">
+                        {tr('Giờ công', 'Worked Hrs')}
+                      </th>
+                      <th className="px-4 py-3 text-center font-semibold">
+                        {tr('Nguồn', 'Source')}
+                      </th>
+                      <th className="px-4 py-3 text-center font-semibold">
+                        {tr('Trạng thái', 'Status')}
+                      </th>
+                      <th className="px-4 py-3 font-semibold">{tr('Ghi chú', 'Note')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {data.logs.map((log) => {
                       const badge = STATUS_BADGE_MAP[log.status] ?? {
-                        label: log.status,
+                        vi: log.status,
+                        en: log.status,
                         className: 'bg-slate-100 text-slate-700 border-slate-200',
                       };
+                      const sourceLabel = SOURCE_LABEL_MAP[log.source];
                       return (
                         <tr key={log.id} className="hover:bg-slate-50/70">
                           <td className="px-4 py-3 font-medium text-slate-900">
@@ -529,7 +662,7 @@ export default function MyAttendancePage() {
                           <td className="px-4 py-3 text-right text-xs">
                             {log.lateMinutes > 0 ? (
                               <span className="font-semibold text-amber-600">
-                                {log.lateMinutes} phút
+                                {log.lateMinutes} {tr('phút', 'min')}
                               </span>
                             ) : (
                               <span className="text-slate-400">0</span>
@@ -538,7 +671,7 @@ export default function MyAttendancePage() {
                           <td className="px-4 py-3 text-right text-xs">
                             {log.earlyLeaveMinutes > 0 ? (
                               <span className="font-semibold text-rose-600">
-                                {log.earlyLeaveMinutes} phút
+                                {log.earlyLeaveMinutes} {tr('phút', 'min')}
                               </span>
                             ) : (
                               <span className="text-slate-400">0</span>
@@ -548,13 +681,17 @@ export default function MyAttendancePage() {
                             {log.workedHours.toFixed(2)}h
                           </td>
                           <td className="px-4 py-3 text-center text-xs text-slate-500">
-                            {SOURCE_LABEL_MAP[log.source] ?? log.source}
+                            {sourceLabel
+                              ? locale === 'en'
+                                ? sourceLabel.en
+                                : sourceLabel.vi
+                              : log.source}
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span
                               className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
                             >
-                              {badge.label}
+                              {locale === 'en' ? badge.en : badge.vi}
                             </span>
                           </td>
                           <td className="max-w-[200px] truncate px-4 py-3 text-xs text-slate-500" title={log.note ?? ''}>

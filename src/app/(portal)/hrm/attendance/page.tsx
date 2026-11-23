@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   IconCalendarHeart,
   IconClipboardCheck,
@@ -33,6 +33,7 @@ import {
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 type ActiveTab = 'logs' | 'summaries' | 'shifts' | 'assignments' | 'holidays';
 
@@ -62,28 +63,28 @@ interface PaginationMeta {
   totalPages: number;
 }
 
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  PRESENT: { label: 'Đúng giờ', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  LATE: { label: 'Đi muộn', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  ABSENT: { label: 'Vắng mặt', className: 'bg-rose-50 text-rose-700 border-rose-200' },
-  LEAVE: { label: 'Nghỉ phép', className: 'bg-blue-50 text-blue-700 border-blue-200' },
-  HOLIDAY: { label: 'Ngày lễ', className: 'bg-purple-50 text-purple-700 border-purple-200' },
+const STATUS_BADGE: Record<string, { vi: string; en: string; className: string }> = {
+  PRESENT: { vi: 'Đúng giờ', en: 'On Time', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  LATE: { vi: 'Đi muộn', en: 'Late', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  ABSENT: { vi: 'Vắng mặt', en: 'Absent', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+  LEAVE: { vi: 'Nghỉ phép', en: 'On Leave', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  HOLIDAY: { vi: 'Ngày lễ', en: 'Holiday', className: 'bg-purple-50 text-purple-700 border-purple-200' },
 };
 
-const SOURCE_LABELS: Record<string, string> = {
-  WEB: 'Web ESS',
-  IMPORT: 'Import Excel',
-  MANUAL: 'HR chỉnh tay',
+const SOURCE_LABELS: Record<string, { vi: string; en: string }> = {
+  WEB: { vi: 'Web ESS', en: 'Web ESS' },
+  IMPORT: { vi: 'Import Excel', en: 'Excel Import' },
+  MANUAL: { vi: 'HR chỉnh tay', en: 'HR Manual' },
 };
 
-const DAY_LABELS: Record<number, string> = {
-  0: 'CN',
-  1: 'T2',
-  2: 'T3',
-  3: 'T4',
-  4: 'T5',
-  5: 'T6',
-  6: 'T7',
+const DAY_LABELS: Record<number, { vi: string; en: string }> = {
+  0: { vi: 'CN', en: 'Sun' },
+  1: { vi: 'T2', en: 'Mon' },
+  2: { vi: 'T3', en: 'Tue' },
+  3: { vi: 'T4', en: 'Wed' },
+  4: { vi: 'T5', en: 'Thu' },
+  5: { vi: 'T6', en: 'Fri' },
+  6: { vi: 'T7', en: 'Sat' },
 };
 
 function getMonthDefaultRange(): { fromDate: string; toDate: string } {
@@ -95,6 +96,12 @@ function getMonthDefaultRange(): { fromDate: string; toDate: string } {
 }
 
 export default function HrmAttendancePage() {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const { user, selectedBranchId } = usePortalAuth();
   const perms = new Set(user?.permissions ?? []);
   const canManage = Boolean(user?.isSuperAdmin || perms.has('hrm.attendance.manage'));
@@ -264,7 +271,13 @@ export default function HrmAttendancePage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success) {
-          throw new Error(json.error?.message ?? 'Không thể tải danh sách chấm công.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải danh sách chấm công.',
+                'Failed to load attendance logs.',
+              ),
+          );
         }
         setLogs(json.data?.items ?? []);
         if (json.meta) setLogsMeta(json.meta);
@@ -272,7 +285,11 @@ export default function HrmAttendancePage() {
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setLogsError(err instanceof Error ? err.message : 'Lỗi tải danh sách chấm công.');
+        setLogsError(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi tải danh sách chấm công.', 'Error loading attendance logs.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLogsLoading(false);
@@ -298,14 +315,21 @@ export default function HrmAttendancePage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success) {
-          throw new Error(json.error?.message ?? 'Không thể tải danh sách ca làm việc.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current('Không thể tải danh sách ca làm việc.', 'Failed to load work shifts.'),
+          );
         }
         setShifts(json.data?.items ?? []);
         setShiftsError(null);
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setShiftsError(err instanceof Error ? err.message : 'Lỗi tải ca làm việc.');
+        setShiftsError(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi tải ca làm việc.', 'Error loading work shifts.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setShiftsLoading(false);
@@ -334,7 +358,13 @@ export default function HrmAttendancePage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success) {
-          throw new Error(json.error?.message ?? 'Không thể tải danh sách phân ca.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải danh sách phân ca.',
+                'Failed to load shift assignments.',
+              ),
+          );
         }
         setAssignments(json.data?.items ?? []);
         if (json.meta) setAssignmentsMeta(json.meta);
@@ -342,7 +372,11 @@ export default function HrmAttendancePage() {
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setAssignmentsError(err instanceof Error ? err.message : 'Lỗi tải danh sách phân ca.');
+        setAssignmentsError(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi tải danh sách phân ca.', 'Error loading shift assignments.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setAssignmentsLoading(false);
@@ -368,14 +402,21 @@ export default function HrmAttendancePage() {
           error?: { message?: string };
         };
         if (!res.ok || !json.success) {
-          throw new Error(json.error?.message ?? 'Không thể tải lịch ngày lễ.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current('Không thể tải lịch ngày lễ.', 'Failed to load holiday calendar.'),
+          );
         }
         setHolidays(json.data?.items ?? []);
         setHolidaysError(null);
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setHolidaysError(err instanceof Error ? err.message : 'Lỗi tải lịch ngày lễ.');
+        setHolidaysError(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi tải lịch ngày lễ.', 'Error loading holiday calendar.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setHolidaysLoading(false);
@@ -432,7 +473,7 @@ export default function HrmAttendancePage() {
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setToastMsg(json.error?.message ?? 'Xóa dữ liệu thất bại.');
+        setToastMsg(json.error?.message ?? tr('Xóa dữ liệu thất bại.', 'Failed to delete record.'));
         setIsDeleting(false);
         setConfirmDelete(null);
         return;
@@ -440,9 +481,11 @@ export default function HrmAttendancePage() {
 
       setIsDeleting(false);
       setConfirmDelete(null);
-      triggerRefresh('Đã xóa dữ liệu thành công.');
+      triggerRefresh(tr('Đã xóa dữ liệu thành công.', 'Deleted successfully.'));
     } catch {
-      setToastMsg('Lỗi kết nối máy chủ khi xóa dữ liệu.');
+      setToastMsg(
+        tr('Lỗi kết nối máy chủ khi xóa dữ liệu.', 'Server connection error while deleting record.'),
+      );
       setIsDeleting(false);
       setConfirmDelete(null);
     }
@@ -452,9 +495,14 @@ export default function HrmAttendancePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Quản trị Chấm công, Ca làm & Ngày lễ</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Quản trị Chấm công, Ca làm & Ngày lễ', 'Attendance, Shifts & Holidays')}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Theo dõi nhật ký chấm công hàng ngày, Import/Export Excel, quản trị ca làm việc và lịch ngày lễ Việt Nam.
+            {tr(
+              'Theo dõi nhật ký chấm công hàng ngày, Import/Export Excel, quản trị ca làm việc và lịch ngày lễ Việt Nam.',
+              'Track daily attendance logs, import/export Excel, manage work shifts, and maintain public holidays.',
+            )}
           </p>
         </div>
 
@@ -468,7 +516,7 @@ export default function HrmAttendancePage() {
                   className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
                 >
                   <IconPlus size={16} />
-                  <span>Chấm công tay</span>
+                  <span>{tr('Chấm công tay', 'Manual Entry')}</span>
                 </button>
               )}
               {canImport && (
@@ -478,7 +526,7 @@ export default function HrmAttendancePage() {
                   className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
                 >
                   <IconFileSpreadsheet size={16} />
-                  <span>Import Excel</span>
+                  <span>{tr('Import Excel', 'Import Excel')}</span>
                 </button>
               )}
               {canExport && (
@@ -488,7 +536,7 @@ export default function HrmAttendancePage() {
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   <IconDownload size={16} />
-                  <span>Xuất Excel</span>
+                  <span>{tr('Xuất Excel', 'Export Excel')}</span>
                 </a>
               )}
             </>
@@ -500,7 +548,7 @@ export default function HrmAttendancePage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
             >
               <IconPlus size={16} />
-              <span>Tạo ca làm việc</span>
+              <span>{tr('Tạo ca làm việc', 'Add Work Shift')}</span>
             </button>
           )}
           {activeTab === 'assignments' && canManage && (
@@ -510,7 +558,7 @@ export default function HrmAttendancePage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
             >
               <IconPlus size={16} />
-              <span>Phân ca nhân viên</span>
+              <span>{tr('Phân ca nhân viên', 'Assign Shift')}</span>
             </button>
           )}
           {activeTab === 'holidays' && canManage && (
@@ -520,7 +568,7 @@ export default function HrmAttendancePage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
             >
               <IconPlus size={16} />
-              <span>Thêm ngày lễ</span>
+              <span>{tr('Thêm ngày lễ', 'Add Holiday')}</span>
             </button>
           )}
         </div>
@@ -535,11 +583,11 @@ export default function HrmAttendancePage() {
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
         {(
           [
-            { key: 'logs', label: 'Nhật ký chấm công', icon: IconClockHour8 },
-            { key: 'summaries', label: 'Bảng công tháng', icon: IconClipboardCheck },
-            { key: 'shifts', label: 'Ca làm việc', icon: IconClockHour8 },
-            { key: 'assignments', label: 'Phân ca nhân viên', icon: IconUsersGroup },
-            { key: 'holidays', label: 'Lịch ngày lễ VN', icon: IconCalendarHeart },
+            { key: 'logs', label: tr('Nhật ký chấm công', 'Attendance Logs'), icon: IconClockHour8 },
+            { key: 'summaries', label: tr('Bảng công tháng', 'Monthly Summary'), icon: IconClipboardCheck },
+            { key: 'shifts', label: tr('Ca làm việc', 'Work Shifts'), icon: IconClockHour8 },
+            { key: 'assignments', label: tr('Phân ca nhân viên', 'Shift Assignments'), icon: IconUsersGroup },
+            { key: 'holidays', label: tr('Lịch ngày lễ VN', 'Holidays'), icon: IconCalendarHeart },
           ] as const
         ).map((tab) => {
           const Icon = tab.icon;
@@ -567,7 +615,9 @@ export default function HrmAttendancePage() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-slate-500">Từ ngày</label>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                {tr('Từ ngày', 'From Date')}
+              </label>
               <input
                 type="date"
                 value={fromDate}
@@ -580,7 +630,9 @@ export default function HrmAttendancePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-slate-500">Đến ngày</label>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                {tr('Đến ngày', 'To Date')}
+              </label>
               <input
                 type="date"
                 value={toDate}
@@ -593,7 +645,9 @@ export default function HrmAttendancePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-slate-500">Trạng thái</label>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                {tr('Trạng thái', 'Status')}
+              </label>
               <select
                 value={statusFilter}
                 onChange={(e) => {
@@ -603,16 +657,18 @@ export default function HrmAttendancePage() {
                 }}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs outline-none focus:border-blue-500"
               >
-                <option value="">Tất cả trạng thái</option>
-                <option value="PRESENT">Đúng giờ</option>
-                <option value="LATE">Đi muộn</option>
-                <option value="ABSENT">Vắng mặt</option>
-                <option value="LEAVE">Nghỉ phép</option>
-                <option value="HOLIDAY">Ngày lễ</option>
+                <option value="">{tr('Tất cả trạng thái', 'All Statuses')}</option>
+                <option value="PRESENT">{tr('Đúng giờ', 'On Time')}</option>
+                <option value="LATE">{tr('Đi muộn', 'Late')}</option>
+                <option value="ABSENT">{tr('Vắng mặt', 'Absent')}</option>
+                <option value="LEAVE">{tr('Nghỉ phép', 'On Leave')}</option>
+                <option value="HOLIDAY">{tr('Ngày lễ', 'Holiday')}</option>
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-slate-500">Nguồn dữ liệu</label>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                {tr('Nguồn dữ liệu', 'Source')}
+              </label>
               <select
                 value={sourceFilter}
                 onChange={(e) => {
@@ -622,21 +678,23 @@ export default function HrmAttendancePage() {
                 }}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs outline-none focus:border-blue-500"
               >
-                <option value="">Tất cả nguồn</option>
+                <option value="">{tr('Tất cả nguồn', 'All Sources')}</option>
                 <option value="WEB">Web ESS</option>
-                <option value="IMPORT">Import Excel</option>
-                <option value="MANUAL">HR chỉnh tay</option>
+                <option value="IMPORT">{tr('Import Excel', 'Excel Import')}</option>
+                <option value="MANUAL">{tr('HR chỉnh tay', 'HR Manual')}</option>
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-slate-500">Tìm nhân viên</label>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                {tr('Tìm nhân viên', 'Search Employee')}
+              </label>
               <div className="relative">
                 <IconSearch size={14} className="absolute left-3 top-2.5 text-slate-400" />
                 <input
                   type="text"
                   value={logSearchInput}
                   onChange={(e) => setLogSearchInput(e.target.value)}
-                  placeholder="Mã NV hoặc họ tên..."
+                  placeholder={tr('Mã NV hoặc họ tên...', 'Employee code or name...')}
                   className="w-full rounded-xl border border-slate-300 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-blue-500"
                 />
               </div>
@@ -659,13 +717,16 @@ export default function HrmAttendancePage() {
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white"
                 >
                   <IconRefresh size={15} />
-                  <span>Thử lại</span>
+                  <span>{tr('Thử lại', 'Retry')}</span>
                 </button>
               </div>
             ) : logs.length === 0 ? (
               <div className="p-10 text-center">
                 <p className="text-sm font-medium text-slate-700">
-                  Không có dữ liệu chấm công trong khoảng thời gian đã chọn.
+                  {tr(
+                    'Không có dữ liệu chấm công trong khoảng thời gian đã chọn.',
+                    'No attendance records found for the selected period.',
+                  )}
                 </p>
                 {canImport && (
                   <button
@@ -674,7 +735,7 @@ export default function HrmAttendancePage() {
                     className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white"
                   >
                     <IconFileSpreadsheet size={15} />
-                    <span>Import Excel ngay</span>
+                    <span>{tr('Import Excel ngay', 'Import Excel Now')}</span>
                   </button>
                 )}
               </div>
@@ -684,24 +745,26 @@ export default function HrmAttendancePage() {
                   <table className="w-full min-w-[960px] text-left text-xs">
                     <thead className="border-b border-slate-200 bg-slate-50 uppercase text-slate-500">
                       <tr>
-                        <th className="px-4 py-3 font-semibold">Ngày</th>
-                        <th className="px-4 py-3 font-semibold">Nhân viên</th>
-                        <th className="px-4 py-3 font-semibold">Phòng ban</th>
-                        <th className="px-4 py-3 font-semibold">Ca</th>
-                        <th className="px-4 py-3 text-center font-semibold">Vào / Ra</th>
-                        <th className="px-4 py-3 text-right font-semibold">Muộn / Sớm</th>
-                        <th className="px-4 py-3 text-right font-semibold">Giờ công</th>
-                        <th className="px-4 py-3 text-center font-semibold">Nguồn</th>
-                        <th className="px-4 py-3 text-center font-semibold">Trạng thái</th>
-                        {canManage && <th className="px-4 py-3 text-right font-semibold">Thao tác</th>}
+                        <th className="px-4 py-3 font-semibold">{tr('Ngày', 'Date')}</th>
+                        <th className="px-4 py-3 font-semibold">{tr('Nhân viên', 'Employee')}</th>
+                        <th className="px-4 py-3 font-semibold">{tr('Phòng ban', 'Department')}</th>
+                        <th className="px-4 py-3 font-semibold">{tr('Ca', 'Shift')}</th>
+                        <th className="px-4 py-3 text-center font-semibold">{tr('Vào / Ra', 'In / Out')}</th>
+                        <th className="px-4 py-3 text-right font-semibold">{tr('Muộn / Sớm', 'Late / Early')}</th>
+                        <th className="px-4 py-3 text-right font-semibold">{tr('Giờ công', 'Hours')}</th>
+                        <th className="px-4 py-3 text-center font-semibold">{tr('Nguồn', 'Source')}</th>
+                        <th className="px-4 py-3 text-center font-semibold">{tr('Trạng thái', 'Status')}</th>
+                        {canManage && <th className="px-4 py-3 text-right font-semibold">{tr('Thao tác', 'Actions')}</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {logs.map((row) => {
                         const badge = STATUS_BADGE[row.status] ?? {
-                          label: row.status,
+                          vi: row.status,
+                          en: row.status,
                           className: 'bg-slate-100 text-slate-700 border-slate-200',
                         };
+                        const sourceLabel = SOURCE_LABELS[row.source];
                         return (
                           <tr key={row.id} className="hover:bg-slate-50/70">
                             <td className="px-4 py-3 font-medium text-slate-900">
@@ -720,22 +783,28 @@ export default function HrmAttendancePage() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className={row.lateMinutes > 0 ? 'font-semibold text-amber-600' : 'text-slate-400'}>
-                                {row.lateMinutes}p
+                                {row.lateMinutes}
+                                {tr('p', 'm')}
                               </span>
                               <span className="mx-1 text-slate-300">/</span>
                               <span className={row.earlyLeaveMinutes > 0 ? 'font-semibold text-rose-600' : 'text-slate-400'}>
-                                {row.earlyLeaveMinutes}p
+                                {row.earlyLeaveMinutes}
+                                {tr('p', 'm')}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right font-mono font-semibold text-slate-800">
                               {row.workedHours.toFixed(2)}h
                             </td>
                             <td className="px-4 py-3 text-center text-slate-500">
-                              {SOURCE_LABELS[row.source] ?? row.source}
+                              {sourceLabel
+                                ? locale === 'en'
+                                  ? sourceLabel.en
+                                  : sourceLabel.vi
+                                : row.source}
                             </td>
                             <td className="px-4 py-3 text-center">
                               <span className={`inline-flex rounded-full border px-2.5 py-0.5 font-medium ${badge.className}`}>
-                                {badge.label}
+                                {locale === 'en' ? badge.en : badge.vi}
                               </span>
                             </td>
                             {canManage && (
@@ -746,7 +815,7 @@ export default function HrmAttendancePage() {
                                   className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
                                 >
                                   <IconEdit size={14} />
-                                  <span>Sửa</span>
+                                  <span>{tr('Sửa', 'Edit')}</span>
                                 </button>
                               </td>
                             )}
@@ -760,7 +829,10 @@ export default function HrmAttendancePage() {
                 {logsMeta.totalPages > 1 && (
                   <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
                     <span>
-                      Trang {logsMeta.page}/{logsMeta.totalPages} ({logsMeta.total} bản ghi)
+                      {tr(
+                        `Trang ${logsMeta.page}/${logsMeta.totalPages} (${logsMeta.total} bản ghi)`,
+                        `Page ${logsMeta.page}/${logsMeta.totalPages} (${logsMeta.total} records)`,
+                      )}
                     </span>
                     <div className="flex gap-2">
                       <button
@@ -772,7 +844,7 @@ export default function HrmAttendancePage() {
                         }}
                         className="rounded-lg border border-slate-200 px-3 py-1 disabled:opacity-40"
                       >
-                        Trước
+                        {tr('Trước', 'Previous')}
                       </button>
                       <button
                         type="button"
@@ -783,7 +855,7 @@ export default function HrmAttendancePage() {
                         }}
                         className="rounded-lg border border-slate-200 px-3 py-1 disabled:opacity-40"
                       >
-                        Sau
+                        {tr('Sau', 'Next')}
                       </button>
                     </div>
                   </div>
@@ -822,27 +894,27 @@ export default function HrmAttendancePage() {
                 className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white"
               >
                 <IconRefresh size={15} />
-                <span>Thử lại</span>
+                <span>{tr('Thử lại', 'Retry')}</span>
               </button>
             </div>
           ) : shifts.length === 0 ? (
             <div className="p-10 text-center text-sm text-slate-500">
-              Chưa có ca làm việc nào được cấu hình.
+              {tr('Chưa có ca làm việc nào được cấu hình.', 'No work shifts configured yet.')}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50 uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Mã / Tên ca</th>
-                    <th className="px-4 py-3 font-semibold">Phạm vi</th>
-                    <th className="px-4 py-3 text-center font-semibold">Giờ làm việc</th>
-                    <th className="px-4 py-3 text-center font-semibold">Nghỉ trưa</th>
-                    <th className="px-4 py-3 text-right font-semibold">Giờ công</th>
-                    <th className="px-4 py-3 text-center font-semibold">Dung sai (M/S)</th>
-                    <th className="px-4 py-3 text-right font-semibold">Đang phân ca</th>
-                    <th className="px-4 py-3 text-center font-semibold">Trạng thái</th>
-                    {canManage && <th className="px-4 py-3 text-right font-semibold">Thao tác</th>}
+                    <th className="px-4 py-3 font-semibold">{tr('Mã / Tên ca', 'Code / Shift Name')}</th>
+                    <th className="px-4 py-3 font-semibold">{tr('Phạm vi', 'Scope')}</th>
+                    <th className="px-4 py-3 text-center font-semibold">{tr('Giờ làm việc', 'Working Hours')}</th>
+                    <th className="px-4 py-3 text-center font-semibold">{tr('Nghỉ trưa', 'Break')}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{tr('Giờ công', 'Work Hours')}</th>
+                    <th className="px-4 py-3 text-center font-semibold">{tr('Dung sai (M/S)', 'Grace (L/E)')}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{tr('Đang phân ca', 'Assigned')}</th>
+                    <th className="px-4 py-3 text-center font-semibold">{tr('Trạng thái', 'Status')}</th>
+                    {canManage && <th className="px-4 py-3 text-right font-semibold">{tr('Thao tác', 'Actions')}</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -853,14 +925,14 @@ export default function HrmAttendancePage() {
                           <span className="font-mono font-bold text-slate-900">{shift.code}</span>
                           {shift.isDefault && (
                             <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
-                              Mặc định
+                              {tr('Mặc định', 'Default')}
                             </span>
                           )}
                         </div>
                         <div className="text-slate-600">{shift.name}</div>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {shift.branchName ?? 'Toàn công ty'}
+                        {shift.branchName ?? tr('Toàn công ty', 'Company-wide')}
                       </td>
                       <td className="px-4 py-3 text-center font-mono font-semibold text-slate-800">
                         {shift.startTime} – {shift.endTime}
@@ -874,10 +946,12 @@ export default function HrmAttendancePage() {
                         {shift.workingHours.toFixed(2)}h
                       </td>
                       <td className="px-4 py-3 text-center text-slate-600">
-                        {shift.lateGraceMinutes}p / {shift.earlyLeaveGraceMinutes}p
+                        {shift.lateGraceMinutes}
+                        {tr('p', 'm')} / {shift.earlyLeaveGraceMinutes}
+                        {tr('p', 'm')}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                        {shift.assignedEmployeeCount} NV
+                        {shift.assignedEmployeeCount} {tr('NV', 'emp')}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span
@@ -887,7 +961,7 @@ export default function HrmAttendancePage() {
                               : 'bg-slate-100 text-slate-500'
                           }`}
                         >
-                          {shift.isActive ? 'Hoạt động' : 'Ngừng dùng'}
+                          {shift.isActive ? tr('Hoạt động', 'Active') : tr('Ngừng dùng', 'Inactive')}
                         </span>
                       </td>
                       {canManage && (
@@ -897,7 +971,7 @@ export default function HrmAttendancePage() {
                               type="button"
                               onClick={() => setShiftModalState({ open: true, data: shift })}
                               className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-100"
-                              title="Chỉnh sửa"
+                              title={tr('Chỉnh sửa', 'Edit')}
                             >
                               <IconEdit size={15} />
                             </button>
@@ -907,11 +981,14 @@ export default function HrmAttendancePage() {
                                 setConfirmDelete({
                                   kind: 'shift',
                                   id: shift.id,
-                                  label: `ca làm việc ${shift.code} - ${shift.name}`,
+                                  label: tr(
+                                    `ca làm việc ${shift.code} - ${shift.name}`,
+                                    `work shift ${shift.code} - ${shift.name}`,
+                                  ),
                                 })
                               }
                               className="rounded-lg border border-rose-200 p-1.5 text-rose-600 hover:bg-rose-50"
-                              title="Xóa mềm"
+                              title={tr('Xóa mềm', 'Delete')}
                             >
                               <IconTrash size={15} />
                             </button>
@@ -932,7 +1009,9 @@ export default function HrmAttendancePage() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-slate-500">Lọc theo ca</label>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                {tr('Lọc theo ca', 'Filter by Shift')}
+              </label>
               <select
                 value={assignShiftFilter}
                 onChange={(e) => {
@@ -942,7 +1021,7 @@ export default function HrmAttendancePage() {
                 }}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs outline-none focus:border-blue-500"
               >
-                <option value="">Tất cả ca làm việc</option>
+                <option value="">{tr('Tất cả ca làm việc', 'All Work Shifts')}</option>
                 {shifts.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.code} - {s.name}
@@ -951,12 +1030,14 @@ export default function HrmAttendancePage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-slate-500">Tìm nhân viên</label>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                {tr('Tìm nhân viên', 'Search Employee')}
+              </label>
               <input
                 type="text"
                 value={assignSearchInput}
                 onChange={(e) => setAssignSearchInput(e.target.value)}
-                placeholder="Nhập mã NV hoặc họ tên..."
+                placeholder={tr('Nhập mã NV hoặc họ tên...', 'Enter employee code or full name...')}
                 className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs outline-none focus:border-blue-500"
               />
             </div>
@@ -978,12 +1059,12 @@ export default function HrmAttendancePage() {
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white"
                 >
                   <IconRefresh size={15} />
-                  <span>Thử lại</span>
+                  <span>{tr('Thử lại', 'Retry')}</span>
                 </button>
               </div>
             ) : assignments.length === 0 ? (
               <div className="p-10 text-center text-sm text-slate-500">
-                Chưa có bản ghi phân ca nào phù hợp.
+                {tr('Chưa có bản ghi phân ca nào phù hợp.', 'No matching shift assignments found.')}
               </div>
             ) : (
               <>
@@ -991,13 +1072,13 @@ export default function HrmAttendancePage() {
                   <table className="w-full min-w-[820px] text-left text-xs">
                     <thead className="border-b border-slate-200 bg-slate-50 uppercase text-slate-500">
                       <tr>
-                        <th className="px-4 py-3 font-semibold">Nhân viên</th>
-                        <th className="px-4 py-3 font-semibold">Phòng ban</th>
-                        <th className="px-4 py-3 font-semibold">Ca áp dụng</th>
-                        <th className="px-4 py-3 text-center font-semibold">Hiệu lực</th>
-                        <th className="px-4 py-3 font-semibold">Ngày làm trong tuần</th>
-                        <th className="px-4 py-3 font-semibold">Ghi chú</th>
-                        {canManage && <th className="px-4 py-3 text-right font-semibold">Thao tác</th>}
+                        <th className="px-4 py-3 font-semibold">{tr('Nhân viên', 'Employee')}</th>
+                        <th className="px-4 py-3 font-semibold">{tr('Phòng ban', 'Department')}</th>
+                        <th className="px-4 py-3 font-semibold">{tr('Ca áp dụng', 'Assigned Shift')}</th>
+                        <th className="px-4 py-3 text-center font-semibold">{tr('Hiệu lực', 'Effective Period')}</th>
+                        <th className="px-4 py-3 font-semibold">{tr('Ngày làm trong tuần', 'Work Days')}</th>
+                        <th className="px-4 py-3 font-semibold">{tr('Ghi chú', 'Note')}</th>
+                        {canManage && <th className="px-4 py-3 text-right font-semibold">{tr('Thao tác', 'Actions')}</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1016,18 +1097,27 @@ export default function HrmAttendancePage() {
                           </td>
                           <td className="px-4 py-3 text-center text-slate-700">
                             {formatDateVN(item.effectiveFrom)} →{' '}
-                            {item.effectiveTo ? formatDateVN(item.effectiveTo) : 'Hiện tại'}
+                            {item.effectiveTo
+                              ? formatDateVN(item.effectiveTo)
+                              : tr('Hiện tại', 'Present')}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex flex-wrap gap-1">
-                              {item.workDays.map((d) => (
-                                <span
-                                  key={d}
-                                  className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700"
-                                >
-                                  {DAY_LABELS[d] ?? d}
-                                </span>
-                              ))}
+                              {item.workDays.map((d) => {
+                                const dayLabel = DAY_LABELS[d];
+                                return (
+                                  <span
+                                    key={d}
+                                    className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700"
+                                  >
+                                    {dayLabel
+                                      ? locale === 'en'
+                                        ? dayLabel.en
+                                        : dayLabel.vi
+                                      : d}
+                                  </span>
+                                );
+                              })}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-slate-500">{item.note ?? '-'}</td>
@@ -1039,11 +1129,14 @@ export default function HrmAttendancePage() {
                                   setConfirmDelete({
                                     kind: 'assignment',
                                     id: item.id,
-                                    label: `phân ca ${item.shiftCode} của ${item.employeeCode}`,
+                                    label: tr(
+                                      `phân ca ${item.shiftCode} của ${item.employeeCode}`,
+                                      `shift assignment ${item.shiftCode} for ${item.employeeCode}`,
+                                    ),
                                   })
                                 }
                                 className="rounded-lg border border-rose-200 p-1.5 text-rose-600 hover:bg-rose-50"
-                                title="Gỡ phân ca"
+                                title={tr('Gỡ phân ca', 'Remove assignment')}
                               >
                                 <IconTrash size={15} />
                               </button>
@@ -1058,7 +1151,10 @@ export default function HrmAttendancePage() {
                 {assignmentsMeta.totalPages > 1 && (
                   <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
                     <span>
-                      Trang {assignmentsMeta.page}/{assignmentsMeta.totalPages} ({assignmentsMeta.total} bản ghi)
+                      {tr(
+                        `Trang ${assignmentsMeta.page}/${assignmentsMeta.totalPages} (${assignmentsMeta.total} bản ghi)`,
+                        `Page ${assignmentsMeta.page}/${assignmentsMeta.totalPages} (${assignmentsMeta.total} records)`,
+                      )}
                     </span>
                     <div className="flex gap-2">
                       <button
@@ -1070,7 +1166,7 @@ export default function HrmAttendancePage() {
                         }}
                         className="rounded-lg border border-slate-200 px-3 py-1 disabled:opacity-40"
                       >
-                        Trước
+                        {tr('Trước', 'Previous')}
                       </button>
                       <button
                         type="button"
@@ -1081,7 +1177,7 @@ export default function HrmAttendancePage() {
                         }}
                         className="rounded-lg border border-slate-200 px-3 py-1 disabled:opacity-40"
                       >
-                        Sau
+                        {tr('Sau', 'Next')}
                       </button>
                     </div>
                   </div>
@@ -1097,7 +1193,10 @@ export default function HrmAttendancePage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4">
             <div className="text-xs font-medium text-slate-600">
-              Danh mục ngày nghỉ lễ áp dụng tính công, đơn nghỉ phép và hệ số OT 300%.
+              {tr(
+                'Danh mục ngày nghỉ lễ áp dụng tính công, đơn nghỉ phép và hệ số OT 300%.',
+                'Public holidays applied to attendance calculation, leave requests, and 300% OT rate.',
+              )}
             </div>
             <select
               value={holidayYear}
@@ -1109,7 +1208,7 @@ export default function HrmAttendancePage() {
             >
               {[2025, 2026, 2027, 2028].map((y) => (
                 <option key={y} value={y}>
-                  Năm {y}
+                  {tr(`Năm ${y}`, `Year ${y}`)}
                 </option>
               ))}
             </select>
@@ -1131,24 +1230,27 @@ export default function HrmAttendancePage() {
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white"
                 >
                   <IconRefresh size={15} />
-                  <span>Thử lại</span>
+                  <span>{tr('Thử lại', 'Retry')}</span>
                 </button>
               </div>
             ) : holidays.length === 0 ? (
               <div className="p-10 text-center text-sm text-slate-500">
-                Chưa có ngày lễ nào trong năm {holidayYear}.
+                {tr(
+                  `Chưa có ngày lễ nào trong năm ${holidayYear}.`,
+                  `No holidays configured for ${holidayYear}.`,
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[680px] text-left text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 uppercase text-slate-500">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">Ngày lễ</th>
-                      <th className="px-4 py-3 font-semibold">Tên ngày lễ</th>
-                      <th className="px-4 py-3 font-semibold">Phạm vi áp dụng</th>
-                      <th className="px-4 py-3 text-center font-semibold">Hưởng lương</th>
-                      <th className="px-4 py-3 font-semibold">Ghi chú</th>
-                      {canManage && <th className="px-4 py-3 text-right font-semibold">Thao tác</th>}
+                      <th className="px-4 py-3 font-semibold">{tr('Ngày lễ', 'Date')}</th>
+                      <th className="px-4 py-3 font-semibold">{tr('Tên ngày lễ', 'Holiday Name')}</th>
+                      <th className="px-4 py-3 font-semibold">{tr('Phạm vi áp dụng', 'Scope')}</th>
+                      <th className="px-4 py-3 text-center font-semibold">{tr('Hưởng lương', 'Paid')}</th>
+                      <th className="px-4 py-3 font-semibold">{tr('Ghi chú', 'Note')}</th>
+                      {canManage && <th className="px-4 py-3 text-right font-semibold">{tr('Thao tác', 'Actions')}</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1159,7 +1261,7 @@ export default function HrmAttendancePage() {
                         </td>
                         <td className="px-4 py-3 font-medium text-slate-900">{item.name}</td>
                         <td className="px-4 py-3 text-slate-600">
-                          {item.branchName ?? 'Toàn công ty'}
+                          {item.branchName ?? tr('Toàn công ty', 'Company-wide')}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span
@@ -1169,7 +1271,7 @@ export default function HrmAttendancePage() {
                                 : 'bg-slate-100 text-slate-600'
                             }`}
                           >
-                            {item.isPaid ? 'Có lương' : 'Không lương'}
+                            {item.isPaid ? tr('Có lương', 'Paid') : tr('Không lương', 'Unpaid')}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-500">{item.note ?? '-'}</td>
@@ -1180,7 +1282,7 @@ export default function HrmAttendancePage() {
                                 type="button"
                                 onClick={() => setHolidayModalState({ open: true, data: item })}
                                 className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-100"
-                                title="Chỉnh sửa"
+                                title={tr('Chỉnh sửa', 'Edit')}
                               >
                                 <IconEdit size={15} />
                               </button>
@@ -1190,11 +1292,14 @@ export default function HrmAttendancePage() {
                                   setConfirmDelete({
                                     kind: 'holiday',
                                     id: item.id,
-                                    label: `ngày lễ "${item.name}" (${formatDateVN(item.holidayDate)})`,
+                                    label: tr(
+                                      `ngày lễ "${item.name}" (${formatDateVN(item.holidayDate)})`,
+                                      `holiday "${item.name}" (${formatDateVN(item.holidayDate)})`,
+                                    ),
                                   })
                                 }
                                 className="rounded-lg border border-rose-200 p-1.5 text-rose-600 hover:bg-rose-50"
-                                title="Xóa mềm"
+                                title={tr('Xóa mềm', 'Delete')}
                               >
                                 <IconTrash size={15} />
                               </button>
@@ -1220,7 +1325,7 @@ export default function HrmAttendancePage() {
           onClose={() => setShiftModalState({ open: false, data: null })}
           onSuccess={() => {
             setShiftModalState({ open: false, data: null });
-            triggerRefresh('Đã lưu ca làm việc thành công.');
+            triggerRefresh(tr('Đã lưu ca làm việc thành công.', 'Work shift saved successfully.'));
           }}
         />
       )}
@@ -1232,7 +1337,12 @@ export default function HrmAttendancePage() {
           onClose={() => setAssignModalOpen(false)}
           onSuccess={() => {
             setAssignModalOpen(false);
-            triggerRefresh('Đã phân ca làm việc cho nhân viên thành công.');
+            triggerRefresh(
+              tr(
+                'Đã phân ca làm việc cho nhân viên thành công.',
+                'Shift assigned to employee successfully.',
+              ),
+            );
           }}
         />
       )}
@@ -1246,7 +1356,7 @@ export default function HrmAttendancePage() {
           onClose={() => setHolidayModalState({ open: false, data: null })}
           onSuccess={() => {
             setHolidayModalState({ open: false, data: null });
-            triggerRefresh('Đã lưu ngày lễ thành công.');
+            triggerRefresh(tr('Đã lưu ngày lễ thành công.', 'Holiday saved successfully.'));
           }}
         />
       )}
@@ -1260,7 +1370,12 @@ export default function HrmAttendancePage() {
           onClose={() => setManualModalState({ open: false, data: null })}
           onSuccess={() => {
             setManualModalState({ open: false, data: null });
-            triggerRefresh('Đã lưu điều chỉnh chấm công và ghi Audit Log.');
+            triggerRefresh(
+              tr(
+                'Đã lưu điều chỉnh chấm công và ghi Audit Log.',
+                'Attendance adjustment saved and recorded in Audit Log.',
+              ),
+            );
           }}
         />
       )}
@@ -1268,20 +1383,27 @@ export default function HrmAttendancePage() {
       {importModalOpen && (
         <AttendanceImportModal
           onClose={() => setImportModalOpen(false)}
-          onImported={() => triggerRefresh('Đã import dữ liệu chấm công từ Excel.')}
+          onImported={() =>
+            triggerRefresh(
+              tr('Đã import dữ liệu chấm công từ Excel.', 'Attendance data imported from Excel.'),
+            )
+          }
         />
       )}
 
       <ConfirmModal
         isOpen={Boolean(confirmDelete)}
-        title="Xác nhận xóa dữ liệu"
+        title={tr('Xác nhận xóa dữ liệu', 'Confirm Deletion')}
         description={
           confirmDelete
-            ? `Bạn có chắc chắn muốn xóa ${confirmDelete.label}? Hành động này sẽ thực hiện xóa mềm và lưu vết lịch sử hệ thống.`
+            ? tr(
+                `Bạn có chắc chắn muốn xóa ${confirmDelete.label}? Hành động này sẽ thực hiện xóa mềm và lưu vết lịch sử hệ thống.`,
+                `Are you sure you want to delete ${confirmDelete.label}? This will perform a soft delete and record an audit trail.`,
+              )
             : ''
         }
-        confirmLabel="Xác nhận xóa"
-        cancelLabel="Hủy"
+        confirmLabel={tr('Xác nhận xóa', 'Confirm Delete')}
+        cancelLabel={tr('Hủy', 'Cancel')}
         variant="danger"
         isProcessing={isDeleting}
         onConfirm={() => void handleConfirmDelete()}

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { IconLoader2, IconX } from '@tabler/icons-react';
 import type { BranchOption } from '@/components/hrm/WorkShiftFormModal';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface HolidayRecord {
   id: number;
@@ -29,6 +30,7 @@ export function HolidayFormModal({
   onClose,
   onSuccess,
 }: HolidayFormModalProps) {
+  const { tr } = useI18n();
   const isEdit = Boolean(initialData);
   const [holidayDate, setHolidayDate] = useState(
     initialData?.holidayDate ?? `${defaultYear}-01-01`,
@@ -68,13 +70,20 @@ export function HolidayFormModal({
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setErrorMsg(json.error?.message ?? 'Không thể lưu ngày lễ.');
+        setErrorMsg(
+          json.error?.message ?? tr('Không thể lưu ngày lễ.', 'Unable to save holiday.'),
+        );
         setIsSubmitting(false);
         return;
       }
       onSuccess();
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ khi lưu ngày lễ.');
+      setErrorMsg(
+        tr(
+          'Lỗi kết nối máy chủ khi lưu ngày lễ.',
+          'Server connection error while saving holiday.',
+        ),
+      );
       setIsSubmitting(false);
     }
   }
@@ -84,14 +93,16 @@ export function HolidayFormModal({
       <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h3 className="text-base font-semibold text-slate-900">
-            {isEdit ? 'Cập nhật ngày lễ' : 'Thêm ngày lễ mới'}
+            {isEdit
+              ? tr('Cập nhật ngày lễ', 'Edit Holiday')
+              : tr('Thêm ngày lễ mới', 'Add New Holiday')}
           </h3>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -107,7 +118,7 @@ export function HolidayFormModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Ngày lễ *
+                {tr('Ngày lễ *', 'Holiday Date *')}
               </label>
               <input
                 type="date"
@@ -121,7 +132,7 @@ export function HolidayFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Phạm vi chi nhánh
+                {tr('Phạm vi chi nhánh', 'Branch Scope')}
               </label>
               <select
                 disabled={isSubmitting}
@@ -129,7 +140,7 @@ export function HolidayFormModal({
                 onChange={(e) => setBranchId(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="">Toàn công ty</option>
+                <option value="">{tr('Toàn công ty', 'Company-wide')}</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.code})
@@ -141,7 +152,7 @@ export function HolidayFormModal({
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-700">
-              Tên ngày lễ *
+              {tr('Tên ngày lễ *', 'Holiday Name *')}
             </label>
             <input
               type="text"
@@ -149,19 +160,24 @@ export function HolidayFormModal({
               disabled={isSubmitting}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Ngày Quốc khánh 2/9"
+              placeholder={tr('VD: Ngày Quốc khánh 2/9', 'e.g. National Day (Sep 2)')}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Ghi chú</label>
+            <label className="mb-1 block text-xs font-medium text-slate-700">
+              {tr('Ghi chú', 'Notes')}
+            </label>
             <textarea
               rows={2}
               disabled={isSubmitting}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ghi chú chế độ nghỉ bù / áp dụng..."
+              placeholder={tr(
+                'Ghi chú chế độ nghỉ bù / áp dụng...',
+                'Notes on compensatory leave / applicability...',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
           </div>
@@ -174,7 +190,7 @@ export function HolidayFormModal({
               onChange={(e) => setIsPaid(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-blue-600"
             />
-            <span>Nghỉ lễ hưởng nguyên lương</span>
+            <span>{tr('Nghỉ lễ hưởng nguyên lương', 'Paid public holiday')}</span>
           </label>
 
           <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-4">
@@ -184,7 +200,7 @@ export function HolidayFormModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -192,7 +208,9 @@ export function HolidayFormModal({
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
-              <span>{isEdit ? 'Lưu thay đổi' : 'Thêm ngày lễ'}</span>
+              <span>
+                {isEdit ? tr('Lưu thay đổi', 'Save Changes') : tr('Thêm ngày lễ', 'Add Holiday')}
+              </span>
             </button>
           </div>
         </form>

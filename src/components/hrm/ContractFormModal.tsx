@@ -8,6 +8,7 @@ import {
   IconTrash,
   IconX,
 } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface ContractEmployeeOption {
   id: number;
@@ -58,6 +59,7 @@ export function ContractFormModal({
   onClose,
   onSaved,
 }: ContractFormModalProps) {
+  const { locale, tr } = useI18n();
   const isEdit = editingContract !== null;
   const [employeeId, setEmployeeId] = useState<number>(
     editingContract?.employeeId ?? fixedEmployeeId ?? employees[0]?.id ?? 0,
@@ -87,7 +89,7 @@ export function ContractFormModal({
           label: a.label,
           amount: String(a.amount),
         }))
-      : [{ code: 'MEAL', label: 'Phụ cấp ăn trưa', amount: '1000000' }],
+      : [{ code: 'MEAL', label: tr('Phụ cấp ăn trưa', 'Meal allowance'), amount: '1000000' }],
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -163,13 +165,21 @@ export function ContractFormModal({
       };
 
       if (!res.ok || !json.success) {
-        setErrorMessage(json.error?.message ?? 'Không thể lưu hợp đồng lao động.');
+        setErrorMessage(
+          json.error?.message ??
+            tr('Không thể lưu hợp đồng lao động.', 'Unable to save employment contract.'),
+        );
         return;
       }
 
       onSaved();
     } catch {
-      setErrorMessage('Lỗi kết nối khi lưu hợp đồng lao động.');
+      setErrorMessage(
+        tr(
+          'Lỗi kết nối khi lưu hợp đồng lao động.',
+          'Connection error while saving employment contract.',
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -185,10 +195,15 @@ export function ContractFormModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                {isEdit ? 'Cập nhật Hợp đồng Lao động' : 'Tạo Hợp đồng Lao động mới'}
+                {isEdit
+                  ? tr('Cập nhật Hợp đồng Lao động', 'Edit Employment Contract')
+                  : tr('Tạo Hợp đồng Lao động mới', 'Create New Employment Contract')}
               </h2>
               <p className="text-xs text-slate-500">
-                Thiết lập thời hạn, lương cơ bản, lương đóng BHXH và các khoản phụ cấp
+                {tr(
+                  'Thiết lập thời hạn, lương cơ bản, lương đóng BHXH và các khoản phụ cấp',
+                  'Configure contract term, base salary, social insurance salary, and allowances',
+                )}
               </p>
             </div>
           </div>
@@ -197,7 +212,7 @@ export function ContractFormModal({
             disabled={isSubmitting}
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -214,7 +229,7 @@ export function ContractFormModal({
             {!fixedEmployeeId && !isEdit && (
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  Nhân viên <span className="text-rose-500">*</span>
+                  {tr('Nhân viên', 'Employee')} <span className="text-rose-500">*</span>
                 </label>
                 <select
                   required
@@ -233,21 +248,21 @@ export function ContractFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Số hợp đồng <span className="text-rose-500">*</span>
+                {tr('Số hợp đồng', 'Contract Number')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={contractNo}
                 onChange={(e) => setContractNo(e.target.value.toUpperCase())}
-                placeholder="VD: HDLD-2026-004"
+                placeholder={tr('VD: HDLD-2026-004', 'e.g. HDLD-2026-004')}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Loại hợp đồng <span className="text-rose-500">*</span>
+                {tr('Loại hợp đồng', 'Contract Type')} <span className="text-rose-500">*</span>
               </label>
               <select
                 value={contractType}
@@ -258,16 +273,18 @@ export function ContractFormModal({
                 }
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="PROBATION">Thử việc</option>
-                <option value="FIXED_TERM">Xác định thời hạn</option>
-                <option value="INDEFINITE">Không xác định thời hạn</option>
-                <option value="PART_TIME">Bán thời gian / CTV</option>
+                <option value="PROBATION">{tr('Thử việc', 'Probation')}</option>
+                <option value="FIXED_TERM">{tr('Xác định thời hạn', 'Fixed-term')}</option>
+                <option value="INDEFINITE">{tr('Không xác định thời hạn', 'Indefinite')}</option>
+                <option value="PART_TIME">
+                  {tr('Bán thời gian / CTV', 'Part-time / Contractor')}
+                </option>
               </select>
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Ngày bắt đầu <span className="text-rose-500">*</span>
+                {tr('Ngày bắt đầu', 'Start Date')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -281,7 +298,7 @@ export function ContractFormModal({
             {contractType !== 'INDEFINITE' && (
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  Ngày kết thúc{' '}
+                  {tr('Ngày kết thúc', 'End Date')}{' '}
                   {(contractType === 'PROBATION' || contractType === 'FIXED_TERM') && (
                     <span className="text-rose-500">*</span>
                   )}
@@ -298,7 +315,8 @@ export function ContractFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Lương cơ bản (VNĐ) <span className="text-rose-500">*</span>
+                {tr('Lương cơ bản (VNĐ)', 'Base Salary (VND)')}{' '}
+                <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
@@ -313,7 +331,7 @@ export function ContractFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Lương đóng BHXH (VNĐ)
+                {tr('Lương đóng BHXH (VNĐ)', 'Social Insurance Salary (VND)')}
               </label>
               <input
                 type="number"
@@ -326,7 +344,9 @@ export function ContractFormModal({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-700">Trạng thái</label>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                {tr('Trạng thái', 'Status')}
+              </label>
               <select
                 value={status}
                 onChange={(e) =>
@@ -334,15 +354,17 @@ export function ContractFormModal({
                 }
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="DRAFT">Nháp</option>
-                <option value="ACTIVE">Đang hiệu lực</option>
-                <option value="EXPIRED">Hết hạn</option>
-                <option value="TERMINATED">Đã chấm dứt</option>
+                <option value="DRAFT">{tr('Nháp', 'Draft')}</option>
+                <option value="ACTIVE">{tr('Đang hiệu lực', 'Active')}</option>
+                <option value="EXPIRED">{tr('Hết hạn', 'Expired')}</option>
+                <option value="TERMINATED">{tr('Đã chấm dứt', 'Terminated')}</option>
               </select>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-700">Ngày ký</label>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                {tr('Ngày ký', 'Signed Date')}
+              </label>
               <input
                 type="date"
                 value={signedDate}
@@ -355,7 +377,7 @@ export function ContractFormModal({
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-bold uppercase text-slate-600">
-                Các khoản phụ cấp hàng tháng
+                {tr('Các khoản phụ cấp hàng tháng', 'Monthly Allowances')}
               </span>
               <button
                 type="button"
@@ -363,19 +385,21 @@ export function ContractFormModal({
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 <IconPlus size={13} />
-                <span>Thêm phụ cấp</span>
+                <span>{tr('Thêm phụ cấp', 'Add Allowance')}</span>
               </button>
             </div>
 
             {allowances.length === 0 ? (
-              <p className="text-xs text-slate-500">Chưa có khoản phụ cấp nào.</p>
+              <p className="text-xs text-slate-500">
+                {tr('Chưa có khoản phụ cấp nào.', 'No allowances added yet.')}
+              </p>
             ) : (
               <div className="space-y-2">
                 {allowances.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2">
                     <input
                       type="text"
-                      placeholder="Mã (MEAL)"
+                      placeholder={tr('Mã (MEAL)', 'Code (MEAL)')}
                       value={item.code}
                       onChange={(e) => {
                         const val = e.target.value.toUpperCase();
@@ -387,7 +411,7 @@ export function ContractFormModal({
                     />
                     <input
                       type="text"
-                      placeholder="Tên phụ cấp"
+                      placeholder={tr('Tên phụ cấp', 'Allowance name')}
                       value={item.label}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -400,7 +424,7 @@ export function ContractFormModal({
                     <input
                       type="number"
                       min={0}
-                      placeholder="Số tiền"
+                      placeholder={tr('Số tiền', 'Amount')}
                       value={item.amount}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -414,7 +438,7 @@ export function ContractFormModal({
                       type="button"
                       onClick={() => removeAllowanceRow(idx)}
                       className="col-span-1 flex items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
-                      title="Xóa dòng"
+                      title={tr('Xóa dòng', 'Remove row')}
                     >
                       <IconTrash size={14} />
                     </button>
@@ -425,7 +449,9 @@ export function ContractFormModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-700">Ghi chú</label>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              {tr('Ghi chú', 'Notes')}
+            </label>
             <textarea
               rows={2}
               value={note}
@@ -443,8 +469,17 @@ export function ContractFormModal({
                 className="h-4 w-4 rounded border-slate-300 text-blue-600"
               />
               <span>
-                Tự động chuyển hợp đồng <strong>Đang hiệu lực</strong> trước đó của nhân viên sang{' '}
-                <strong>Hết hạn</strong>
+                {locale === 'en' ? (
+                  <>
+                    Automatically change the employee&apos;s previous <strong>Active</strong>{' '}
+                    contract to <strong>Expired</strong>
+                  </>
+                ) : (
+                  <>
+                    Tự động chuyển hợp đồng <strong>Đang hiệu lực</strong> trước đó của nhân viên
+                    sang <strong>Hết hạn</strong>
+                  </>
+                )}
               </span>
             </label>
           )}
@@ -456,7 +491,7 @@ export function ContractFormModal({
               onClick={onClose}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -464,7 +499,13 @@ export function ContractFormModal({
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
-              <span>{isSubmitting ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Tạo hợp đồng'}</span>
+              <span>
+                {isSubmitting
+                  ? tr('Đang lưu...', 'Saving...')
+                  : isEdit
+                    ? tr('Lưu thay đổi', 'Save Changes')
+                    : tr('Tạo hợp đồng', 'Create Contract')}
+              </span>
             </button>
           </div>
         </form>

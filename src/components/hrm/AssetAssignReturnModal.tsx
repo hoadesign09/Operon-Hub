@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { IconX } from '@tabler/icons-react';
 import type { AssetListItem } from '@/modules/hrm/office/assets.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface EmployeeOption {
   id: number;
@@ -25,6 +26,7 @@ export function AssetAssignReturnModal({
   onClose,
   onSuccess,
 }: AssetAssignReturnModalProps) {
+  const { tr } = useI18n();
   const todayIso = new Date().toISOString().slice(0, 10);
 
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
@@ -34,8 +36,14 @@ export function AssetAssignReturnModal({
   const [expectedReturnAt, setExpectedReturnAt] = useState('');
   const [condition, setCondition] = useState(
     mode === 'assign'
-      ? 'Mới / Hoạt động bình thường, đầy đủ phụ kiện'
-      : 'Hoạt động ổn định, đầy đủ phụ kiện bàn giao',
+      ? tr(
+          'Mới / Hoạt động bình thường, đầy đủ phụ kiện',
+          'New / Working normally, all accessories included',
+        )
+      : tr(
+          'Hoạt động ổn định, đầy đủ phụ kiện bàn giao',
+          'Working properly, all handed-over accessories intact',
+        ),
   );
   const [nextStatus, setNextStatus] = useState<'AVAILABLE' | 'MAINTENANCE' | 'RETIRED'>(
     'AVAILABLE',
@@ -117,8 +125,8 @@ export function AssetAssignReturnModal({
         setErrorMessage(
           json.error?.message ??
             (mode === 'assign'
-              ? 'Không thể cấp phát tài sản.'
-              : 'Không thể thu hồi tài sản.'),
+              ? tr('Không thể cấp phát tài sản.', 'Unable to assign asset.')
+              : tr('Không thể thu hồi tài sản.', 'Unable to return asset.')),
         );
         setIsSubmitting(false);
         return;
@@ -126,7 +134,7 @@ export function AssetAssignReturnModal({
 
       onSuccess();
     } catch {
-      setErrorMessage('Lỗi kết nối máy chủ.');
+      setErrorMessage(tr('Lỗi kết nối máy chủ.', 'Server connection error.'));
       setIsSubmitting(false);
     }
   }
@@ -137,7 +145,9 @@ export function AssetAssignReturnModal({
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              {mode === 'assign' ? 'Cấp phát Tài sản cho Nhân viên' : 'Thu hồi Tài sản về Kho'}
+              {mode === 'assign'
+                ? tr('Cấp phát Tài sản cho Nhân viên', 'Assign Asset to Employee')
+                : tr('Thu hồi Tài sản về Kho', 'Return Asset to Inventory')}
             </h2>
             <p className="text-xs text-slate-500">
               {asset.assetCode} — {asset.name}
@@ -147,7 +157,7 @@ export function AssetAssignReturnModal({
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -163,7 +173,7 @@ export function AssetAssignReturnModal({
           {mode === 'assign' ? (
             <label className="block space-y-1">
               <span className="text-xs font-semibold text-slate-700">
-                Nhân viên tiếp nhận *
+                {tr('Nhân viên tiếp nhận *', 'Recipient Employee *')}
               </span>
               <select
                 value={employeeId}
@@ -174,8 +184,8 @@ export function AssetAssignReturnModal({
               >
                 <option value="">
                   {isLoadingEmployees
-                    ? 'Đang tải danh sách nhân viên...'
-                    : '-- Chọn nhân viên đang làm việc --'}
+                    ? tr('Đang tải danh sách nhân viên...', 'Loading employee list...')
+                    : tr('-- Chọn nhân viên đang làm việc --', '-- Select active employee --')}
                 </option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
@@ -187,12 +197,14 @@ export function AssetAssignReturnModal({
           ) : (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
               <div>
-                <span className="font-semibold">Người đang sử dụng:</span>{' '}
+                <span className="font-semibold">
+                  {tr('Người đang sử dụng:', 'Current holder:')}
+                </span>{' '}
                 {asset.holderEmployeeCode} — {asset.holderEmployeeName}
               </div>
               {asset.assignedAt && (
                 <div className="mt-0.5 text-slate-500">
-                  Ngày cấp phát: {asset.assignedAt}
+                  {tr('Ngày cấp phát:', 'Assigned date:')} {asset.assignedAt}
                 </div>
               )}
             </div>
@@ -201,7 +213,9 @@ export function AssetAssignReturnModal({
           <div className="grid grid-cols-2 gap-4">
             <label className="space-y-1">
               <span className="text-xs font-semibold text-slate-700">
-                {mode === 'assign' ? 'Ngày bàn giao' : 'Ngày thu hồi'}
+                {mode === 'assign'
+                  ? tr('Ngày bàn giao', 'Handover Date')
+                  : tr('Ngày thu hồi', 'Return Date')}
               </span>
               <input
                 type="date"
@@ -214,7 +228,7 @@ export function AssetAssignReturnModal({
             {mode === 'assign' ? (
               <label className="space-y-1">
                 <span className="text-xs font-semibold text-slate-700">
-                  Ngày dự kiến trả (nếu mượn)
+                  {tr('Ngày dự kiến trả (nếu mượn)', 'Expected Return Date (if borrowed)')}
                 </span>
                 <input
                   type="date"
@@ -226,7 +240,7 @@ export function AssetAssignReturnModal({
             ) : (
               <label className="space-y-1">
                 <span className="text-xs font-semibold text-slate-700">
-                  Trạng thái sau thu hồi *
+                  {tr('Trạng thái sau thu hồi *', 'Status After Return *')}
                 </span>
                 <select
                   value={nextStatus}
@@ -237,9 +251,15 @@ export function AssetAssignReturnModal({
                   }
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
                 >
-                  <option value="AVAILABLE">Sẵn sàng cấp phát lại</option>
-                  <option value="MAINTENANCE">Chuyển bảo trì / Sửa chữa</option>
-                  <option value="RETIRED">Thanh lý / Hỏng không dùng nữa</option>
+                  <option value="AVAILABLE">
+                    {tr('Sẵn sàng cấp phát lại', 'Available for reassignment')}
+                  </option>
+                  <option value="MAINTENANCE">
+                    {tr('Chuyển bảo trì / Sửa chữa', 'Send to Maintenance / Repair')}
+                  </option>
+                  <option value="RETIRED">
+                    {tr('Thanh lý / Hỏng không dùng nữa', 'Retired / Damaged beyond use')}
+                  </option>
                 </select>
               </label>
             )}
@@ -248,8 +268,8 @@ export function AssetAssignReturnModal({
           <label className="block space-y-1">
             <span className="text-xs font-semibold text-slate-700">
               {mode === 'assign'
-                ? 'Tình trạng thiết bị lúc bàn giao *'
-                : 'Tình trạng thiết bị lúc thu hồi *'}
+                ? tr('Tình trạng thiết bị lúc bàn giao *', 'Asset Condition on Assignment *')
+                : tr('Tình trạng thiết bị lúc thu hồi *', 'Asset Condition on Return *')}
             </span>
             <input
               type="text"
@@ -263,12 +283,17 @@ export function AssetAssignReturnModal({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-semibold text-slate-700">Ghi chú bàn giao</span>
+            <span className="text-xs font-semibold text-slate-700">
+              {tr('Ghi chú bàn giao', 'Handover Notes')}
+            </span>
             <textarea
               rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ghi chú thêm về phụ kiện, cam kết..."
+              placeholder={tr(
+                'Ghi chú thêm về phụ kiện, cam kết...',
+                'Additional notes on accessories, commitments...',
+              )}
               maxLength={2000}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
@@ -281,7 +306,7 @@ export function AssetAssignReturnModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -293,10 +318,10 @@ export function AssetAssignReturnModal({
               }`}
             >
               {isSubmitting
-                ? 'Đang xử lý...'
+                ? tr('Đang xử lý...', 'Processing...')
                 : mode === 'assign'
-                  ? 'Xác nhận cấp phát'
-                  : 'Xác nhận thu hồi'}
+                  ? tr('Xác nhận cấp phát', 'Confirm Assignment')
+                  : tr('Xác nhận thu hồi', 'Confirm Return')}
             </button>
           </div>
         </form>

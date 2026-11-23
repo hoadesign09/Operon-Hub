@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { IconX } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface BranchOption {
   id: number;
@@ -28,6 +29,7 @@ export function PayrollPeriodFormModal({
   onClose,
   onSuccess,
 }: PayrollPeriodFormModalProps) {
+  const { tr } = useI18n();
   const initialBranchId =
     defaultBranchId !== null
       ? String(defaultBranchId)
@@ -47,7 +49,10 @@ export function PayrollPeriodFormModal({
   const selectedBranch = branches.find((b) => String(b.id) === branchId);
   const paddedMonth = String(Number(month) || 1).padStart(2, '0');
   const suggestedCode = `BL-${year}-${paddedMonth}-${selectedBranch ? selectedBranch.code : 'ALL'}`;
-  const suggestedName = `Bảng lương tháng ${paddedMonth}/${year} - ${selectedBranch ? selectedBranch.name : 'Toàn công ty'}`;
+  const suggestedName = tr(
+    `Bảng lương tháng ${paddedMonth}/${year} - ${selectedBranch ? selectedBranch.name : 'Toàn công ty'}`,
+    `Payroll ${paddedMonth}/${year} - ${selectedBranch ? selectedBranch.name : 'All Branches'}`,
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -75,14 +80,22 @@ export function PayrollPeriodFormModal({
       };
 
       if (!response.ok || !payload.success || !payload.data?.period) {
-        setErrorMessage(payload.error?.message ?? 'Không thể tạo kỳ lương mới.');
+        setErrorMessage(
+          payload.error?.message ??
+            tr('Không thể tạo kỳ lương mới.', 'Unable to create payroll period.'),
+        );
         setIsSubmitting(false);
         return;
       }
 
       onSuccess(payload.data.period.id);
     } catch {
-      setErrorMessage('Lỗi kết nối máy chủ khi tạo kỳ lương.');
+      setErrorMessage(
+        tr(
+          'Lỗi kết nối máy chủ khi tạo kỳ lương.',
+          'Server connection error while creating payroll period.',
+        ),
+      );
       setIsSubmitting(false);
     }
   }
@@ -92,16 +105,21 @@ export function PayrollPeriodFormModal({
       <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Tạo Kỳ tính lương mới</h2>
+            <h2 className="text-base font-bold text-slate-900">
+              {tr('Tạo Kỳ tính lương mới', 'Create New Payroll Period')}
+            </h2>
             <p className="text-xs text-slate-500">
-              Khởi tạo kỳ lương theo tháng và chi nhánh để tổng hợp thu nhập, BHXH & thuế TNCN.
+              {tr(
+                'Khởi tạo kỳ lương theo tháng và chi nhánh để tổng hợp thu nhập, BHXH & thuế TNCN.',
+                'Initialize a monthly payroll period by branch to aggregate earnings, social insurance & PIT.',
+              )}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -116,7 +134,9 @@ export function PayrollPeriodFormModal({
 
           <div className="grid grid-cols-2 gap-4">
             <label className="block space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Tháng *</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Tháng *', 'Month *')}
+              </span>
               <select
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
@@ -125,14 +145,16 @@ export function PayrollPeriodFormModal({
               >
                 {Array.from({ length: 12 }, (_, idx) => idx + 1).map((m) => (
                   <option key={m} value={m}>
-                    Tháng {m}
+                    {tr(`Tháng ${m}`, `Month ${m}`)}
                   </option>
                 ))}
               </select>
             </label>
 
             <label className="block space-y-1">
-              <span className="text-xs font-semibold text-slate-700">Năm *</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {tr('Năm *', 'Year *')}
+              </span>
               <input
                 type="number"
                 min={2020}
@@ -146,13 +168,19 @@ export function PayrollPeriodFormModal({
           </div>
 
           <label className="block space-y-1">
-            <span className="text-xs font-semibold text-slate-700">Phạm vi chi nhánh</span>
+            <span className="text-xs font-semibold text-slate-700">
+              {tr('Phạm vi chi nhánh', 'Branch scope')}
+            </span>
             <select
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             >
-              {hasAllBranches && <option value="">Toàn công ty (tất cả chi nhánh)</option>}
+              {hasAllBranches && (
+                <option value="">
+                  {tr('Toàn công ty (tất cả chi nhánh)', 'Company-wide (all branches)')}
+                </option>
+              )}
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name} ({b.code})
@@ -163,7 +191,10 @@ export function PayrollPeriodFormModal({
 
           <label className="block space-y-1">
             <span className="text-xs font-semibold text-slate-700">
-              Mã kỳ lương (để trống để tự sinh)
+              {tr(
+                'Mã kỳ lương (để trống để tự sinh)',
+                'Period code (leave blank to auto-generate)',
+              )}
             </span>
             <input
               type="text"
@@ -177,7 +208,10 @@ export function PayrollPeriodFormModal({
 
           <label className="block space-y-1">
             <span className="text-xs font-semibold text-slate-700">
-              Tên kỳ lương (để trống để tự sinh)
+              {tr(
+                'Tên kỳ lương (để trống để tự sinh)',
+                'Period name (leave blank to auto-generate)',
+              )}
             </span>
             <input
               type="text"
@@ -190,12 +224,15 @@ export function PayrollPeriodFormModal({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-semibold text-slate-700">Ghi chú</span>
+            <span className="text-xs font-semibold text-slate-700">{tr('Ghi chú', 'Notes')}</span>
             <textarea
               rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ghi chú kỳ trả lương, thưởng lễ..."
+              placeholder={tr(
+                'Ghi chú kỳ trả lương, thưởng lễ...',
+                'Notes on payout schedule, holiday bonuses...',
+              )}
               maxLength={2000}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             />
@@ -208,14 +245,16 @@ export function PayrollPeriodFormModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
-              {isSubmitting ? 'Đang khởi tạo...' : 'Tạo kỳ lương'}
+              {isSubmitting
+                ? tr('Đang khởi tạo...', 'Creating...')
+                : tr('Tạo kỳ lương', 'Create Period')}
             </button>
           </div>
         </form>

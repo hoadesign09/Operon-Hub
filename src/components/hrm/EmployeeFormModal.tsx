@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { IconLoader2, IconUserPlus, IconX } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface BranchOption {
   id: number;
@@ -61,6 +62,7 @@ export function EmployeeFormModal({
   onClose,
   onCreated,
 }: EmployeeFormModalProps) {
+  const { tr } = useI18n();
   const initialBranch = defaultBranchId ?? branches[0]?.id ?? 0;
   const initialDept = departments.find((d) => d.branchId === initialBranch)?.id ?? 0;
   const initialPos = positions[0]?.id ?? 0;
@@ -146,7 +148,10 @@ export function EmployeeFormModal({
       };
 
       if (!res.ok || !json.success) {
-        setErrorMessage(json.error?.message ?? 'Không thể tạo hồ sơ nhân viên.');
+        setErrorMessage(
+          json.error?.message ??
+            tr('Không thể tạo hồ sơ nhân viên.', 'Unable to create employee profile.'),
+        );
         return;
       }
 
@@ -157,7 +162,12 @@ export function EmployeeFormModal({
       setInitialPassword('');
       onCreated(json.data?.provisionedAccount ?? null);
     } catch {
-      setErrorMessage('Lỗi kết nối khi tạo hồ sơ nhân viên.');
+      setErrorMessage(
+        tr(
+          'Lỗi kết nối khi tạo hồ sơ nhân viên.',
+          'Connection error while creating employee profile.',
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -172,9 +182,14 @@ export function EmployeeFormModal({
               <IconUserPlus size={20} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Thêm Hồ sơ Nhân viên mới</h2>
+              <h2 className="text-base font-bold text-slate-900">
+                {tr('Thêm Hồ sơ Nhân viên mới', 'Add New Employee Profile')}
+              </h2>
               <p className="text-xs text-slate-500">
-                Gán chi nhánh, phòng ban, chức danh và tự động cấp tài khoản Portal
+                {tr(
+                  'Gán chi nhánh, phòng ban, chức danh và tự động cấp tài khoản Portal',
+                  'Assign branch, department, position, and automatically provision a Portal account',
+                )}
               </p>
             </div>
           </div>
@@ -183,7 +198,7 @@ export function EmployeeFormModal({
             disabled={isSubmitting}
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -199,49 +214,49 @@ export function EmployeeFormModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Mã nhân viên <span className="text-rose-500">*</span>
+                {tr('Mã nhân viên', 'Employee Code')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={employeeCode}
                 onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
-                placeholder="VD: NV0004"
+                placeholder={tr('VD: NV0004', 'e.g. NV0004')}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Họ và tên <span className="text-rose-500">*</span>
+                {tr('Họ và tên', 'Full Name')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nguyễn Văn A"
+                placeholder={tr('Nguyễn Văn A', 'John Doe')}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Email công việc <span className="text-rose-500">*</span>
+                {tr('Email công việc', 'Work Email')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="email"
                 required
                 value={workEmail}
                 onChange={(e) => setWorkEmail(e.target.value)}
-                placeholder="ten.nv@operonhub.local"
+                placeholder={tr('ten.nv@operonhub.local', 'john.doe@operonhub.local')}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Số điện thoại
+                {tr('Số điện thoại', 'Phone Number')}
               </label>
               <input
                 type="text"
@@ -254,7 +269,7 @@ export function EmployeeFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Chi nhánh <span className="text-rose-500">*</span>
+                {tr('Chi nhánh', 'Branch')} <span className="text-rose-500">*</span>
               </label>
               <select
                 required
@@ -277,7 +292,7 @@ export function EmployeeFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Phòng ban <span className="text-rose-500">*</span>
+                {tr('Phòng ban', 'Department')} <span className="text-rose-500">*</span>
               </label>
               <select
                 required
@@ -286,7 +301,9 @@ export function EmployeeFormModal({
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
                 {filteredDepartments.length === 0 ? (
-                  <option value={0}>Chưa có phòng ban ở chi nhánh này</option>
+                  <option value={0}>
+                    {tr('Chưa có phòng ban ở chi nhánh này', 'No departments in this branch')}
+                  </option>
                 ) : (
                   filteredDepartments.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -299,7 +316,7 @@ export function EmployeeFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Chức danh <span className="text-rose-500">*</span>
+                {tr('Chức danh', 'Position')} <span className="text-rose-500">*</span>
               </label>
               <select
                 required
@@ -317,14 +334,14 @@ export function EmployeeFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Quản lý trực tiếp
+                {tr('Quản lý trực tiếp', 'Direct Manager')}
               </label>
               <select
                 value={managerId}
                 onChange={(e) => setManagerId(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="">-- Không chỉ định --</option>
+                <option value="">{tr('-- Không chỉ định --', '-- Unassigned --')}</option>
                 {managers.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.employeeCode} — {m.fullName}
@@ -335,22 +352,22 @@ export function EmployeeFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Giới tính
+                {tr('Giới tính', 'Gender')}
               </label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value as 'MALE' | 'FEMALE' | 'OTHER' | '')}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="MALE">Nam</option>
-                <option value="FEMALE">Nữ</option>
-                <option value="OTHER">Khác</option>
+                <option value="MALE">{tr('Nam', 'Male')}</option>
+                <option value="FEMALE">{tr('Nữ', 'Female')}</option>
+                <option value="OTHER">{tr('Khác', 'Other')}</option>
               </select>
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Ngày sinh
+                {tr('Ngày sinh', 'Date of Birth')}
               </label>
               <input
                 type="date"
@@ -362,7 +379,7 @@ export function EmployeeFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Ngày vào làm <span className="text-rose-500">*</span>
+                {tr('Ngày vào làm', 'Hire Date')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -375,7 +392,7 @@ export function EmployeeFormModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Trạng thái làm việc
+                {tr('Trạng thái làm việc', 'Employment Status')}
               </label>
               <select
                 value={employmentStatus}
@@ -384,15 +401,15 @@ export function EmployeeFormModal({
                 }
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="PROBATION">Thử việc</option>
-                <option value="ACTIVE">Chính thức</option>
-                <option value="ON_LEAVE">Tạm nghỉ</option>
+                <option value="PROBATION">{tr('Thử việc', 'Probation')}</option>
+                <option value="ACTIVE">{tr('Chính thức', 'Active')}</option>
+                <option value="ON_LEAVE">{tr('Tạm nghỉ', 'On Leave')}</option>
               </select>
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Số người phụ thuộc (Thuế TNCN)
+                {tr('Số người phụ thuộc (Thuế TNCN)', 'Dependents (Personal Income Tax)')}
               </label>
               <input
                 type="number"
@@ -415,10 +432,16 @@ export function EmployeeFormModal({
               />
               <div>
                 <div className="text-sm font-semibold text-slate-900">
-                  Tự động cấp tài khoản đăng nhập Portal (Vai trò mặc định: Nhân viên)
+                  {tr(
+                    'Tự động cấp tài khoản đăng nhập Portal (Vai trò mặc định: Nhân viên)',
+                    'Automatically provision Portal login account (Default role: Employee)',
+                  )}
                 </div>
                 <div className="text-xs text-slate-600">
-                  Hệ thống sẽ dùng Email công việc làm tài khoản đăng nhập và sinh mật khẩu tạm thời hiển thị 1 lần sau khi lưu.
+                  {tr(
+                    'Hệ thống sẽ dùng Email công việc làm tài khoản đăng nhập và sinh mật khẩu tạm thời hiển thị 1 lần sau khi lưu.',
+                    'The system will use the work email as the login username and generate a one-time temporary password displayed after saving.',
+                  )}
                 </div>
               </div>
             </label>
@@ -426,14 +449,20 @@ export function EmployeeFormModal({
             {autoCreateAccount && (
               <div className="mt-3">
                 <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Mật khẩu khởi tạo tùy chọn (để trống hệ thống sẽ tự sinh ngẫu nhiên)
+                  {tr(
+                    'Mật khẩu khởi tạo tùy chọn (để trống hệ thống sẽ tự sinh ngẫu nhiên)',
+                    'Optional initial password (leave blank to auto-generate)',
+                  )}
                 </label>
                 <input
                   type="password"
                   minLength={8}
                   value={initialPassword}
                   onChange={(e) => setInitialPassword(e.target.value)}
-                  placeholder="Tối thiểu 8 ký tự (không bắt buộc)"
+                  placeholder={tr(
+                    'Tối thiểu 8 ký tự (không bắt buộc)',
+                    'At least 8 characters (optional)',
+                  )}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
                 />
               </div>
@@ -447,7 +476,7 @@ export function EmployeeFormModal({
               onClick={onClose}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -455,7 +484,9 @@ export function EmployeeFormModal({
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
-              <span>{isSubmitting ? 'Đang lưu...' : 'Tạo hồ sơ'}</span>
+              <span>
+                {isSubmitting ? tr('Đang lưu...', 'Saving...') : tr('Tạo hồ sơ', 'Create Profile')}
+              </span>
             </button>
           </div>
         </form>

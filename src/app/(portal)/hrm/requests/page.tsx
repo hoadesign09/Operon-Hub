@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   IconAdjustmentsHorizontal,
@@ -26,6 +26,7 @@ import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 type ActiveTab = 'LEAVES' | 'OVERTIMES' | 'TRIPS' | 'BALANCES' | 'TYPES';
 type LeaveSession = 'FULL' | 'AM' | 'PM';
@@ -97,28 +98,45 @@ interface HrLeaveBalance {
   note: string | null;
 }
 
-const SESSION_SHORT: Record<LeaveSession, string> = {
-  FULL: 'Cả ngày',
-  AM: 'Sáng',
-  PM: 'Chiều',
+const SESSION_SHORT: Record<LeaveSession, { vi: string; en: string }> = {
+  FULL: { vi: 'Cả ngày', en: 'Full Day' },
+  AM: { vi: 'Sáng', en: 'Morning' },
+  PM: { vi: 'Chiều', en: 'Afternoon' },
 };
 
-const OT_RATE_BADGE: Record<OtRateType, { label: string; className: string }> = {
-  WEEKDAY_150: { label: '150% (Thường)', className: 'bg-blue-50 text-blue-700' },
-  WEEKEND_200: { label: '200% (Cuối tuần)', className: 'bg-amber-50 text-amber-800' },
-  HOLIDAY_300: { label: '300% (Ngày lễ)', className: 'bg-rose-50 text-rose-700' },
+const OT_RATE_BADGE: Record<OtRateType, { vi: string; en: string; className: string }> = {
+  WEEKDAY_150: {
+    vi: '150% (Thường)',
+    en: '150% (Weekday)',
+    className: 'bg-blue-50 text-blue-700',
+  },
+  WEEKEND_200: {
+    vi: '200% (Cuối tuần)',
+    en: '200% (Weekend)',
+    className: 'bg-amber-50 text-amber-800',
+  },
+  HOLIDAY_300: {
+    vi: '300% (Ngày lễ)',
+    en: '300% (Holiday)',
+    className: 'bg-rose-50 text-rose-700',
+  },
 };
 
-const STATUS_BADGE: Record<RequestStatus, { label: string; className: string }> = {
-  DRAFT: { label: 'Nháp', className: 'bg-slate-100 text-slate-700' },
-  PENDING: { label: 'Chờ duyệt', className: 'bg-amber-100 text-amber-800' },
-  APPROVED: { label: 'Đã duyệt', className: 'bg-emerald-100 text-emerald-800' },
-  REJECTED: { label: 'Từ chối', className: 'bg-rose-100 text-rose-700' },
-  CANCELLED: { label: 'Đã hủy', className: 'bg-slate-200 text-slate-600' },
+const STATUS_BADGE: Record<RequestStatus, { vi: string; en: string; className: string }> = {
+  DRAFT: { vi: 'Nháp', en: 'Draft', className: 'bg-slate-100 text-slate-700' },
+  PENDING: { vi: 'Chờ duyệt', en: 'Pending', className: 'bg-amber-100 text-amber-800' },
+  APPROVED: { vi: 'Đã duyệt', en: 'Approved', className: 'bg-emerald-100 text-emerald-800' },
+  REJECTED: { vi: 'Từ chối', en: 'Rejected', className: 'bg-rose-100 text-rose-700' },
+  CANCELLED: { vi: 'Đã hủy', en: 'Cancelled', className: 'bg-slate-200 text-slate-600' },
 };
 
 export default function HrmRequestsPage() {
   const { user, selectedBranchId } = usePortalAuth();
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
   const canManage = Boolean(
     user?.isSuperAdmin || user?.permissions.includes('hrm.requests.manage'),
   );
@@ -183,7 +201,10 @@ export default function HrmRequestsPage() {
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        throw new Error(json.error?.message ?? 'Không tải được danh mục loại phép.');
+        throw new Error(
+          json.error?.message ??
+            trRef.current('Không tải được danh mục loại phép.', 'Failed to load leave types.'),
+        );
       }
       return json.data?.items ?? [];
     });
@@ -209,7 +230,13 @@ export default function HrmRequestsPage() {
             error?: { message?: string };
           };
           if (!res.ok || !json.success) {
-            throw new Error(json.error?.message ?? 'Không tải được danh sách đơn nghỉ phép.');
+            throw new Error(
+              json.error?.message ??
+                trRef.current(
+                  'Không tải được danh sách đơn nghỉ phép.',
+                  'Failed to load leave requests.',
+                ),
+            );
           }
           setLeaves(json.data?.items ?? []);
         });
@@ -228,7 +255,13 @@ export default function HrmRequestsPage() {
             error?: { message?: string };
           };
           if (!res.ok || !json.success) {
-            throw new Error(json.error?.message ?? 'Không tải được danh sách đơn tăng ca.');
+            throw new Error(
+              json.error?.message ??
+                trRef.current(
+                  'Không tải được danh sách đơn tăng ca.',
+                  'Failed to load overtime requests.',
+                ),
+            );
           }
           setOvertimes(json.data?.items ?? []);
         });
@@ -246,7 +279,13 @@ export default function HrmRequestsPage() {
             error?: { message?: string };
           };
           if (!res.ok || !json.success) {
-            throw new Error(json.error?.message ?? 'Không tải được danh sách đơn công tác.');
+            throw new Error(
+              json.error?.message ??
+                trRef.current(
+                  'Không tải được danh sách đơn công tác.',
+                  'Failed to load business trip requests.',
+                ),
+            );
           }
           setTrips(json.data?.items ?? []);
         });
@@ -264,7 +303,10 @@ export default function HrmRequestsPage() {
             error?: { message?: string };
           };
           if (!res.ok || !json.success) {
-            throw new Error(json.error?.message ?? 'Không tải được quỹ phép năm.');
+            throw new Error(
+              json.error?.message ??
+                trRef.current('Không tải được quỹ phép năm.', 'Failed to load leave balances.'),
+            );
           }
           setBalances(json.data?.items ?? []);
         });
@@ -282,7 +324,14 @@ export default function HrmRequestsPage() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMsg(err instanceof Error ? err.message : 'Lỗi tải dữ liệu quản trị đơn từ.');
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : trRef.current(
+                'Lỗi tải dữ liệu quản trị đơn từ.',
+                'Failed to load request management data.',
+              ),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -338,7 +387,9 @@ export default function HrmRequestsPage() {
         } | null;
         setBannerMsg({
           type: 'error',
-          text: errJson?.error?.message ?? 'Không thể xuất file Excel.',
+          text:
+            errJson?.error?.message ??
+            tr('Không thể xuất file Excel.', 'Failed to export Excel file.'),
         });
         return;
       }
@@ -352,9 +403,18 @@ export default function HrmRequestsPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(objUrl);
-      setBannerMsg({ type: 'success', text: 'Đã xuất dữ liệu ra Excel (.xlsx) thành công.' });
+      setBannerMsg({
+        type: 'success',
+        text: tr(
+          'Đã xuất dữ liệu ra Excel (.xlsx) thành công.',
+          'Data exported to Excel (.xlsx) successfully.',
+        ),
+      });
     } catch {
-      setBannerMsg({ type: 'error', text: 'Lỗi kết nối khi xuất Excel.' });
+      setBannerMsg({
+        type: 'error',
+        text: tr('Lỗi kết nối khi xuất Excel.', 'Connection error while exporting Excel.'),
+      });
     } finally {
       setIsExporting(false);
     }
@@ -371,17 +431,25 @@ export default function HrmRequestsPage() {
       if (!res.ok || !json.success) {
         setBannerMsg({
           type: 'error',
-          text: json.error?.message ?? 'Không thể xóa loại nghỉ phép.',
+          text:
+            json.error?.message ??
+            tr('Không thể xóa loại nghỉ phép.', 'Failed to delete leave type.'),
         });
       } else {
         setBannerMsg({
           type: 'success',
-          text: `Đã xóa loại nghỉ phép "${deletingType.name}".`,
+          text: tr(
+            `Đã xóa loại nghỉ phép "${deletingType.name}".`,
+            `Deleted leave type "${deletingType.name}".`,
+          ),
         });
         triggerReload();
       }
     } catch {
-      setBannerMsg({ type: 'error', text: 'Lỗi kết nối máy chủ.' });
+      setBannerMsg({
+        type: 'error',
+        text: tr('Lỗi kết nối máy chủ.', 'Server connection error.'),
+      });
     } finally {
       setIsDeletingType(false);
       setDeletingType(null);
@@ -405,18 +473,24 @@ export default function HrmRequestsPage() {
       });
       const json = (await res.json()) as { success: boolean; error?: { message?: string } };
       if (!res.ok || !json.success) {
-        setAdjustError(json.error?.message ?? 'Không thể điều chỉnh quỹ phép.');
+        setAdjustError(
+          json.error?.message ??
+            tr('Không thể điều chỉnh quỹ phép.', 'Failed to adjust leave balance.'),
+        );
         setIsSavingAdjust(false);
         return;
       }
       setAdjustingBalance(null);
       setBannerMsg({
         type: 'success',
-        text: `Đã điều chỉnh quỹ phép cho ${adjustingBalance.employeeName}.`,
+        text: tr(
+          `Đã điều chỉnh quỹ phép cho ${adjustingBalance.employeeName}.`,
+          `Adjusted leave balance for ${adjustingBalance.employeeName}.`,
+        ),
       });
       triggerReload();
     } catch {
-      setAdjustError('Lỗi kết nối máy chủ.');
+      setAdjustError(tr('Lỗi kết nối máy chủ.', 'Server connection error.'));
     } finally {
       setIsSavingAdjust(false);
     }
@@ -429,9 +503,14 @@ export default function HrmRequestsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Quản trị Đơn từ & Quỹ phép</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Quản trị Đơn từ & Quỹ phép', 'Leave & Requests')}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Quản lý đơn Nghỉ phép, Tăng ca (OT), Công tác, quỹ phép năm và danh mục loại phép
+            {tr(
+              'Quản lý đơn Nghỉ phép, Tăng ca (OT), Công tác, quỹ phép năm và danh mục loại phép',
+              'Manage leave requests, overtime (OT), business trips, leave balances, and leave types',
+            )}
           </p>
         </div>
 
@@ -448,7 +527,7 @@ export default function HrmRequestsPage() {
               ) : (
                 <IconDownload size={16} />
               )}
-              <span>Xuất Excel</span>
+              <span>{tr('Xuất Excel', 'Export Excel')}</span>
             </button>
           )}
 
@@ -459,7 +538,7 @@ export default function HrmRequestsPage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
             >
               <IconCalendarPlus size={17} />
-              <span>Khởi tạo quỹ phép năm</span>
+              <span>{tr('Khởi tạo quỹ phép năm', 'Initialize Annual Balances')}</span>
             </button>
           )}
 
@@ -473,7 +552,7 @@ export default function HrmRequestsPage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
               <IconPlus size={17} />
-              <span>Thêm loại phép</span>
+              <span>{tr('Thêm loại phép', 'Add Leave Type')}</span>
             </button>
           )}
         </div>
@@ -492,7 +571,7 @@ export default function HrmRequestsPage() {
             type="button"
             onClick={() => setBannerMsg(null)}
             className="rounded p-1 hover:bg-black/5"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={16} />
           </button>
@@ -503,11 +582,11 @@ export default function HrmRequestsPage() {
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
         {(
           [
-            { key: 'LEAVES', label: 'Đơn nghỉ phép' },
-            { key: 'OVERTIMES', label: 'Đơn Tăng ca (OT)' },
-            { key: 'TRIPS', label: 'Đơn Công tác' },
-            { key: 'BALANCES', label: 'Quỹ phép năm' },
-            { key: 'TYPES', label: 'Danh mục Loại phép' },
+            { key: 'LEAVES', label: tr('Đơn nghỉ phép', 'Leave Requests') },
+            { key: 'OVERTIMES', label: tr('Đơn Tăng ca (OT)', 'Overtime') },
+            { key: 'TRIPS', label: tr('Đơn Công tác', 'Business Trips') },
+            { key: 'BALANCES', label: tr('Quỹ phép năm', 'Leave Balances') },
+            { key: 'TYPES', label: tr('Danh mục Loại phép', 'Leave Types') },
           ] as const
         ).map((tab) => (
           <button
@@ -540,7 +619,10 @@ export default function HrmRequestsPage() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm theo mã đơn, mã NV, họ tên, địa điểm/lý do..."
+              placeholder={tr(
+                'Tìm theo mã đơn, mã NV, họ tên, địa điểm/lý do...',
+                'Search by code, employee, destination, or reason...',
+              )}
               className="w-full rounded-xl border border-slate-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-blue-500"
             />
           </div>
@@ -551,12 +633,12 @@ export default function HrmRequestsPage() {
               setIsLoading(true);
               setYear(Number(e.target.value));
             }}
-            aria-label="Chọn năm"
+            aria-label={tr('Chọn năm', 'Select year')}
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
           >
             {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
               <option key={y} value={y}>
-                Năm {y}
+                {tr(`Năm ${y}`, `Year ${y}`)}
               </option>
             ))}
           </select>
@@ -568,10 +650,10 @@ export default function HrmRequestsPage() {
                 setIsLoading(true);
                 setLeaveTypeFilter(e.target.value);
               }}
-              aria-label="Lọc loại phép"
+              aria-label={tr('Lọc loại phép', 'Filter by leave type')}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
             >
-              <option value="">Tất cả loại phép</option>
+              <option value="">{tr('Tất cả loại phép', 'All leave types')}</option>
               {leaveTypes.map((lt) => (
                 <option key={lt.id} value={lt.id}>
                   {lt.name} ({lt.code})
@@ -587,13 +669,13 @@ export default function HrmRequestsPage() {
                 setIsLoading(true);
                 setOtRateFilter(e.target.value);
               }}
-              aria-label="Lọc hệ số OT"
+              aria-label={tr('Lọc hệ số OT', 'Filter by OT rate')}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
             >
-              <option value="">Tất cả hệ số OT</option>
-              <option value="WEEKDAY_150">Ngày thường (150%)</option>
-              <option value="WEEKEND_200">Cuối tuần (200%)</option>
-              <option value="HOLIDAY_300">Ngày lễ (300%)</option>
+              <option value="">{tr('Tất cả hệ số OT', 'All OT rates')}</option>
+              <option value="WEEKDAY_150">{tr('Ngày thường (150%)', 'Weekday (150%)')}</option>
+              <option value="WEEKEND_200">{tr('Cuối tuần (200%)', 'Weekend (200%)')}</option>
+              <option value="HOLIDAY_300">{tr('Ngày lễ (300%)', 'Holiday (300%)')}</option>
             </select>
           )}
 
@@ -604,15 +686,15 @@ export default function HrmRequestsPage() {
                 setIsLoading(true);
                 setStatusFilter(e.target.value);
               }}
-              aria-label="Lọc trạng thái"
+              aria-label={tr('Lọc trạng thái', 'Filter by status')}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
             >
-              <option value="">Tất cả trạng thái</option>
-              <option value="DRAFT">Nháp</option>
-              <option value="PENDING">Chờ duyệt</option>
-              <option value="APPROVED">Đã duyệt</option>
-              <option value="REJECTED">Từ chối</option>
-              <option value="CANCELLED">Đã hủy</option>
+              <option value="">{tr('Tất cả trạng thái', 'All statuses')}</option>
+              <option value="DRAFT">{tr('Nháp', 'Draft')}</option>
+              <option value="PENDING">{tr('Chờ duyệt', 'Pending')}</option>
+              <option value="APPROVED">{tr('Đã duyệt', 'Approved')}</option>
+              <option value="REJECTED">{tr('Từ chối', 'Rejected')}</option>
+              <option value="CANCELLED">{tr('Đã hủy', 'Cancelled')}</option>
             </select>
           )}
 
@@ -622,7 +704,7 @@ export default function HrmRequestsPage() {
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
           >
             <IconRefresh size={16} />
-            <span>Tải lại</span>
+            <span>{tr('Tải lại', 'Reload')}</span>
           </button>
         </div>
       )}
@@ -645,7 +727,7 @@ export default function HrmRequestsPage() {
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               <IconRefresh size={16} />
-              <span>Thử lại</span>
+              <span>{tr('Thử lại', 'Retry')}</span>
             </button>
           </div>
         ) : activeTab === 'LEAVES' ? (
@@ -653,7 +735,10 @@ export default function HrmRequestsPage() {
             <div className="p-10 text-center">
               <IconCalendarOff size={36} className="mx-auto text-slate-300" />
               <p className="mt-2 text-sm font-semibold text-slate-700">
-                Không có đơn nghỉ phép nào khớp bộ lọc
+                {tr(
+                  'Không có đơn nghỉ phép nào khớp bộ lọc',
+                  'No leave requests match the current filters',
+                )}
               </p>
             </div>
           ) : (
@@ -661,19 +746,21 @@ export default function HrmRequestsPage() {
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Mã đơn</th>
-                    <th className="px-4 py-3">Nhân viên</th>
-                    <th className="px-4 py-3">Loại phép</th>
-                    <th className="px-4 py-3">Thời gian</th>
-                    <th className="px-4 py-3 text-right">Số ngày</th>
-                    <th className="px-4 py-3">Lý do</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Duyệt</th>
+                    <th className="px-4 py-3">{tr('Mã đơn', 'Code')}</th>
+                    <th className="px-4 py-3">{tr('Nhân viên', 'Employee')}</th>
+                    <th className="px-4 py-3">{tr('Loại phép', 'Leave Type')}</th>
+                    <th className="px-4 py-3">{tr('Thời gian', 'Duration')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Số ngày', 'Days')}</th>
+                    <th className="px-4 py-3">{tr('Lý do', 'Reason')}</th>
+                    <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Duyệt', 'Approval')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {leaves.map((item) => {
                     const badge = STATUS_BADGE[item.status];
+                    const startSessionLabel = SESSION_SHORT[item.startSession];
+                    const endSessionLabel = SESSION_SHORT[item.endSession];
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/70">
                         <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-800">
@@ -688,10 +775,12 @@ export default function HrmRequestsPage() {
                         <td className="px-4 py-3 text-slate-800">{item.leaveTypeName}</td>
                         <td className="px-4 py-3 text-xs text-slate-700">
                           <div>
-                            {formatDateVN(item.startDate)} ({SESSION_SHORT[item.startSession]})
+                            {formatDateVN(item.startDate)} (
+                            {locale === 'en' ? startSessionLabel.en : startSessionLabel.vi})
                           </div>
                           <div className="text-slate-500">
-                            → {formatDateVN(item.endDate)} ({SESSION_SHORT[item.endSession]})
+                            → {formatDateVN(item.endDate)} (
+                            {locale === 'en' ? endSessionLabel.en : endSessionLabel.vi})
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right font-semibold text-slate-900">
@@ -706,7 +795,7 @@ export default function HrmRequestsPage() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
                           >
-                            {badge.label}
+                            {locale === 'en' ? badge.en : badge.vi}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -715,7 +804,7 @@ export default function HrmRequestsPage() {
                               href="/approvals"
                               className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                             >
-                              <span>Hộp thư</span>
+                              <span>{tr('Hộp thư', 'Inbox')}</span>
                               <IconExternalLink size={13} />
                             </Link>
                           ) : (
@@ -734,7 +823,10 @@ export default function HrmRequestsPage() {
             <div className="p-10 text-center">
               <IconCalendarOff size={36} className="mx-auto text-slate-300" />
               <p className="mt-2 text-sm font-semibold text-slate-700">
-                Không có đơn tăng ca (OT) nào khớp bộ lọc
+                {tr(
+                  'Không có đơn tăng ca (OT) nào khớp bộ lọc',
+                  'No overtime requests match the current filters',
+                )}
               </p>
             </div>
           ) : (
@@ -742,14 +834,14 @@ export default function HrmRequestsPage() {
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Mã đơn</th>
-                    <th className="px-4 py-3">Nhân viên</th>
-                    <th className="px-4 py-3">Ngày & Giờ OT</th>
-                    <th className="px-4 py-3 text-right">Tổng giờ</th>
-                    <th className="px-4 py-3">Hệ số OT</th>
-                    <th className="px-4 py-3">Lý do</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Duyệt</th>
+                    <th className="px-4 py-3">{tr('Mã đơn', 'Code')}</th>
+                    <th className="px-4 py-3">{tr('Nhân viên', 'Employee')}</th>
+                    <th className="px-4 py-3">{tr('Ngày & Giờ OT', 'OT Date & Time')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Tổng giờ', 'Total Hours')}</th>
+                    <th className="px-4 py-3">{tr('Hệ số OT', 'OT Rate')}</th>
+                    <th className="px-4 py-3">{tr('Lý do', 'Reason')}</th>
+                    <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Duyệt', 'Approval')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -782,7 +874,7 @@ export default function HrmRequestsPage() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${rateBadge.className}`}
                           >
-                            {rateBadge.label}
+                            {locale === 'en' ? rateBadge.en : rateBadge.vi}
                           </span>
                         </td>
                         <td className="max-w-xs px-4 py-3">
@@ -794,7 +886,7 @@ export default function HrmRequestsPage() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
                           >
-                            {badge.label}
+                            {locale === 'en' ? badge.en : badge.vi}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -803,7 +895,7 @@ export default function HrmRequestsPage() {
                               href="/approvals"
                               className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                             >
-                              <span>Hộp thư</span>
+                              <span>{tr('Hộp thư', 'Inbox')}</span>
                               <IconExternalLink size={13} />
                             </Link>
                           ) : (
@@ -822,7 +914,10 @@ export default function HrmRequestsPage() {
             <div className="p-10 text-center">
               <IconCalendarOff size={36} className="mx-auto text-slate-300" />
               <p className="mt-2 text-sm font-semibold text-slate-700">
-                Không có đơn công tác nào khớp bộ lọc
+                {tr(
+                  'Không có đơn công tác nào khớp bộ lọc',
+                  'No business trip requests match the current filters',
+                )}
               </p>
             </div>
           ) : (
@@ -830,14 +925,14 @@ export default function HrmRequestsPage() {
               <table className="w-full min-w-[880px] text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Mã đơn</th>
-                    <th className="px-4 py-3">Nhân viên</th>
-                    <th className="px-4 py-3">Địa điểm</th>
-                    <th className="px-4 py-3">Thời gian</th>
-                    <th className="px-4 py-3 text-right">Dự kiến phí</th>
-                    <th className="px-4 py-3">Mục đích</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Duyệt</th>
+                    <th className="px-4 py-3">{tr('Mã đơn', 'Code')}</th>
+                    <th className="px-4 py-3">{tr('Nhân viên', 'Employee')}</th>
+                    <th className="px-4 py-3">{tr('Địa điểm', 'Destination')}</th>
+                    <th className="px-4 py-3">{tr('Thời gian', 'Duration')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Dự kiến phí', 'Est. Cost')}</th>
+                    <th className="px-4 py-3">{tr('Mục đích', 'Purpose')}</th>
+                    <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Duyệt', 'Approval')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -859,7 +954,9 @@ export default function HrmRequestsPage() {
                           <div>
                             {formatDateVN(item.startDate)} → {formatDateVN(item.endDate)}
                           </div>
-                          <div className="text-slate-500">{item.totalDays} ngày</div>
+                          <div className="text-slate-500">
+                            {item.totalDays} {tr('ngày', 'days')}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right font-semibold text-slate-900">
                           {formatVND(item.estimatedCost)}
@@ -873,7 +970,7 @@ export default function HrmRequestsPage() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}
                           >
-                            {badge.label}
+                            {locale === 'en' ? badge.en : badge.vi}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -882,7 +979,7 @@ export default function HrmRequestsPage() {
                               href="/approvals"
                               className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                             >
-                              <span>Hộp thư</span>
+                              <span>{tr('Hộp thư', 'Inbox')}</span>
                               <IconExternalLink size={13} />
                             </Link>
                           ) : (
@@ -901,7 +998,10 @@ export default function HrmRequestsPage() {
             <div className="p-10 text-center">
               <IconCalendarOff size={36} className="mx-auto text-slate-300" />
               <p className="mt-2 text-sm font-semibold text-slate-700">
-                Chưa có bản ghi quỹ phép năm {year}
+                {tr(
+                  `Chưa có bản ghi quỹ phép năm ${year}`,
+                  `No leave balance records for ${year}`,
+                )}
               </p>
               {canManage && (
                 <button
@@ -910,7 +1010,9 @@ export default function HrmRequestsPage() {
                   className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                 >
                   <IconCalendarPlus size={16} />
-                  <span>Khởi tạo quỹ phép năm {year}</span>
+                  <span>
+                    {tr(`Khởi tạo quỹ phép năm ${year}`, `Initialize ${year} Balances`)}
+                  </span>
                 </button>
               )}
             </div>
@@ -919,14 +1021,16 @@ export default function HrmRequestsPage() {
               <table className="w-full min-w-[820px] text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Nhân viên</th>
-                    <th className="px-4 py-3">Loại phép</th>
-                    <th className="px-4 py-3 text-right">Tiêu chuẩn</th>
-                    <th className="px-4 py-3 text-right">Chuyển năm trước</th>
-                    <th className="px-4 py-3 text-right">Đã dùng</th>
-                    <th className="px-4 py-3 text-right">Chờ duyệt</th>
-                    <th className="px-4 py-3 text-right">Còn lại</th>
-                    {canManage && <th className="px-4 py-3 text-right">Điều chỉnh</th>}
+                    <th className="px-4 py-3">{tr('Nhân viên', 'Employee')}</th>
+                    <th className="px-4 py-3">{tr('Loại phép', 'Leave Type')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Tiêu chuẩn', 'Entitled')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Chuyển năm trước', 'Carried Over')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Đã dùng', 'Used')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Chờ duyệt', 'Pending')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Còn lại', 'Remaining')}</th>
+                    {canManage && (
+                      <th className="px-4 py-3 text-right">{tr('Điều chỉnh', 'Adjust')}</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -971,7 +1075,7 @@ export default function HrmRequestsPage() {
                             className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                           >
                             <IconAdjustmentsHorizontal size={14} />
-                            <span>Sửa</span>
+                            <span>{tr('Sửa', 'Edit')}</span>
                           </button>
                         </td>
                       )}
@@ -986,14 +1090,18 @@ export default function HrmRequestsPage() {
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Mã</th>
-                  <th className="px-4 py-3">Tên loại phép</th>
-                  <th className="px-4 py-3 text-center">Hưởng lương</th>
-                  <th className="px-4 py-3 text-right">Ngày/năm</th>
-                  <th className="px-4 py-3 text-right">Kết chuyển tối đa</th>
-                  <th className="px-4 py-3 text-center">Đính kèm</th>
-                  <th className="px-4 py-3 text-center">Trạng thái</th>
-                  {canManage && <th className="px-4 py-3 text-right">Thao tác</th>}
+                  <th className="px-4 py-3">{tr('Mã', 'Code')}</th>
+                  <th className="px-4 py-3">{tr('Tên loại phép', 'Leave Type Name')}</th>
+                  <th className="px-4 py-3 text-center">{tr('Hưởng lương', 'Paid')}</th>
+                  <th className="px-4 py-3 text-right">{tr('Ngày/năm', 'Days/Year')}</th>
+                  <th className="px-4 py-3 text-right">
+                    {tr('Kết chuyển tối đa', 'Max Carry-Over')}
+                  </th>
+                  <th className="px-4 py-3 text-center">{tr('Đính kèm', 'Attachment')}</th>
+                  <th className="px-4 py-3 text-center">{tr('Trạng thái', 'Status')}</th>
+                  {canManage && (
+                    <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1016,17 +1124,23 @@ export default function HrmRequestsPage() {
                             : 'bg-slate-100 text-slate-600'
                         }`}
                       >
-                        {lt.isPaid ? 'Có' : 'Không'}
+                        {lt.isPaid ? tr('Có', 'Yes') : tr('Không', 'No')}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                      {lt.defaultDaysPerYear > 0 ? `${lt.defaultDaysPerYear} ngày` : 'Không giới hạn'}
+                      {lt.defaultDaysPerYear > 0
+                        ? tr(`${lt.defaultDaysPerYear} ngày`, `${lt.defaultDaysPerYear} days`)
+                        : tr('Không giới hạn', 'Unlimited')}
                     </td>
                     <td className="px-4 py-3 text-right text-slate-700">
-                      {lt.allowCarryOver ? `${lt.maxCarryOverDays} ngày` : '-'}
+                      {lt.allowCarryOver
+                        ? tr(`${lt.maxCarryOverDays} ngày`, `${lt.maxCarryOverDays} days`)
+                        : '-'}
                     </td>
                     <td className="px-4 py-3 text-center text-xs text-slate-600">
-                      {lt.requiresAttachment ? 'Bắt buộc' : 'Tùy chọn'}
+                      {lt.requiresAttachment
+                        ? tr('Bắt buộc', 'Required')
+                        : tr('Tùy chọn', 'Optional')}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span
@@ -1036,7 +1150,7 @@ export default function HrmRequestsPage() {
                             : 'bg-slate-200 text-slate-600'
                         }`}
                       >
-                        {lt.isActive ? 'Đang áp dụng' : 'Ngưng'}
+                        {lt.isActive ? tr('Đang áp dụng', 'Active') : tr('Ngưng', 'Inactive')}
                       </span>
                     </td>
                     {canManage && (
@@ -1044,7 +1158,7 @@ export default function HrmRequestsPage() {
                         <div className="flex justify-end gap-1.5">
                           <button
                             type="button"
-                            title="Sửa"
+                            title={tr('Sửa', 'Edit')}
                             onClick={() => {
                               setEditingType(lt);
                               setIsTypeModalOpen(true);
@@ -1055,7 +1169,7 @@ export default function HrmRequestsPage() {
                           </button>
                           <button
                             type="button"
-                            title="Xóa mềm"
+                            title={tr('Xóa mềm', 'Soft delete')}
                             onClick={() => setDeletingType(lt)}
                             className="rounded-lg bg-slate-100 p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
                           >
@@ -1084,7 +1198,13 @@ export default function HrmRequestsPage() {
           onSaved={() => {
             setIsTypeModalOpen(false);
             setEditingType(null);
-            setBannerMsg({ type: 'success', text: 'Đã lưu danh mục loại nghỉ phép thành công.' });
+            setBannerMsg({
+              type: 'success',
+              text: tr(
+                'Đã lưu danh mục loại nghỉ phép thành công.',
+                'Leave type saved successfully.',
+              ),
+            });
             triggerReload();
           }}
         />
@@ -1100,7 +1220,10 @@ export default function HrmRequestsPage() {
             setYear(summary.year);
             setBannerMsg({
               type: 'success',
-              text: `Đã khởi tạo ${summary.createdCount} bản ghi quỹ phép năm ${summary.year} (bỏ qua ${summary.skippedCount} bản ghi đã tồn tại).`,
+              text: tr(
+                `Đã khởi tạo ${summary.createdCount} bản ghi quỹ phép năm ${summary.year} (bỏ qua ${summary.skippedCount} bản ghi đã tồn tại).`,
+                `Initialized ${summary.createdCount} leave balance records for ${summary.year} (skipped ${summary.skippedCount} existing).`,
+              ),
             });
             triggerReload();
           }}
@@ -1111,7 +1234,9 @@ export default function HrmRequestsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h2 className="text-base font-bold text-slate-900">Điều chỉnh quỹ phép năm</h2>
+              <h2 className="text-base font-bold text-slate-900">
+                {tr('Điều chỉnh quỹ phép năm', 'Adjust Annual Leave Balance')}
+              </h2>
               <button
                 type="button"
                 onClick={() => setAdjustingBalance(null)}
@@ -1132,15 +1257,15 @@ export default function HrmRequestsPage() {
                   {adjustingBalance.employeeName} ({adjustingBalance.employeeCode})
                 </div>
                 <div className="mt-1">
-                  {adjustingBalance.leaveTypeName} — Năm {adjustingBalance.year} | Đã dùng:{' '}
-                  <strong>{adjustingBalance.usedDays}</strong> | Chờ duyệt:{' '}
-                  <strong>{adjustingBalance.pendingDays}</strong>
+                  {adjustingBalance.leaveTypeName} — {tr('Năm', 'Year')} {adjustingBalance.year} |{' '}
+                  {tr('Đã dùng:', 'Used:')} <strong>{adjustingBalance.usedDays}</strong> |{' '}
+                  {tr('Chờ duyệt:', 'Pending:')} <strong>{adjustingBalance.pendingDays}</strong>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Phép tiêu chuẩn
+                    {tr('Phép tiêu chuẩn', 'Entitled Days')}
                   </label>
                   <input
                     type="number"
@@ -1154,7 +1279,7 @@ export default function HrmRequestsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Chuyển năm trước
+                    {tr('Chuyển năm trước', 'Carried Over')}
                   </label>
                   <input
                     type="number"
@@ -1169,13 +1294,16 @@ export default function HrmRequestsPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  Lý do điều chỉnh
+                  {tr('Lý do điều chỉnh', 'Adjustment Reason')}
                 </label>
                 <input
                   type="text"
                   value={adjNote}
                   onChange={(e) => setAdjNote(e.target.value)}
-                  placeholder="Ghi chú quyết định điều chỉnh phép..."
+                  placeholder={tr(
+                    'Ghi chú quyết định điều chỉnh phép...',
+                    'Notes for this leave balance adjustment...',
+                  )}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
                 />
               </div>
@@ -1186,7 +1314,7 @@ export default function HrmRequestsPage() {
                   disabled={isSavingAdjust}
                   className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  Hủy
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -1194,7 +1322,7 @@ export default function HrmRequestsPage() {
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                 >
                   {isSavingAdjust && <IconLoader2 size={16} className="animate-spin" />}
-                  <span>Lưu điều chỉnh</span>
+                  <span>{tr('Lưu điều chỉnh', 'Save Adjustment')}</span>
                 </button>
               </div>
             </form>
@@ -1204,9 +1332,12 @@ export default function HrmRequestsPage() {
 
       <ConfirmModal
         isOpen={Boolean(deletingType)}
-        title="Xóa mềm loại nghỉ phép"
-        description={`Bạn có chắc muốn xóa loại nghỉ phép "${deletingType?.name}" (${deletingType?.code})? Hệ thống sẽ chặn xóa nếu đang có đơn chờ duyệt hoặc đã duyệt.`}
-        confirmLabel="Xóa loại phép"
+        title={tr('Xóa mềm loại nghỉ phép', 'Soft Delete Leave Type')}
+        description={tr(
+          `Bạn có chắc muốn xóa loại nghỉ phép "${deletingType?.name}" (${deletingType?.code})? Hệ thống sẽ chặn xóa nếu đang có đơn chờ duyệt hoặc đã duyệt.`,
+          `Are you sure you want to delete leave type "${deletingType?.name}" (${deletingType?.code})? Deletion is blocked if there are pending or approved requests.`,
+        )}
+        confirmLabel={tr('Xóa loại phép', 'Delete Leave Type')}
         variant="danger"
         isProcessing={isDeletingType}
         onConfirm={() => void handleDeleteLeaveType()}

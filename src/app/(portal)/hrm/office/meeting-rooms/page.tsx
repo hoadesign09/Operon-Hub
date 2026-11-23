@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconCalendar,
   IconCalendarPlus,
@@ -27,12 +27,21 @@ import type {
   MeetingRoomStats,
   RoomBookingItem,
 } from '@/modules/hrm/office/meeting-rooms.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 type MainTab = 'calendar' | 'rooms' | 'mine';
 type CalendarMode = 'day' | 'week';
 
 const DAY_HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
-const WEEKDAY_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const WEEKDAY_SHORT: Array<{ vi: string; en: string }> = [
+  { vi: 'CN', en: 'Sun' },
+  { vi: 'T2', en: 'Mon' },
+  { vi: 'T3', en: 'Tue' },
+  { vi: 'T4', en: 'Wed' },
+  { vi: 'T5', en: 'Thu' },
+  { vi: 'T6', en: 'Fri' },
+  { vi: 'T7', en: 'Sat' },
+];
 
 function formatIsoDateLocal(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -82,6 +91,12 @@ function bookingTouchesHourSlot(booking: RoomBookingItem, targetDateIso: string,
 }
 
 export default function MeetingRoomsPage() {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const { user, selectedBranchId, hasPermission } = usePortalAuth();
   const canManageRooms = hasPermission('hrm.rooms.manage');
   const canBookRooms = hasPermission('hrm.rooms.book');
@@ -196,10 +211,16 @@ export default function MeetingRoomsPage() {
         ];
 
         if (!roomsRes.ok || !roomsJson?.success || !roomsJson.data) {
-          throw new Error(roomsJson?.error?.message ?? 'Không thể tải danh sách phòng họp.');
+          throw new Error(
+            roomsJson?.error?.message ??
+              trRef.current('Không thể tải danh sách phòng họp.', 'Failed to load meeting rooms.'),
+          );
         }
         if (!calRes.ok || !calJson?.success || !calJson.data) {
-          throw new Error(calJson?.error?.message ?? 'Không thể tải lịch đặt phòng họp.');
+          throw new Error(
+            calJson?.error?.message ??
+              trRef.current('Không thể tải lịch đặt phòng họp.', 'Failed to load room bookings.'),
+          );
         }
 
         setRooms(roomsJson.data.items);
@@ -212,7 +233,12 @@ export default function MeetingRoomsPage() {
           return;
         }
         setErrorMessage(
-          err instanceof Error ? err.message : 'Lỗi kết nối khi tải dữ liệu phòng họp.',
+          err instanceof Error
+            ? err.message
+            : trRef.current(
+                'Lỗi kết nối khi tải dữ liệu phòng họp.',
+                'Connection error while loading meeting room data.',
+              ),
         );
       } finally {
         setIsLoading(false);
@@ -269,14 +295,20 @@ export default function MeetingRoomsPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể xóa phòng họp.');
+        setErrorMessage(
+          json?.error?.message ?? tr('Không thể xóa phòng họp.', 'Failed to delete meeting room.'),
+        );
         return;
       }
       setDeletingRoom(null);
-      showToast(`Đã xóa phòng họp "${deletingRoom.name}".`);
+      showToast(
+        tr(`Đã xóa phòng họp "${deletingRoom.name}".`, `Deleted meeting room "${deletingRoom.name}".`),
+      );
       setReloadTick((v) => v + 1);
     } catch {
-      setErrorMessage('Lỗi kết nối khi xóa phòng họp.');
+      setErrorMessage(
+        tr('Lỗi kết nối khi xóa phòng họp.', 'Connection error while deleting meeting room.'),
+      );
     } finally {
       setIsDeletingRoom(false);
     }
@@ -300,9 +332,14 @@ export default function MeetingRoomsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Quản lý & Đặt Phòng họp</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {tr('Quản lý & Đặt Phòng họp', 'Meeting Rooms')}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Tra cứu lịch trống theo ngày/tuần và đặt phòng họp chống trùng lịch tự động
+            {tr(
+              'Tra cứu lịch trống theo ngày/tuần và đặt phòng họp chống trùng lịch tự động',
+              'Check daily/weekly availability and book meeting rooms with automatic conflict prevention',
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -313,7 +350,7 @@ export default function MeetingRoomsPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               <IconPlus size={17} />
-              <span>Thêm phòng họp</span>
+              <span>{tr('Thêm phòng họp', 'Add Room')}</span>
             </button>
           )}
           {canBookRooms && (
@@ -324,7 +361,7 @@ export default function MeetingRoomsPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
             >
               <IconCalendarPlus size={17} />
-              <span>Đặt phòng họp</span>
+              <span>{tr('Đặt phòng họp', 'Book Room')}</span>
             </button>
           )}
         </div>
@@ -340,18 +377,20 @@ export default function MeetingRoomsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>Phòng họp đang hoạt động</span>
+            <span>{tr('Phòng họp đang hoạt động', 'Active Meeting Rooms')}</span>
             <IconDoor size={18} className="text-blue-600" />
           </div>
           <div className="mt-2 text-2xl font-bold text-slate-900">
             {stats.active}{' '}
-            <span className="text-sm font-normal text-slate-400">/ {stats.total} phòng</span>
+            <span className="text-sm font-normal text-slate-400">
+              / {stats.total} {tr('phòng', 'rooms')}
+            </span>
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>Cuộc họp hôm nay</span>
+            <span>{tr('Cuộc họp hôm nay', 'Meetings Today')}</span>
             <IconCalendar size={18} className="text-emerald-600" />
           </div>
           <div className="mt-2 text-2xl font-bold text-slate-900">{stats.todayBookings}</div>
@@ -359,7 +398,7 @@ export default function MeetingRoomsPage() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>Lịch họp sắp tới của tôi</span>
+            <span>{tr('Lịch họp sắp tới của tôi', 'My Upcoming Meetings')}</span>
             <IconClock size={18} className="text-amber-600" />
           </div>
           <div className="mt-2 text-2xl font-bold text-slate-900">{upcomingMineCount}</div>
@@ -370,9 +409,15 @@ export default function MeetingRoomsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200">
         <div className="flex gap-1">
           {[
-            { id: 'calendar' as const, label: 'Lịch phòng họp' },
-            { id: 'rooms' as const, label: `Danh mục phòng (${rooms.length})` },
-            { id: 'mine' as const, label: `Lịch họp của tôi (${myBookings.length})` },
+            { id: 'calendar' as const, label: tr('Lịch phòng họp', 'Room Calendar') },
+            {
+              id: 'rooms' as const,
+              label: tr(`Danh mục phòng (${rooms.length})`, `Rooms (${rooms.length})`),
+            },
+            {
+              id: 'mine' as const,
+              label: tr(`Lịch họp của tôi (${myBookings.length})`, `My Bookings (${myBookings.length})`),
+            },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -396,10 +441,10 @@ export default function MeetingRoomsPage() {
               onChange={(e) => setSelectedRoomFilter(e.target.value)}
               className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-blue-500"
             >
-              <option value="">Tất cả phòng họp</option>
+              <option value="">{tr('Tất cả phòng họp', 'All Meeting Rooms')}</option>
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>
-                  [{r.code}] {r.name} ({r.capacity} chỗ)
+                  [{r.code}] {r.name} ({r.capacity} {tr('chỗ', 'seats')})
                 </option>
               ))}
             </select>
@@ -412,7 +457,7 @@ export default function MeetingRoomsPage() {
                   calendarMode === 'day' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                Theo ngày
+                {tr('Theo ngày', 'Day')}
               </button>
               <button
                 type="button"
@@ -421,7 +466,7 @@ export default function MeetingRoomsPage() {
                   calendarMode === 'week' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                Theo tuần
+                {tr('Theo tuần', 'Week')}
               </button>
             </div>
 
@@ -430,7 +475,7 @@ export default function MeetingRoomsPage() {
                 type="button"
                 onClick={() => setAnchorDate((d) => addDays(d, calendarMode === 'day' ? -1 : -7))}
                 className="rounded-lg p-1 text-slate-600 hover:bg-slate-100"
-                aria-label="Khoảng trước"
+                aria-label={tr('Khoảng trước', 'Previous period')}
               >
                 <IconChevronLeft size={16} />
               </button>
@@ -439,13 +484,13 @@ export default function MeetingRoomsPage() {
                 onClick={() => setAnchorDate(new Date())}
                 className="rounded-lg px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
               >
-                Hôm nay
+                {tr('Hôm nay', 'Today')}
               </button>
               <button
                 type="button"
                 onClick={() => setAnchorDate((d) => addDays(d, calendarMode === 'day' ? 1 : 7))}
                 className="rounded-lg p-1 text-slate-600 hover:bg-slate-100"
-                aria-label="Khoảng sau"
+                aria-label={tr('Khoảng sau', 'Next period')}
               >
                 <IconChevronRight size={16} />
               </button>
@@ -470,7 +515,7 @@ export default function MeetingRoomsPage() {
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       ) : activeTab === 'calendar' ? (
@@ -478,11 +523,20 @@ export default function MeetingRoomsPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-slate-800">
               {calendarMode === 'day'
-                ? `Lịch ngày ${formatDateVN(anchorDateIso)}`
-                : `Tuần từ ${formatDateVN(dateRange.dateFrom)} đến ${formatDateVN(dateRange.dateTo)}`}
+                ? tr(
+                    `Lịch ngày ${formatDateVN(anchorDateIso)}`,
+                    `Schedule for ${formatDateVN(anchorDateIso)}`,
+                  )
+                : tr(
+                    `Tuần từ ${formatDateVN(dateRange.dateFrom)} đến ${formatDateVN(dateRange.dateTo)}`,
+                    `Week of ${formatDateVN(dateRange.dateFrom)} – ${formatDateVN(dateRange.dateTo)}`,
+                  )}
             </h2>
             <span className="text-xs text-slate-500">
-              Hiển thị {bookings.length} lịch họp đã xác nhận • Nhấn vào ô trống để đặt nhanh
+              {tr(
+                `Hiển thị ${bookings.length} lịch họp đã xác nhận • Nhấn vào ô trống để đặt nhanh`,
+                `Showing ${bookings.length} confirmed bookings • Click an empty slot to quick-book`,
+              )}
             </span>
           </div>
 
@@ -492,6 +546,7 @@ export default function MeetingRoomsPage() {
                 const iso = formatIsoDateLocal(dayDate);
                 const isToday = iso === formatIsoDateLocal(new Date());
                 const dayBookings = bookings.filter((b) => bookingTouchesDate(b, iso));
+                const weekdayLabel = WEEKDAY_SHORT[dayDate.getDay()];
 
                 return (
                   <div
@@ -503,7 +558,7 @@ export default function MeetingRoomsPage() {
                     <div className="mb-2 flex items-center justify-between border-b border-slate-200 pb-2">
                       <div>
                         <div className="text-[11px] font-semibold uppercase text-slate-500">
-                          {WEEKDAY_SHORT[dayDate.getDay()]}
+                          {locale === 'en' ? weekdayLabel.en : weekdayLabel.vi}
                         </div>
                         <div
                           className={`text-sm font-bold ${
@@ -516,7 +571,7 @@ export default function MeetingRoomsPage() {
                       {canBookRooms && (
                         <button
                           type="button"
-                          title="Đặt phòng vào ngày này"
+                          title={tr('Đặt phòng vào ngày này', 'Book a room on this day')}
                           onClick={() => openNewBookingModal({ date: iso, startHour: '09:00' })}
                           className="rounded-lg p-1 text-slate-500 hover:bg-blue-100 hover:text-blue-700"
                         >
@@ -527,7 +582,9 @@ export default function MeetingRoomsPage() {
 
                     <div className="flex-1 space-y-2">
                       {dayBookings.length === 0 ? (
-                        <div className="py-6 text-center text-xs text-slate-400">Trống lịch</div>
+                        <div className="py-6 text-center text-xs text-slate-400">
+                          {tr('Trống lịch', 'No bookings')}
+                        </div>
                       ) : (
                         dayBookings.map((bk) => (
                           <button
@@ -555,14 +612,19 @@ export default function MeetingRoomsPage() {
             </div>
           ) : activeRoomsForDayGrid.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-              Chưa có phòng họp nào đang hoạt động trong chi nhánh này.
+              {tr(
+                'Chưa có phòng họp nào đang hoạt động trong chi nhánh này.',
+                'No active meeting rooms in this branch.',
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 text-left text-slate-600">
-                    <th className="w-20 border border-slate-200 px-3 py-2 font-semibold">Khung giờ</th>
+                    <th className="w-20 border border-slate-200 px-3 py-2 font-semibold">
+                      {tr('Khung giờ', 'Time Slot')}
+                    </th>
                     {activeRoomsForDayGrid.map((room) => (
                       <th key={room.id} className="min-w-[200px] border border-slate-200 px-3 py-2">
                         <div className="font-bold text-slate-900">
@@ -570,7 +632,7 @@ export default function MeetingRoomsPage() {
                         </div>
                         <div className="font-normal text-slate-500">
                           {room.floor ? `${room.floor} • ` : ''}
-                          {room.capacity} chỗ
+                          {room.capacity} {tr('chỗ', 'seats')}
                         </div>
                       </th>
                     ))}
@@ -607,7 +669,8 @@ export default function MeetingRoomsPage() {
                                       {formatTimeHHMM(bk.startTime)}–{formatTimeHHMM(bk.endTime)} • {bk.title}
                                     </div>
                                     <div className="truncate text-[11px] text-blue-700/80">
-                                      {bk.bookedByEmployeeName} ({bk.attendeesCount} người)
+                                      {bk.bookedByEmployeeName} ({bk.attendeesCount}{' '}
+                                      {tr('người', 'attendees')})
                                     </div>
                                   </button>
                                 ))}
@@ -624,7 +687,7 @@ export default function MeetingRoomsPage() {
                                 }
                                 className="flex h-10 w-full items-center justify-center rounded-lg border border-dashed border-transparent text-[11px] text-slate-400 transition hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-600"
                               >
-                                + Đặt giờ này
+                                {tr('+ Đặt giờ này', '+ Book this slot')}
                               </button>
                             ) : (
                               <div className="h-10" />
@@ -642,7 +705,9 @@ export default function MeetingRoomsPage() {
       ) : activeTab === 'rooms' ? (
         rooms.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-            <p className="text-sm text-slate-500">Chưa có phòng họp nào được khai báo.</p>
+            <p className="text-sm text-slate-500">
+              {tr('Chưa có phòng họp nào được khai báo.', 'No meeting rooms configured yet.')}
+            </p>
             {canManageRooms && (
               <button
                 type="button"
@@ -650,7 +715,7 @@ export default function MeetingRoomsPage() {
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
               >
                 <IconPlus size={16} />
-                <span>Thêm phòng họp đầu tiên</span>
+                <span>{tr('Thêm phòng họp đầu tiên', 'Add First Room')}</span>
               </button>
             )}
           </div>
@@ -679,16 +744,19 @@ export default function MeetingRoomsPage() {
                           : 'bg-slate-100 text-slate-500'
                       }`}
                     >
-                      {room.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                      {room.isActive ? tr('Hoạt động', 'Active') : tr('Tạm ngưng', 'Inactive')}
                     </span>
                   </div>
 
                   <div className="mt-3 flex items-center gap-4 text-xs text-slate-600">
                     <span className="inline-flex items-center gap-1 font-medium">
                       <IconUsers size={15} className="text-blue-600" />
-                      {room.capacity} chỗ ngồi
+                      {room.capacity} {tr('chỗ ngồi', 'seats')}
                     </span>
-                    <span>Sắp tới: {room.upcomingBookingsCount} lịch</span>
+                    <span>
+                      {tr('Sắp tới:', 'Upcoming:')} {room.upcomingBookingsCount}{' '}
+                      {tr('lịch', 'bookings')}
+                    </span>
                   </div>
 
                   {room.equipment.length > 0 && (
@@ -719,7 +787,7 @@ export default function MeetingRoomsPage() {
                       className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
                     >
                       <IconCalendarPlus size={14} />
-                      <span>Đặt phòng này</span>
+                      <span>{tr('Đặt phòng này', 'Book This Room')}</span>
                     </button>
                   ) : (
                     <span />
@@ -731,7 +799,7 @@ export default function MeetingRoomsPage() {
                         type="button"
                         onClick={() => openEditRoomModal(room)}
                         className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
-                        title="Chỉnh sửa phòng"
+                        title={tr('Chỉnh sửa phòng', 'Edit Room')}
                       >
                         <IconEdit size={16} />
                       </button>
@@ -739,7 +807,7 @@ export default function MeetingRoomsPage() {
                         type="button"
                         onClick={() => setDeletingRoom(room)}
                         className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
-                        title="Xóa mềm phòng"
+                        title={tr('Xóa mềm phòng', 'Delete Room')}
                       >
                         <IconTrash size={16} />
                       </button>
@@ -753,7 +821,9 @@ export default function MeetingRoomsPage() {
       ) : (
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-800">Danh sách lịch phòng họp tôi đã đặt</h2>
+            <h2 className="text-sm font-semibold text-slate-800">
+              {tr('Danh sách lịch phòng họp tôi đã đặt', 'My Room Bookings')}
+            </h2>
             <select
               value={mineStatusFilter}
               onChange={(e) =>
@@ -761,15 +831,17 @@ export default function MeetingRoomsPage() {
               }
               className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-blue-500"
             >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="CONFIRMED">Đã xác nhận</option>
-              <option value="CANCELLED">Đã hủy</option>
+              <option value="ALL">{tr('Tất cả trạng thái', 'All Statuses')}</option>
+              <option value="CONFIRMED">{tr('Đã xác nhận', 'Confirmed')}</option>
+              <option value="CANCELLED">{tr('Đã hủy', 'Cancelled')}</option>
             </select>
           </div>
 
           {myBookings.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center">
-              <p className="text-sm text-slate-500">Bạn chưa có lịch đặt phòng họp nào.</p>
+              <p className="text-sm text-slate-500">
+                {tr('Bạn chưa có lịch đặt phòng họp nào.', 'You have no room bookings yet.')}
+              </p>
               {canBookRooms && (
                 <button
                   type="button"
@@ -777,7 +849,7 @@ export default function MeetingRoomsPage() {
                   className="mt-3 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                   <IconCalendarPlus size={16} />
-                  <span>Đặt phòng họp ngay</span>
+                  <span>{tr('Đặt phòng họp ngay', 'Book a Room Now')}</span>
                 </button>
               )}
             </div>
@@ -786,12 +858,12 @@ export default function MeetingRoomsPage() {
               <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Cuộc họp</th>
-                    <th className="px-4 py-3">Phòng họp</th>
-                    <th className="px-4 py-3">Thời gian</th>
-                    <th className="px-4 py-3">Tham dự</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
+                    <th className="px-4 py-3">{tr('Cuộc họp', 'Meeting')}</th>
+                    <th className="px-4 py-3">{tr('Phòng họp', 'Room')}</th>
+                    <th className="px-4 py-3">{tr('Thời gian', 'Time')}</th>
+                    <th className="px-4 py-3">{tr('Tham dự', 'Attendees')}</th>
+                    <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -801,7 +873,7 @@ export default function MeetingRoomsPage() {
                         <div>{bk.title}</div>
                         {bk.cancelReason && (
                           <div className="text-xs font-normal text-rose-600">
-                            Lý do hủy: {bk.cancelReason}
+                            {tr('Lý do hủy:', 'Cancel reason:')} {bk.cancelReason}
                           </div>
                         )}
                       </td>
@@ -811,7 +883,9 @@ export default function MeetingRoomsPage() {
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {formatDateTimeVN(bk.startTime)} → {formatTimeHHMM(bk.endTime)}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{bk.attendeesCount} người</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {bk.attendeesCount} {tr('người', 'people')}
+                      </td>
                       <td className="px-4 py-3">
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -820,7 +894,9 @@ export default function MeetingRoomsPage() {
                               : 'bg-slate-100 text-slate-500'
                           }`}
                         >
-                          {bk.status === 'CONFIRMED' ? 'Đã xác nhận' : 'Đã hủy'}
+                          {bk.status === 'CONFIRMED'
+                            ? tr('Đã xác nhận', 'Confirmed')
+                            : tr('Đã hủy', 'Cancelled')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -829,7 +905,9 @@ export default function MeetingRoomsPage() {
                           onClick={() => openBookingDetailModal(bk)}
                           className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
                         >
-                          {bk.canEditOrCancel ? 'Xem / Sửa / Hủy' : 'Xem chi tiết'}
+                          {bk.canEditOrCancel
+                            ? tr('Xem / Sửa / Hủy', 'View / Edit / Cancel')
+                            : tr('Xem chi tiết', 'View Details')}
                         </button>
                       </td>
                     </tr>
@@ -851,7 +929,11 @@ export default function MeetingRoomsPage() {
           onClose={() => setIsRoomModalOpen(false)}
           onSaved={() => {
             setIsRoomModalOpen(false);
-            showToast(editingRoom ? 'Đã cập nhật thông tin phòng họp.' : 'Đã thêm phòng họp mới.');
+            showToast(
+              editingRoom
+                ? tr('Đã cập nhật thông tin phòng họp.', 'Meeting room updated.')
+                : tr('Đã thêm phòng họp mới.', 'Meeting room created.'),
+            );
             setReloadTick((v) => v + 1);
           }}
         />
@@ -868,7 +950,9 @@ export default function MeetingRoomsPage() {
           onClose={() => setIsBookingModalOpen(false)}
           onSaved={() => {
             setIsBookingModalOpen(false);
-            showToast('Đã cập nhật lịch đặt phòng họp thành công.');
+            showToast(
+              tr('Đã cập nhật lịch đặt phòng họp thành công.', 'Room booking saved successfully.'),
+            );
             setReloadTick((v) => v + 1);
           }}
         />
@@ -876,14 +960,17 @@ export default function MeetingRoomsPage() {
 
       <ConfirmModal
         isOpen={Boolean(deletingRoom)}
-        title="Xóa phòng họp?"
+        title={tr('Xóa phòng họp?', 'Delete Meeting Room?')}
         description={
           deletingRoom
-            ? `Bạn có chắc chắn muốn xóa mềm phòng họp "${deletingRoom.name}" (${deletingRoom.code})? Thao tác sẽ bị chặn nếu phòng đang có lịch đặt sắp tới.`
+            ? tr(
+                `Bạn có chắc chắn muốn xóa mềm phòng họp "${deletingRoom.name}" (${deletingRoom.code})? Thao tác sẽ bị chặn nếu phòng đang có lịch đặt sắp tới.`,
+                `Are you sure you want to soft delete meeting room "${deletingRoom.name}" (${deletingRoom.code})? Deletion is blocked if the room has upcoming bookings.`,
+              )
             : ''
         }
-        confirmLabel="Xác nhận xóa"
-        cancelLabel="Hủy"
+        confirmLabel={tr('Xác nhận xóa', 'Confirm Delete')}
+        cancelLabel={tr('Hủy', 'Cancel')}
         variant="danger"
         isProcessing={isDeletingRoom}
         onConfirm={() => void handleConfirmDeleteRoom()}

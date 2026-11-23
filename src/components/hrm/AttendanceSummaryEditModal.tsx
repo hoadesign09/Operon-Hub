@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { IconLoader2, IconX } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface AttendanceSummaryRecord {
   id: number;
@@ -46,6 +47,7 @@ export function AttendanceSummaryEditModal({
   onClose,
   onSuccess,
 }: AttendanceSummaryEditModalProps) {
+  const { tr } = useI18n();
   const [standardWorkDays, setStandardWorkDays] = useState(String(summary.standardWorkDays));
   const [actualWorkDays, setActualWorkDays] = useState(String(summary.actualWorkDays));
   const [businessTripDays, setBusinessTripDays] = useState(String(summary.businessTripDays));
@@ -70,7 +72,12 @@ export function AttendanceSummaryEditModal({
     e.preventDefault();
     setErrorMsg(null);
     if (adjustmentNote.trim().length < 3) {
-      setErrorMsg('Vui lòng nhập lý do điều chỉnh bảng công (tối thiểu 3 ký tự).');
+      setErrorMsg(
+        tr(
+          'Vui lòng nhập lý do điều chỉnh bảng công (tối thiểu 3 ký tự).',
+          'Please enter an adjustment reason (at least 3 characters).',
+        ),
+      );
       return;
     }
 
@@ -98,14 +105,25 @@ export function AttendanceSummaryEditModal({
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setErrorMsg(json.error?.message ?? 'Không thể lưu điều chỉnh bảng công.');
+        setErrorMsg(
+          json.error?.message ??
+            tr(
+              'Không thể lưu điều chỉnh bảng công.',
+              'Unable to save attendance summary adjustment.',
+            ),
+        );
         setIsSubmitting(false);
         return;
       }
 
       onSuccess();
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ khi cập nhật bảng công.');
+      setErrorMsg(
+        tr(
+          'Lỗi kết nối máy chủ khi cập nhật bảng công.',
+          'Server connection error while updating attendance summary.',
+        ),
+      );
       setIsSubmitting(false);
     }
   }
@@ -116,7 +134,10 @@ export function AttendanceSummaryEditModal({
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h3 className="text-base font-semibold text-slate-900">
-              Điều chỉnh Bảng công Tháng {summary.month}/{summary.year}
+              {tr(
+                `Điều chỉnh Bảng công Tháng ${summary.month}/${summary.year}`,
+                `Adjust Attendance Summary (${summary.month}/${summary.year})`,
+              )}
             </h3>
             <p className="mt-0.5 text-xs text-slate-500">
               {summary.employeeCode} — {summary.employeeName} ({summary.departmentName})
@@ -127,7 +148,7 @@ export function AttendanceSummaryEditModal({
             onClick={onClose}
             disabled={isSubmitting}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -142,7 +163,9 @@ export function AttendanceSummaryEditModal({
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Công chuẩn</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Công chuẩn', 'Standard Days')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -155,7 +178,9 @@ export function AttendanceSummaryEditModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Công thực tế</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Công thực tế', 'Actual Workdays')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -168,7 +193,9 @@ export function AttendanceSummaryEditModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Trong đó công tác</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Trong đó công tác', 'Incl. Business Trips')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -181,7 +208,9 @@ export function AttendanceSummaryEditModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Phép hưởng lương</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Phép hưởng lương', 'Paid Leave')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -194,7 +223,9 @@ export function AttendanceSummaryEditModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Phép không lương</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Phép không lương', 'Unpaid Leave')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -207,7 +238,9 @@ export function AttendanceSummaryEditModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Ngày lễ hưởng lương</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Ngày lễ hưởng lương', 'Paid Holidays')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -222,13 +255,20 @@ export function AttendanceSummaryEditModal({
           </div>
 
           <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-2.5 text-xs text-blue-900">
-            Tổng ngày công hưởng lương dự kiến (Thực tế + Phép hưởng lương + Lễ):{' '}
-            <span className="font-mono text-sm font-bold text-blue-700">{previewPayable} công</span>
+            {tr(
+              'Tổng ngày công hưởng lương dự kiến (Thực tế + Phép hưởng lương + Lễ):',
+              'Projected total payable days (Actual + Paid Leave + Holidays):',
+            )}{' '}
+            <span className="font-mono text-sm font-bold text-blue-700">
+              {tr(`${previewPayable} công`, `${previewPayable} days`)}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">OT 150% (giờ)</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('OT 150% (giờ)', 'OT 150% (hrs)')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -241,7 +281,9 @@ export function AttendanceSummaryEditModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">OT 200% (giờ)</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('OT 200% (giờ)', 'OT 200% (hrs)')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -254,7 +296,9 @@ export function AttendanceSummaryEditModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">OT 300% (giờ)</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('OT 300% (giờ)', 'OT 300% (hrs)')}
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -267,7 +311,9 @@ export function AttendanceSummaryEditModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Số lần đi muộn</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Số lần đi muộn', 'Late Count')}
+              </label>
               <input
                 type="number"
                 min={0}
@@ -282,7 +328,10 @@ export function AttendanceSummaryEditModal({
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-700">
-              Lý do điều chỉnh (bắt buộc lưu Audit Log) *
+              {tr(
+                'Lý do điều chỉnh (bắt buộc lưu Audit Log) *',
+                'Adjustment Reason (required for Audit Log) *',
+              )}
             </label>
             <textarea
               rows={2}
@@ -291,7 +340,10 @@ export function AttendanceSummaryEditModal({
               disabled={isSubmitting}
               value={adjustmentNote}
               onChange={(e) => setAdjustmentNote(e.target.value)}
-              placeholder="VD: Bổ sung 0.5 công đi gặp khách hàng có xác nhận của trưởng bộ phận"
+              placeholder={tr(
+                'VD: Bổ sung 0.5 công đi gặp khách hàng có xác nhận của trưởng bộ phận',
+                'e.g. Added 0.5 day for client meeting confirmed by department manager',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
           </div>
@@ -303,7 +355,7 @@ export function AttendanceSummaryEditModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -311,7 +363,7 @@ export function AttendanceSummaryEditModal({
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
-              <span>Lưu điều chỉnh</span>
+              <span>{tr('Lưu điều chỉnh', 'Save Adjustment')}</span>
             </button>
           </div>
         </form>

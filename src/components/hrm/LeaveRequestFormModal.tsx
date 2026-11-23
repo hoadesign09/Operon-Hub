@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { IconAlertCircle, IconCalendarEvent, IconLoader2, IconSend, IconX } from '@tabler/icons-react';
 import { countWorkingDays } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export type LeaveSessionOption = 'FULL' | 'AM' | 'PM';
 
@@ -50,29 +51,48 @@ function previewLeaveDays(
   endDate: string,
   startSession: LeaveSessionOption,
   endSession: LeaveSessionOption,
+  tr: (vi: string, en: string) => string,
 ): { days: number; error: string | null } {
   if (!startDate || !endDate) {
     return { days: 0, error: null };
   }
   if (endDate < startDate) {
-    return { days: 0, error: 'Ngày kết thúc không được nhỏ hơn ngày bắt đầu.' };
+    return {
+      days: 0,
+      error: tr(
+        'Ngày kết thúc không được nhỏ hơn ngày bắt đầu.',
+        'End date cannot be earlier than start date.',
+      ),
+    };
   }
   if (startDate.slice(0, 4) !== endDate.slice(0, 4)) {
     return {
       days: 0,
-      error: 'Đơn nghỉ phép phải nằm trong cùng 1 năm dương lịch (hãy tách thành 2 đơn riêng).',
+      error: tr(
+        'Đơn nghỉ phép phải nằm trong cùng 1 năm dương lịch (hãy tách thành 2 đơn riêng).',
+        'Leave request must fall within a single calendar year (please split into 2 separate requests).',
+      ),
     };
   }
   if (startDate === endDate && startSession === 'PM' && endSession === 'AM') {
     return {
       days: 0,
-      error: 'Trong cùng ngày, buổi kết thúc (Sáng) không thể trước buổi bắt đầu (Chiều).',
+      error: tr(
+        'Trong cùng ngày, buổi kết thúc (Sáng) không thể trước buổi bắt đầu (Chiều).',
+        'On the same day, the end session (AM) cannot be earlier than the start session (PM).',
+      ),
     };
   }
 
   const baseDays = countWorkingDays(startDate, endDate);
   if (baseDays === 0) {
-    return { days: 0, error: 'Khoảng ngày chọn toàn bộ rơi vào Thứ 7 / Chủ nhật.' };
+    return {
+      days: 0,
+      error: tr(
+        'Khoảng ngày chọn toàn bộ rơi vào Thứ 7 / Chủ nhật.',
+        'The selected date range falls entirely on weekends (Sat / Sun).',
+      ),
+    };
   }
 
   const isStartWork = countWorkingDays(startDate, startDate) === 1;
@@ -85,7 +105,13 @@ function previewLeaveDays(
     total -= 0.5;
   }
   const rounded = Math.round(Math.max(0, total) * 100) / 100;
-  return { days: rounded, error: rounded <= 0 ? 'Số ngày nghỉ phải lớn hơn 0.' : null };
+  return {
+    days: rounded,
+    error:
+      rounded <= 0
+        ? tr('Số ngày nghỉ phải lớn hơn 0.', 'Number of leave days must be greater than 0.')
+        : null,
+  };
 }
 
 export function LeaveRequestFormModal({
@@ -95,6 +121,7 @@ export function LeaveRequestFormModal({
   onClose,
   onSaved,
 }: LeaveRequestFormModalProps) {
+  const { tr } = useI18n();
   const todayIso = new Date().toISOString().slice(0, 10);
   const [leaveTypeId, setLeaveTypeId] = useState<number>(
     editingRequest?.leaveTypeId ?? leaveTypes[0]?.id ?? 0,
@@ -118,8 +145,8 @@ export function LeaveRequestFormModal({
   );
 
   const preview = useMemo(
-    () => previewLeaveDays(startDate, endDate, startSession, endSession),
-    [startDate, endDate, startSession, endSession],
+    () => previewLeaveDays(startDate, endDate, startSession, endSession, tr),
+    [startDate, endDate, startSession, endSession, tr],
   );
 
   const matchingBalance = useMemo(() => {
@@ -139,15 +166,25 @@ export function LeaveRequestFormModal({
       return;
     }
     if (!leaveTypeId) {
-      setErrorMsg('Vui lòng chọn loại nghỉ phép.');
+      setErrorMsg(tr('Vui lòng chọn loại nghỉ phép.', 'Please select a leave type.'));
       return;
     }
     if (reason.trim().length < 3) {
-      setErrorMsg('Vui lòng nhập lý do nghỉ tối thiểu 3 ký tự.');
+      setErrorMsg(
+        tr(
+          'Vui lòng nhập lý do nghỉ tối thiểu 3 ký tự.',
+          'Please enter a leave reason of at least 3 characters.',
+        ),
+      );
       return;
     }
     if (submitNow && selectedType?.requiresAttachment && !attachmentUrl.trim()) {
-      setErrorMsg(`Loại phép "${selectedType.name}" yêu cầu nhập đường dẫn minh chứng đính kèm.`);
+      setErrorMsg(
+        tr(
+          `Loại phép "${selectedType.name}" yêu cầu nhập đường dẫn minh chứng đính kèm.`,
+          `Leave type "${selectedType.name}" requires an attachment URL.`,
+        ),
+      );
       return;
     }
 
@@ -192,7 +229,9 @@ export function LeaveRequestFormModal({
       };
 
       if (!res.ok || !json.success) {
-        setErrorMsg(json.error?.message ?? 'Không thể lưu đơn nghỉ phép.');
+        setErrorMsg(
+          json.error?.message ?? tr('Không thể lưu đơn nghỉ phép.', 'Unable to save leave request.'),
+        );
         setSubmittingMode(null);
         return;
       }
@@ -206,7 +245,13 @@ export function LeaveRequestFormModal({
           error?: { message?: string };
         };
         if (!submitRes.ok || !submitJson.success) {
-          setErrorMsg(submitJson.error?.message ?? 'Đã lưu nháp nhưng gửi duyệt thất bại.');
+          setErrorMsg(
+            submitJson.error?.message ??
+              tr(
+                'Đã lưu nháp nhưng gửi duyệt thất bại.',
+                'Saved as draft, but failed to submit for approval.',
+              ),
+          );
           setSubmittingMode(null);
           return;
         }
@@ -214,7 +259,9 @@ export function LeaveRequestFormModal({
 
       onSaved();
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ. Vui lòng thử lại.');
+      setErrorMsg(
+        tr('Lỗi kết nối máy chủ. Vui lòng thử lại.', 'Server connection error. Please try again.'),
+      );
       setSubmittingMode(null);
     }
   }
@@ -229,10 +276,15 @@ export function LeaveRequestFormModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                {editingRequest ? 'Chỉnh sửa đơn nghỉ phép' : 'Tạo đơn xin nghỉ phép'}
+                {editingRequest
+                  ? tr('Chỉnh sửa đơn nghỉ phép', 'Edit Leave Request')
+                  : tr('Tạo đơn xin nghỉ phép', 'New Leave Request')}
               </h2>
               <p className="text-xs text-slate-500">
-                Hệ thống tự động loại trừ Thứ 7, Chủ nhật và kiểm tra quỹ phép
+                {tr(
+                  'Hệ thống tự động loại trừ Thứ 7, Chủ nhật và kiểm tra quỹ phép',
+                  'Automatically excludes weekends (Sat/Sun) and checks leave balance',
+                )}
               </p>
             </div>
           </div>
@@ -241,7 +293,7 @@ export function LeaveRequestFormModal({
             onClick={onClose}
             disabled={submittingMode !== null}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -257,7 +309,7 @@ export function LeaveRequestFormModal({
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Loại nghỉ phép <span className="text-rose-500">*</span>
+              {tr('Loại nghỉ phép', 'Leave type')} <span className="text-rose-500">*</span>
             </label>
             <select
               value={leaveTypeId}
@@ -270,12 +322,12 @@ export function LeaveRequestFormModal({
                 );
                 const balSuffix = lt.tracksBalance
                   ? bal
-                    ? ` (Còn ${bal.remainingDays} ngày)`
-                    : ' (Chưa khởi tạo quỹ)'
-                  : ' (Không giới hạn quỹ)';
+                    ? tr(` (Còn ${bal.remainingDays} ngày)`, ` (${bal.remainingDays} days left)`)
+                    : tr(' (Chưa khởi tạo quỹ)', ' (Balance not initialized)')
+                  : tr(' (Không giới hạn quỹ)', ' (Unlimited balance)');
                 return (
                   <option key={lt.id} value={lt.id}>
-                    {lt.name} — {lt.isPaid ? 'Hưởng lương' : 'Không lương'}
+                    {lt.name} — {lt.isPaid ? tr('Hưởng lương', 'Paid') : tr('Không lương', 'Unpaid')}
                     {balSuffix}
                   </option>
                 );
@@ -286,7 +338,7 @@ export function LeaveRequestFormModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Từ ngày <span className="text-rose-500">*</span>
+                {tr('Từ ngày', 'Start date')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -303,22 +355,22 @@ export function LeaveRequestFormModal({
 
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Buổi bắt đầu
+                {tr('Buổi bắt đầu', 'Start session')}
               </label>
               <select
                 value={startSession}
                 onChange={(e) => setStartSession(e.target.value as LeaveSessionOption)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
               >
-                <option value="FULL">Cả ngày</option>
-                <option value="AM">Buổi sáng (AM)</option>
-                <option value="PM">Buổi chiều (PM)</option>
+                <option value="FULL">{tr('Cả ngày', 'Full day')}</option>
+                <option value="AM">{tr('Buổi sáng (AM)', 'Morning (AM)')}</option>
+                <option value="PM">{tr('Buổi chiều (PM)', 'Afternoon (PM)')}</option>
               </select>
             </div>
 
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Đến ngày <span className="text-rose-500">*</span>
+                {tr('Đến ngày', 'End date')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -331,16 +383,16 @@ export function LeaveRequestFormModal({
 
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                Buổi kết thúc
+                {tr('Buổi kết thúc', 'End session')}
               </label>
               <select
                 value={endSession}
                 onChange={(e) => setEndSession(e.target.value as LeaveSessionOption)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
               >
-                <option value="FULL">Cả ngày</option>
-                <option value="AM">Buổi sáng (AM)</option>
-                <option value="PM">Buổi chiều (PM)</option>
+                <option value="FULL">{tr('Cả ngày', 'Full day')}</option>
+                <option value="AM">{tr('Buổi sáng (AM)', 'Morning (AM)')}</option>
+                <option value="PM">{tr('Buổi chiều (PM)', 'Afternoon (PM)')}</option>
               </select>
             </div>
           </div>
@@ -353,46 +405,63 @@ export function LeaveRequestFormModal({
             }`}
           >
             <div className="flex items-center justify-between font-semibold">
-              <span>Số ngày nghỉ dự kiến (trừ T7/CN):</span>
-              <span className="text-base">{preview.days} ngày</span>
+              <span>{tr('Số ngày nghỉ dự kiến (trừ T7/CN):', 'Estimated leave days (excl. Sat/Sun):')}</span>
+              <span className="text-base">
+                {preview.days} {tr('ngày', 'days')}
+              </span>
             </div>
             {preview.error && <p className="mt-1 text-xs text-rose-700">{preview.error}</p>}
             {!preview.error && selectedType?.tracksBalance && matchingBalance && (
               <p className="mt-1 text-xs">
-                Quỹ phép còn lại năm {matchingBalance.year}:{' '}
-                <strong>{matchingBalance.remainingDays} ngày</strong>
-                {exceedsBalance && ' — Cảnh báo: Vượt quá số ngày phép còn lại!'}
+                {tr(
+                  `Quỹ phép còn lại năm ${matchingBalance.year}:`,
+                  `Remaining balance for ${matchingBalance.year}:`,
+                )}{' '}
+                <strong>
+                  {matchingBalance.remainingDays} {tr('ngày', 'days')}
+                </strong>
+                {exceedsBalance &&
+                  tr(
+                    ' — Cảnh báo: Vượt quá số ngày phép còn lại!',
+                    ' — Warning: Exceeds remaining leave balance!',
+                  )}
               </p>
             )}
           </div>
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Lý do xin nghỉ <span className="text-rose-500">*</span>
+              {tr('Lý do xin nghỉ', 'Reason for leave')} <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Nhập rõ lý do nghỉ phép và người bàn giao công việc (nếu có)..."
+              placeholder={tr(
+                'Nhập rõ lý do nghỉ phép và người bàn giao công việc (nếu có)...',
+                'Describe the reason for leave and work handover contact (if any)...',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Đường dẫn tài liệu / minh chứng{' '}
+              {tr('Đường dẫn tài liệu / minh chứng', 'Supporting document / attachment URL')}{' '}
               {selectedType?.requiresAttachment ? (
-                <span className="text-rose-500">* (Bắt buộc)</span>
+                <span className="text-rose-500">{tr('* (Bắt buộc)', '* (Required)')}</span>
               ) : (
-                <span className="font-normal text-slate-400">(Tùy chọn)</span>
+                <span className="font-normal text-slate-400">{tr('(Tùy chọn)', '(Optional)')}</span>
               )}
             </label>
             <input
               type="text"
               value={attachmentUrl}
               onChange={(e) => setAttachmentUrl(e.target.value)}
-              placeholder="Ví dụ: https://drive.company.vn/giay-nghi-om.pdf"
+              placeholder={tr(
+                'Ví dụ: https://drive.company.vn/giay-nghi-om.pdf',
+                'e.g., https://drive.company.com/medical-certificate.pdf',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             />
           </div>
@@ -405,7 +474,7 @@ export function LeaveRequestFormModal({
             disabled={submittingMode !== null}
             className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
           >
-            Đóng
+            {tr('Đóng', 'Close')}
           </button>
           <button
             type="button"
@@ -414,7 +483,7 @@ export function LeaveRequestFormModal({
             className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
           >
             {submittingMode === 'DRAFT' && <IconLoader2 size={16} className="animate-spin" />}
-            <span>Lưu nháp</span>
+            <span>{tr('Lưu nháp', 'Save Draft')}</span>
           </button>
           <button
             type="button"
@@ -427,7 +496,7 @@ export function LeaveRequestFormModal({
             ) : (
               <IconSend size={16} />
             )}
-            <span>Gửi duyệt ngay</span>
+            <span>{tr('Gửi duyệt ngay', 'Submit Now')}</span>
           </button>
         </div>
       </div>

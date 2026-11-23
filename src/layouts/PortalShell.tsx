@@ -34,8 +34,10 @@ import {
   IconUsers,
   IconX,
 } from '@tabler/icons-react';
+import { LanguageSwitcher } from '@/components/portal/LanguageSwitcher';
 import { NotificationBell } from '@/components/portal/NotificationBell';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { useI18n } from '@/shared/i18n/I18nContext';
 import {
   buildDualRailGroups,
   getUserInitials,
@@ -99,6 +101,7 @@ function PortalLoadingView() {
 
 export function PortalShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { locale, t } = useI18n();
   const {
     user,
     modules,
@@ -122,33 +125,38 @@ export function PortalShell({ children }: { children: ReactNode }) {
   }
 
   if (error || !user) {
+    const resolvedAuthError =
+      error === '__SESSION_LOAD_ERROR__'
+        ? t('common.sessionLoadError')
+        : error === '__AUTH_SERVER_ERROR__'
+          ? t('common.authServerError')
+          : error ?? t('common.invalidSession');
+
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#EEF2F6] p-6">
         <div className="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-6 text-center shadow-sm">
-          <p className="text-sm font-medium text-rose-700">
-            {error ?? 'Phiên đăng nhập không hợp lệ.'}
-          </p>
+          <p className="text-sm font-medium text-rose-700">{resolvedAuthError}</p>
           <button
             type="button"
             onClick={() => void refreshSession()}
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{t('common.retry')}</span>
           </button>
         </div>
       </div>
     );
   }
 
-  const railGroups = buildDualRailGroups(modules);
+  const railGroups = buildDualRailGroups(modules, locale);
   const routeRailKey = resolveActiveRailKey(pathname);
   const preferredRailKey =
     manualRail && manualRail.pathname === pathname ? manualRail.railKey : routeRailKey;
   const activeGroup =
     railGroups.find((group) => group.key === preferredRailKey) ?? railGroups[0];
-  const pageContext = resolvePageContextLabel(pathname, railGroups);
-  const primaryRoleName = user.roles[0]?.name ?? 'Người dùng';
+  const pageContext = resolvePageContextLabel(pathname, railGroups, locale);
+  const primaryRoleName = user.roles[0]?.name ?? t('common.user');
   const userInitials = getUserInitials(user.fullName);
   const isProfileActive = pathname === '/my/profile' || pathname.startsWith('/my/profile/');
 
@@ -183,7 +191,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
             <Link
               href="/dashboard"
               onClick={() => setIsMobileMenuOpen(false)}
-              title="Operon Hub — Tổng quan Portal"
+              title={t('app.homeTitle')}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/25 transition hover:scale-[1.03]"
             >
               <IconBuildingSkyscraper size={21} />
@@ -223,8 +231,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
           <Link
             href="/my/profile"
             onClick={() => setIsMobileMenuOpen(false)}
-            title={`${user.fullName} (${primaryRoleName}) — Mở thông tin tài khoản & hồ sơ`}
-            aria-label={`Thông tin cá nhân: ${user.fullName}`}
+            title={t('shell.avatarTooltip', { name: user.fullName, role: primaryRoleName })}
+            aria-label={t('shell.avatarAria', { name: user.fullName })}
             className={`group relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-xs font-bold tracking-wide text-white shadow-md transition hover:scale-105 ${
               isProfileActive
                 ? 'ring-2 ring-cyan-300 ring-offset-2 ring-offset-[#080E1A]'
@@ -241,7 +249,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           <div className="flex h-16 items-center justify-between border-b border-slate-800/90 px-4">
             <div className="min-w-0">
               <div className="text-[10px] font-semibold tracking-widest text-cyan-400 uppercase">
-                Operon Command
+                {t('app.commandBrand')}
               </div>
               <div className="truncate text-sm font-bold text-white" title={activeGroup?.title}>
                 {activeGroup?.title ?? 'Operon Hub'}
@@ -251,7 +259,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => setIsMobileMenuOpen(false)}
               className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden"
-              aria-label="Đóng menu"
+              aria-label={t('common.closeMenu')}
             >
               <IconX size={18} />
             </button>
@@ -266,11 +274,10 @@ export function PortalShell({ children }: { children: ReactNode }) {
               <div className="rounded-xl border border-cyan-500/20 bg-slate-900/80 p-4">
                 <div className="flex items-center gap-2 text-xs font-semibold text-cyan-300">
                   <IconSparkles size={16} />
-                  <span>Giai đoạn 2 — Sắp ra mắt</span>
+                  <span>{t('nav.crmComingSoon.badge')}</span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                  Phân hệ CRM Kinh doanh đã sẵn sàng tích hợp vào Core Approval Engine, chi nhánh và
-                  phân quyền RBAC mà không cần chỉnh sửa lõi.
+                  {t('nav.crmComingSoon.desc')}
                 </p>
               </div>
             ) : (
@@ -309,7 +316,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => setIsMobileMenuOpen(true)}
               className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100 lg:hidden"
-              aria-label="Mở menu"
+              aria-label={t('common.openMenu')}
             >
               <IconMenu2 size={19} />
             </button>
@@ -325,22 +332,22 @@ export function PortalShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
             <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 xl:inline-flex">
-              Phạm vi: <strong className="ml-1 text-slate-900">{user.dataScope}</strong>
+              {t('common.scope')}: <strong className="ml-1 text-slate-900">{user.dataScope}</strong>
             </span>
 
             <label className="flex items-center gap-2 text-xs text-slate-600">
-              <span className="hidden md:inline">Chi nhánh:</span>
+              <span className="hidden md:inline">{t('common.branch')}:</span>
               <select
                 value={selectedBranchId ?? ''}
                 onChange={(e) => {
                   const val = e.target.value;
                   setSelectedBranchId(val ? Number(val) : null);
                 }}
-                className="max-w-[170px] rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white sm:max-w-none sm:px-3"
+                className="max-w-[140px] rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white sm:max-w-none sm:px-3"
               >
-                {user.hasAllBranches && <option value="">Tất cả chi nhánh</option>}
+                {user.hasAllBranches && <option value="">{t('common.allBranches')}</option>}
                 {user.branches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
                     {branch.name} ({branch.code})
@@ -348,6 +355,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
                 ))}
               </select>
             </label>
+
+            <LanguageSwitcher variant="light" />
 
             <NotificationBell />
 
@@ -358,12 +367,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
               type="button"
               disabled={isLoggingOut}
               onClick={() => void handleLogout()}
-              title="Đăng xuất khỏi phiên làm việc"
-              aria-label="Đăng xuất"
+              title={t('shell.logoutTitle')}
+              aria-label={t('common.logout')}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold whitespace-nowrap text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 sm:px-3"
             >
               <IconLogout size={16} />
-              <span className="hidden sm:inline">{isLoggingOut ? 'Đang thoát...' : 'Đăng xuất'}</span>
+              <span className="hidden sm:inline">
+                {isLoggingOut ? t('common.loggingOut') : t('common.logout')}
+              </span>
             </button>
           </div>
         </header>

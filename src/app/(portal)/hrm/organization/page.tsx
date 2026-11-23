@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   IconBriefcase,
   IconEdit,
@@ -20,6 +20,7 @@ import {
 } from '@/components/hrm/OrgChartTree';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface DepartmentRow {
   id: number;
@@ -48,6 +49,11 @@ type OrgTab = 'tree' | 'departments' | 'positions';
 
 export default function HrmOrganizationPage() {
   const { user, selectedBranchId, hasPermission } = usePortalAuth();
+  const { tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
   const canManage = hasPermission('hrm.org.manage');
 
   const [activeTab, setActiveTab] = useState<OrgTab>('tree');
@@ -129,7 +135,13 @@ export default function HrmOrganizationPage() {
         ]);
 
         if (!treeRes.ok || !treeJson?.success) {
-          setErrorMessage(treeJson?.error?.message ?? 'Không thể tải dữ liệu cơ cấu tổ chức.');
+          setErrorMessage(
+            treeJson?.error?.message ??
+              trRef.current(
+                'Không thể tải dữ liệu cơ cấu tổ chức.',
+                'Failed to load organization structure data.',
+              ),
+          );
           setViewState('error');
           return;
         }
@@ -144,7 +156,12 @@ export default function HrmOrganizationPage() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }
-        setErrorMessage('Lỗi kết nối khi tải cơ cấu tổ chức.');
+        setErrorMessage(
+          trRef.current(
+            'Lỗi kết nối khi tải cơ cấu tổ chức.',
+            'Connection error while loading organization structure.',
+          ),
+        );
         setViewState('error');
       });
 
@@ -213,14 +230,18 @@ export default function HrmOrganizationPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setDeptFormError(json?.error?.message ?? 'Không thể lưu phòng ban.');
+        setDeptFormError(
+          json?.error?.message ?? tr('Không thể lưu phòng ban.', 'Failed to save department.'),
+        );
         return;
       }
 
       setIsDeptModalOpen(false);
       triggerReload();
     } catch {
-      setDeptFormError('Lỗi kết nối khi lưu phòng ban.');
+      setDeptFormError(
+        tr('Lỗi kết nối khi lưu phòng ban.', 'Connection error while saving department.'),
+      );
     } finally {
       setIsSavingDept(false);
     }
@@ -276,14 +297,18 @@ export default function HrmOrganizationPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setPosFormError(json?.error?.message ?? 'Không thể lưu chức danh.');
+        setPosFormError(
+          json?.error?.message ?? tr('Không thể lưu chức danh.', 'Failed to save position.'),
+        );
         return;
       }
 
       setIsPosModalOpen(false);
       triggerReload();
     } catch {
-      setPosFormError('Lỗi kết nối khi lưu chức danh.');
+      setPosFormError(
+        tr('Lỗi kết nối khi lưu chức danh.', 'Connection error while saving position.'),
+      );
     } finally {
       setIsSavingPos(false);
     }
@@ -307,7 +332,10 @@ export default function HrmOrganizationPage() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể xóa mục đã chọn.');
+        setErrorMessage(
+          json?.error?.message ??
+            tr('Không thể xóa mục đã chọn.', 'Failed to delete the selected item.'),
+        );
         setViewState('error');
       } else {
         triggerReload();
@@ -326,9 +354,14 @@ export default function HrmOrganizationPage() {
     <div className="mx-auto max-w-6xl space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Cơ cấu Tổ chức (HRM)</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {tr('Cơ cấu Tổ chức (HRM)', 'Organization Structure (HRM)')}
+          </h1>
           <p className="text-sm text-slate-500">
-            Quản lý Sơ đồ Tổ chức, cây Phòng ban đa cấp theo Chi nhánh và Danh mục Chức danh.
+            {tr(
+              'Quản lý Sơ đồ Tổ chức, cây Phòng ban đa cấp theo Chi nhánh và Danh mục Chức danh.',
+              'Manage the organization chart, multi-level branch department tree, and position catalog.',
+            )}
           </p>
         </div>
 
@@ -341,7 +374,7 @@ export default function HrmOrganizationPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
               >
                 <IconPlus size={17} />
-                <span>Thêm chức danh</span>
+                <span>{tr('Thêm chức danh', 'Add Position')}</span>
               </button>
             ) : (
               <button
@@ -350,7 +383,7 @@ export default function HrmOrganizationPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
               >
                 <IconPlus size={17} />
-                <span>Thêm phòng ban</span>
+                <span>{tr('Thêm phòng ban', 'Add Department')}</span>
               </button>
             )}
           </div>
@@ -368,7 +401,7 @@ export default function HrmOrganizationPage() {
           }`}
         >
           <IconHierarchy2 size={17} />
-          <span>Sơ đồ Tổ chức (Org Chart)</span>
+          <span>{tr('Sơ đồ Tổ chức (Org Chart)', 'Org Chart')}</span>
         </button>
         <button
           type="button"
@@ -380,7 +413,9 @@ export default function HrmOrganizationPage() {
           }`}
         >
           <IconListDetails size={17} />
-          <span>Phòng ban ({departments.length})</span>
+          <span>
+            {tr('Phòng ban', 'Departments')} ({departments.length})
+          </span>
         </button>
         <button
           type="button"
@@ -392,7 +427,9 @@ export default function HrmOrganizationPage() {
           }`}
         >
           <IconBriefcase size={17} />
-          <span>Chức danh ({positions.length})</span>
+          <span>
+            {tr('Chức danh', 'Positions')} ({positions.length})
+          </span>
         </button>
       </div>
 
@@ -406,8 +443,14 @@ export default function HrmOrganizationPage() {
             type="text"
             placeholder={
               activeTab === 'departments'
-                ? 'Tìm theo mã hoặc tên phòng ban...'
-                : 'Tìm theo mã hoặc tên chức danh...'
+                ? tr(
+                    'Tìm theo mã hoặc tên phòng ban...',
+                    'Search by department code or name...',
+                  )
+                : tr(
+                    'Tìm theo mã hoặc tên chức danh...',
+                    'Search by position code or name...',
+                  )
             }
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -433,7 +476,7 @@ export default function HrmOrganizationPage() {
             className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-white px-3.5 py-2 text-xs font-medium text-rose-700"
           >
             <IconRefresh size={14} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       )}
@@ -442,7 +485,9 @@ export default function HrmOrganizationPage() {
         orgTree.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-14 text-center">
             <IconInbox size={34} className="text-slate-400" />
-            <p className="mt-2 text-sm font-semibold text-slate-800">Chưa có dữ liệu sơ đồ tổ chức</p>
+            <p className="mt-2 text-sm font-semibold text-slate-800">
+              {tr('Chưa có dữ liệu sơ đồ tổ chức', 'No organization chart data yet')}
+            </p>
           </div>
         ) : (
           <OrgChartTree
@@ -459,7 +504,9 @@ export default function HrmOrganizationPage() {
         departments.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-14 text-center">
             <IconInbox size={34} className="text-slate-400" />
-            <p className="mt-2 text-sm font-semibold text-slate-800">Không có phòng ban phù hợp</p>
+            <p className="mt-2 text-sm font-semibold text-slate-800">
+              {tr('Không có phòng ban phù hợp', 'No matching departments found')}
+            </p>
             {canManage && (
               <button
                 type="button"
@@ -467,7 +514,7 @@ export default function HrmOrganizationPage() {
                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-medium text-white"
               >
                 <IconPlus size={15} />
-                <span>Thêm phòng ban</span>
+                <span>{tr('Thêm phòng ban', 'Add Department')}</span>
               </button>
             )}
           </div>
@@ -477,12 +524,12 @@ export default function HrmOrganizationPage() {
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Mã</th>
-                    <th className="px-4 py-3">Tên phòng ban</th>
-                    <th className="px-4 py-3">Chi nhánh</th>
-                    <th className="px-4 py-3">Trực thuộc</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
+                    <th className="px-4 py-3">{tr('Mã', 'Code')}</th>
+                    <th className="px-4 py-3">{tr('Tên phòng ban', 'Department Name')}</th>
+                    <th className="px-4 py-3">{tr('Chi nhánh', 'Branch')}</th>
+                    <th className="px-4 py-3">{tr('Trực thuộc', 'Parent Department')}</th>
+                    <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -501,7 +548,7 @@ export default function HrmOrganizationPage() {
                         {d.branchName} ({d.branchCode})
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
-                        {d.parentName ?? 'Cấp gốc'}
+                        {d.parentName ?? tr('Cấp gốc', 'Root Level')}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <span
@@ -511,7 +558,7 @@ export default function HrmOrganizationPage() {
                               : 'bg-slate-100 text-slate-600'
                           }`}
                         >
-                          {d.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                          {d.isActive ? tr('Hoạt động', 'Active') : tr('Tạm ngưng', 'Inactive')}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -521,7 +568,7 @@ export default function HrmOrganizationPage() {
                               type="button"
                               onClick={() => openEditDepartment(d)}
                               className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-blue-600"
-                              title="Chỉnh sửa"
+                              title={tr('Chỉnh sửa', 'Edit')}
                             >
                               <IconEdit size={16} />
                             </button>
@@ -535,7 +582,7 @@ export default function HrmOrganizationPage() {
                                 })
                               }
                               className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600"
-                              title="Xóa mềm"
+                              title={tr('Xóa mềm', 'Soft delete')}
                             >
                               <IconTrash size={16} />
                             </button>
@@ -555,7 +602,9 @@ export default function HrmOrganizationPage() {
         positions.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-14 text-center">
             <IconInbox size={34} className="text-slate-400" />
-            <p className="mt-2 text-sm font-semibold text-slate-800">Không có chức danh phù hợp</p>
+            <p className="mt-2 text-sm font-semibold text-slate-800">
+              {tr('Không có chức danh phù hợp', 'No matching positions found')}
+            </p>
             {canManage && (
               <button
                 type="button"
@@ -563,7 +612,7 @@ export default function HrmOrganizationPage() {
                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-medium text-white"
               >
                 <IconPlus size={15} />
-                <span>Thêm chức danh</span>
+                <span>{tr('Thêm chức danh', 'Add Position')}</span>
               </button>
             )}
           </div>
@@ -573,11 +622,11 @@ export default function HrmOrganizationPage() {
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Mã</th>
-                    <th className="px-4 py-3">Tên chức danh</th>
-                    <th className="px-4 py-3">Cấp bậc (Level)</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
+                    <th className="px-4 py-3">{tr('Mã', 'Code')}</th>
+                    <th className="px-4 py-3">{tr('Tên chức danh', 'Position Name')}</th>
+                    <th className="px-4 py-3">{tr('Cấp bậc (Level)', 'Level')}</th>
+                    <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
+                    <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -605,7 +654,7 @@ export default function HrmOrganizationPage() {
                               : 'bg-slate-100 text-slate-600'
                           }`}
                         >
-                          {pos.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                          {pos.isActive ? tr('Hoạt động', 'Active') : tr('Tạm ngưng', 'Inactive')}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -615,7 +664,7 @@ export default function HrmOrganizationPage() {
                               type="button"
                               onClick={() => openEditPosition(pos)}
                               className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-blue-600"
-                              title="Chỉnh sửa"
+                              title={tr('Chỉnh sửa', 'Edit')}
                             >
                               <IconEdit size={16} />
                             </button>
@@ -629,7 +678,7 @@ export default function HrmOrganizationPage() {
                                 })
                               }
                               className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600"
-                              title="Xóa mềm"
+                              title={tr('Xóa mềm', 'Soft delete')}
                             >
                               <IconTrash size={16} />
                             </button>
@@ -654,7 +703,9 @@ export default function HrmOrganizationPage() {
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900">
-                {editingDeptId ? 'Cập nhật Phòng ban' : 'Thêm Phòng ban mới'}
+                {editingDeptId
+                  ? tr('Cập nhật Phòng ban', 'Update Department')
+                  : tr('Thêm Phòng ban mới', 'Add New Department')}
               </h2>
               <button
                 type="button"
@@ -675,7 +726,9 @@ export default function HrmOrganizationPage() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-700">Chi nhánh *</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Chi nhánh *', 'Branch *')}
+                  </label>
                   <select
                     required
                     value={deptBranchId}
@@ -694,14 +747,14 @@ export default function HrmOrganizationPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Phòng ban cha
+                    {tr('Phòng ban cha', 'Parent Department')}
                   </label>
                   <select
                     value={deptParentId}
                     onChange={(e) => setDeptParentId(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                   >
-                    <option value="">-- Không (Cấp gốc) --</option>
+                    <option value="">{tr('-- Không (Cấp gốc) --', '-- None (Root Level) --')}</option>
                     {candidateParentDepts.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.name} ({d.code})
@@ -714,12 +767,12 @@ export default function HrmOrganizationPage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Mã phòng ban *
+                    {tr('Mã phòng ban *', 'Department Code *')}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="VD: SALES-HN"
+                    placeholder={tr('VD: SALES-HN', 'e.g. SALES-HN')}
                     value={deptCode}
                     onChange={(e) => setDeptCode(e.target.value.toUpperCase())}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase"
@@ -727,7 +780,7 @@ export default function HrmOrganizationPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Tên phòng ban *
+                    {tr('Tên phòng ban *', 'Department Name *')}
                   </label>
                   <input
                     type="text"
@@ -741,7 +794,9 @@ export default function HrmOrganizationPage() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="sm:col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-slate-700">Mô tả</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Mô tả', 'Description')}
+                  </label>
                   <input
                     type="text"
                     value={deptDesc}
@@ -750,7 +805,9 @@ export default function HrmOrganizationPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-700">Thứ tự</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Thứ tự', 'Sort Order')}
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -768,7 +825,7 @@ export default function HrmOrganizationPage() {
                   onChange={(e) => setDeptIsActive(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300"
                 />
-                <span>Đang hoạt động</span>
+                <span>{tr('Đang hoạt động', 'Active')}</span>
               </label>
 
               <div className="flex justify-end gap-2.5 pt-2">
@@ -778,14 +835,16 @@ export default function HrmOrganizationPage() {
                   onClick={() => setIsDeptModalOpen(false)}
                   className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
                 >
-                  Hủy
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingDept}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {isSavingDept ? 'Đang lưu...' : 'Lưu phòng ban'}
+                  {isSavingDept
+                    ? tr('Đang lưu...', 'Saving...')
+                    : tr('Lưu phòng ban', 'Save Department')}
                 </button>
               </div>
             </form>
@@ -802,7 +861,9 @@ export default function HrmOrganizationPage() {
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900">
-                {editingPosId ? 'Cập nhật Chức danh' : 'Thêm Chức danh mới'}
+                {editingPosId
+                  ? tr('Cập nhật Chức danh', 'Update Position')
+                  : tr('Thêm Chức danh mới', 'Add New Position')}
               </h2>
               <button
                 type="button"
@@ -824,12 +885,12 @@ export default function HrmOrganizationPage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Mã chức danh *
+                    {tr('Mã chức danh *', 'Position Code *')}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="VD: BA_LEAD"
+                    placeholder={tr('VD: BA_LEAD', 'e.g. BA_LEAD')}
                     value={posCode}
                     onChange={(e) => setPosCode(e.target.value.toUpperCase())}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm uppercase"
@@ -837,7 +898,7 @@ export default function HrmOrganizationPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Cấp bậc (1–10) *
+                    {tr('Cấp bậc (1–10) *', 'Level (1–10) *')}
                   </label>
                   <input
                     type="number"
@@ -853,7 +914,7 @@ export default function HrmOrganizationPage() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Tên chức danh *
+                  {tr('Tên chức danh *', 'Position Name *')}
                 </label>
                 <input
                   type="text"
@@ -865,7 +926,9 @@ export default function HrmOrganizationPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">Mô tả</label>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  {tr('Mô tả', 'Description')}
+                </label>
                 <input
                   type="text"
                   value={posDesc}
@@ -881,7 +944,7 @@ export default function HrmOrganizationPage() {
                   onChange={(e) => setPosIsActive(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300"
                 />
-                <span>Đang hoạt động</span>
+                <span>{tr('Đang hoạt động', 'Active')}</span>
               </label>
 
               <div className="flex justify-end gap-2.5 pt-2">
@@ -891,14 +954,16 @@ export default function HrmOrganizationPage() {
                   onClick={() => setIsPosModalOpen(false)}
                   className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
                 >
-                  Hủy
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingPos}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {isSavingPos ? 'Đang lưu...' : 'Lưu chức danh'}
+                  {isSavingPos
+                    ? tr('Đang lưu...', 'Saving...')
+                    : tr('Lưu chức danh', 'Save Position')}
                 </button>
               </div>
             </form>
@@ -910,11 +975,14 @@ export default function HrmOrganizationPage() {
         isOpen={Boolean(deleteTarget)}
         title={
           deleteTarget?.kind === 'department'
-            ? 'Xác nhận xóa mềm phòng ban'
-            : 'Xác nhận xóa mềm chức danh'
+            ? tr('Xác nhận xóa mềm phòng ban', 'Confirm Soft Delete Department')
+            : tr('Xác nhận xóa mềm chức danh', 'Confirm Soft Delete Position')
         }
-        description={`Bạn có chắc muốn xóa mềm "${deleteTarget?.label ?? ''}"?`}
-        confirmLabel="Xóa mềm"
+        description={tr(
+          `Bạn có chắc muốn xóa mềm "${deleteTarget?.label ?? ''}"?`,
+          `Are you sure you want to soft-delete "${deleteTarget?.label ?? ''}"?`,
+        )}
+        confirmLabel={tr('Xóa mềm', 'Soft Delete')}
         isProcessing={isDeleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleConfirmDelete()}

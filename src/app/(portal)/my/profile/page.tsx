@@ -24,9 +24,11 @@ import {
 } from '@/components/hrm/EmployeeDocumentsPanel';
 import { EmployeeWorkHistoryTimeline } from '@/components/hrm/EmployeeWorkHistoryTimeline';
 import { ChangePasswordModal } from '@/components/portal/ChangePasswordModal';
+import { LanguageSwitcher } from '@/components/portal/LanguageSwitcher';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { getUserInitials } from '@/layouts/portal-navigation';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface MyProfileData {
   id: number;
@@ -50,6 +52,7 @@ interface MyProfileData {
 
 export default function MyProfilePage() {
   const { user, logout } = usePortalAuth();
+  const { t } = useI18n();
 
   const [profile, setProfile] = useState<MyProfileData | null>(null);
   const [isNotLinked, setIsNotLinked] = useState(false);
@@ -87,7 +90,7 @@ export default function MyProfilePage() {
           return;
         }
         if (!res.ok || !json.success || !json.data) {
-          throw new Error(json.error?.message ?? 'Không thể tải hồ sơ cá nhân.');
+          throw new Error(json.error?.message ?? 'LOAD_ERROR');
         }
         const data = json.data;
         setIsNotLinked(false);
@@ -101,7 +104,7 @@ export default function MyProfilePage() {
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === 'AbortError') return;
-        setErrorMessage(err instanceof Error ? err.message : 'Lỗi kết nối.');
+        setErrorMessage(err instanceof Error ? err.message : 'NETWORK_ERROR');
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -139,15 +142,15 @@ export default function MyProfilePage() {
       if (!res.ok || !json.success || !json.data) {
         setFeedback({
           type: 'error',
-          message: json.error?.message ?? 'Không thể cập nhật thông tin cá nhân.',
+          message: json.error?.message ?? t('profile.updateError'),
         });
         return;
       }
 
       setProfile(json.data);
-      setFeedback({ type: 'success', message: 'Đã cập nhật thông tin cá nhân thành công.' });
+      setFeedback({ type: 'success', message: t('profile.updateSuccess') });
     } catch {
-      setFeedback({ type: 'error', message: 'Lỗi kết nối khi lưu thông tin.' });
+      setFeedback({ type: 'error', message: t('profile.saveNetworkError') });
     } finally {
       setIsSaving(false);
     }
@@ -158,8 +161,14 @@ export default function MyProfilePage() {
     await logout();
   }
 
-  const displayName = user?.fullName ?? profile?.fullName ?? 'Người dùng';
+  const displayName = user?.fullName ?? profile?.fullName ?? t('common.user');
   const initials = getUserInitials(displayName);
+  const resolvedError =
+    errorMessage === 'LOAD_ERROR'
+      ? t('profile.loadError')
+      : errorMessage === 'NETWORK_ERROR'
+        ? t('profile.networkError')
+        : errorMessage;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -181,7 +190,7 @@ export default function MyProfilePage() {
                 </h1>
                 {user && (
                   <span className="rounded-md bg-cyan-400/20 px-2 py-0.5 text-[11px] font-bold text-cyan-200 ring-1 ring-cyan-300/30">
-                    Scope: {user.dataScope}
+                    {t('common.scope')}: {user.dataScope}
                   </span>
                 )}
               </div>
@@ -203,25 +212,27 @@ export default function MyProfilePage() {
             </div>
           </div>
 
-          {/* Account Security Actions */}
+          {/* Account Security & Preferences Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
+            <LanguageSwitcher variant="dark" />
+
             <button
               type="button"
               onClick={() => setIsPasswordModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500"
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500"
             >
               <IconKey size={16} />
-              <span>Đổi mật khẩu</span>
+              <span>{t('profile.changePassword')}</span>
             </button>
 
             <button
               type="button"
               disabled={isLoggingOut}
               onClick={() => void handleLogout()}
-              className="inline-flex items-center gap-2 rounded-xl border border-rose-400/40 bg-rose-500/15 px-4 py-2.5 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-60"
+              className="inline-flex h-9 items-center gap-2 rounded-xl border border-rose-400/40 bg-rose-500/15 px-4 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-60"
             >
               <IconLogout size={16} />
-              <span>{isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}</span>
+              <span>{isLoggingOut ? t('common.loggingOutFull') : t('common.logout')}</span>
             </button>
           </div>
         </div>
@@ -231,12 +242,12 @@ export default function MyProfilePage() {
           <div className="lg:col-span-5">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-cyan-300 uppercase">
               <IconBuilding size={14} />
-              <span>Chi nhánh được phân quyền</span>
+              <span>{t('profile.authorizedBranches')}</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {user?.hasAllBranches && (
                 <span className="rounded-lg bg-white/12 px-2.5 py-1 text-xs font-semibold text-white">
-                  Toàn bộ chi nhánh
+                  {t('profile.allBranchesBadge')}
                 </span>
               )}
               {user?.branches.map((branch) => (
@@ -252,10 +263,10 @@ export default function MyProfilePage() {
 
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:col-span-7">
             {[
-              { href: '/my/requests', label: 'Đơn từ của tôi', icon: IconCalendarEvent },
-              { href: '/my/attendance', label: 'Chấm công', icon: IconClockCheck },
-              { href: '/my/payslips', label: 'Phiếu lương', icon: IconReceipt2 },
-              { href: '/my/assets', label: 'Tài sản giữ', icon: IconDevices },
+              { href: '/my/requests', label: t('profile.ess.requests'), icon: IconCalendarEvent },
+              { href: '/my/attendance', label: t('profile.ess.attendance'), icon: IconClockCheck },
+              { href: '/my/payslips', label: t('profile.ess.payslips'), icon: IconReceipt2 },
+              { href: '/my/assets', label: t('profile.ess.assets'), icon: IconDevices },
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -279,76 +290,72 @@ export default function MyProfilePage() {
           <div className="h-32 animate-pulse rounded-2xl bg-white/80" />
           <div className="h-64 animate-pulse rounded-2xl bg-white/80" />
         </div>
-      ) : errorMessage ? (
+      ) : resolvedError ? (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-2xs">
-          <p className="text-sm font-medium text-rose-700">{errorMessage}</p>
+          <p className="text-sm font-medium text-rose-700">{resolvedError}</p>
           <button
             type="button"
             onClick={() => {
               setIsLoading(true);
-              setReloadTick((t) => t + 1);
+              setReloadTick((tick) => tick + 1);
             }}
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{t('common.retry')}</span>
           </button>
         </div>
       ) : isNotLinked || !profile ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-2xs">
           <IconUserCircle size={40} className="mx-auto text-slate-300" />
-          <h2 className="mt-3 text-sm font-bold text-slate-900">
-            Tài khoản chưa liên kết Hồ sơ Nhân viên HRM
-          </h2>
+          <h2 className="mt-3 text-sm font-bold text-slate-900">{t('profile.notLinkedTitle')}</h2>
           <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
-            Bạn vẫn có thể sử dụng đầy đủ tính năng bảo mật tài khoản (đổi mật khẩu, xem quyền chi
-            nhánh, đăng xuất) ở phía trên. Nếu cần xem hợp đồng hoặc bảng lương cá nhân, vui lòng
-            liên hệ Phòng Hành chính Nhân sự để gắn mã nhân viên.
+            {t('profile.notLinkedDesc')}
           </p>
         </div>
       ) : (
         <>
           <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xs">
-            <h2 className="text-sm font-bold text-slate-900">Thông tin công việc (Chỉ xem)</h2>
+            <h2 className="text-sm font-bold text-slate-900">{t('profile.workInfoTitle')}</h2>
             <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <dt className="text-xs text-slate-500">Mã nhân viên</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.employeeCode')}</dt>
                 <dd className="mt-0.5 font-mono font-semibold text-slate-900">
                   {profile.employeeCode}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Họ và tên</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.fullName')}</dt>
                 <dd className="mt-0.5 font-semibold text-slate-900">{profile.fullName}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Email công việc</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.workEmail')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{profile.workEmail}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Chi nhánh</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.branch')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{profile.branchName}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Phòng ban</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.department')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{profile.departmentName}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Chức danh</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.position')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{profile.positionName}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Quản lý trực tiếp</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.manager')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{profile.managerName ?? '—'}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Ngày vào làm</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.hireDate')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {formatDateVN(profile.hireDate)}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Số người phụ thuộc</dt>
+                <dt className="text-xs text-slate-500">{t('profile.field.dependents')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{profile.dependentsCount}</dd>
               </div>
             </dl>
@@ -358,13 +365,8 @@ export default function MyProfilePage() {
             onSubmit={(e) => void handleSave(e)}
             className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xs"
           >
-            <h2 className="text-sm font-bold text-slate-900">
-              Thông tin liên hệ & Ngân hàng nhận lương
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Bạn có thể tự cập nhật các thông tin liên hệ dưới đây. Mọi thay đổi được ghi nhật ký
-              hệ thống.
-            </p>
+            <h2 className="text-sm font-bold text-slate-900">{t('profile.contactFormTitle')}</h2>
+            <p className="mt-0.5 text-xs text-slate-500">{t('profile.contactFormDesc')}</p>
 
             {feedback && (
               <div
@@ -381,7 +383,7 @@ export default function MyProfilePage() {
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  Số điện thoại
+                  {t('profile.field.phone')}
                 </label>
                 <input
                   type="text"
@@ -392,7 +394,7 @@ export default function MyProfilePage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  Email cá nhân
+                  {t('profile.field.personalEmail')}
                 </label>
                 <input
                   type="email"
@@ -403,19 +405,19 @@ export default function MyProfilePage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  Ngân hàng nhận lương
+                  {t('profile.field.bankName')}
                 </label>
                 <input
                   type="text"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
-                  placeholder="VD: Vietcombank - CN TP.HCM"
+                  placeholder={t('profile.field.bankPlaceholder')}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  Số tài khoản ngân hàng
+                  {t('profile.field.bankAccountNo')}
                 </label>
                 <input
                   type="text"
@@ -426,7 +428,7 @@ export default function MyProfilePage() {
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  Địa chỉ hiện tại
+                  {t('profile.field.address')}
                 </label>
                 <input
                   type="text"
@@ -448,30 +450,36 @@ export default function MyProfilePage() {
                 ) : (
                   <IconDeviceFloppy size={16} />
                 )}
-                <span>{isSaving ? 'Đang lưu...' : 'Cập nhật thông tin'}</span>
+                <span>{isSaving ? t('common.saving') : t('profile.updateSubmit')}</span>
               </button>
             </div>
           </form>
 
           <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xs">
-            <h2 className="mb-4 text-sm font-bold text-slate-900">Hợp đồng lao động của tôi</h2>
+            <h2 className="mb-4 text-sm font-bold text-slate-900">
+              {t('profile.section.contracts')}
+            </h2>
             <EmployeeContractsPanel employeeId={profile.id} canManage={false} />
           </div>
 
           <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xs">
-            <h2 className="mb-4 text-sm font-bold text-slate-900">Quá trình công tác</h2>
+            <h2 className="mb-4 text-sm font-bold text-slate-900">
+              {t('profile.section.workHistory')}
+            </h2>
             <EmployeeWorkHistoryTimeline employeeId={profile.id} canManage={false} />
           </div>
 
           <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xs">
-            <h2 className="mb-4 text-sm font-bold text-slate-900">Tài liệu hồ sơ của tôi</h2>
+            <h2 className="mb-4 text-sm font-bold text-slate-900">
+              {t('profile.section.documents')}
+            </h2>
             <EmployeeDocumentsPanel
               employeeId={profile.id}
               documents={profile.documents}
               canManage={false}
               onChanged={() => {
                 setIsLoading(true);
-                setReloadTick((t) => t + 1);
+                setReloadTick((tick) => tick + 1);
               }}
             />
           </div>

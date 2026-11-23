@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { IconAlertTriangle, IconBan, IconLoader2, IconUsers, IconX } from '@tabler/icons-react';
 import type { MeetingRoomItem, RoomBookingItem } from '@/modules/hrm/office/meeting-rooms.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface RoomBookingModalProps {
   rooms: MeetingRoomItem[];
@@ -56,6 +57,7 @@ export function RoomBookingModal({
   onClose,
   onSaved,
 }: RoomBookingModalProps) {
+  const { tr } = useI18n();
   const isEdit = Boolean(initialBooking);
   const canModify = !isEdit || Boolean(initialBooking?.canEditOrCancel);
   const activeRooms = rooms.filter((r) => r.isActive || r.id === initialBooking?.roomId);
@@ -98,16 +100,24 @@ export function RoomBookingModal({
     const parsedRoomId = Number(roomId);
     const parsedAttendees = Number(attendeesCount);
     if (!Number.isInteger(parsedRoomId) || parsedRoomId <= 0) {
-      setErrorMessage('Vui lòng chọn phòng họp.');
+      setErrorMessage(tr('Vui lòng chọn phòng họp.', 'Please select a meeting room.'));
       return;
     }
     if (!startTime || !endTime || new Date(endTime).getTime() <= new Date(startTime).getTime()) {
-      setErrorMessage('Thời gian kết thúc phải lớn hơn thời gian bắt đầu.');
+      setErrorMessage(
+        tr(
+          'Thời gian kết thúc phải lớn hơn thời gian bắt đầu.',
+          'End time must be later than start time.',
+        ),
+      );
       return;
     }
     if (selectedRoom && parsedAttendees > selectedRoom.capacity) {
       setErrorMessage(
-        `Số người tham dự (${parsedAttendees}) vượt quá sức chứa tối đa của phòng (${selectedRoom.capacity} người).`,
+        tr(
+          `Số người tham dự (${parsedAttendees}) vượt quá sức chứa tối đa của phòng (${selectedRoom.capacity} người).`,
+          `Number of attendees (${parsedAttendees}) exceeds the room's maximum capacity (${selectedRoom.capacity} people).`,
+        ),
       );
       return;
     }
@@ -138,7 +148,10 @@ export function RoomBookingModal({
       } | null;
 
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể lưu lịch đặt phòng họp.');
+        setErrorMessage(
+          json?.error?.message ??
+            tr('Không thể lưu lịch đặt phòng họp.', 'Unable to save meeting room booking.'),
+        );
         const details = (json?.error?.details ?? [])
           .map((d) => d.message)
           .filter((m): m is string => Boolean(m));
@@ -148,7 +161,9 @@ export function RoomBookingModal({
 
       onSaved();
     } catch {
-      setErrorMessage('Lỗi kết nối máy chủ. Vui lòng thử lại.');
+      setErrorMessage(
+        tr('Lỗi kết nối máy chủ. Vui lòng thử lại.', 'Server connection error. Please try again.'),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +175,12 @@ export function RoomBookingModal({
     }
     setErrorMessage(null);
     if (cancelReason.trim().length < 3) {
-      setErrorMessage('Vui lòng nhập lý do hủy lịch tối thiểu 3 ký tự.');
+      setErrorMessage(
+        tr(
+          'Vui lòng nhập lý do hủy lịch tối thiểu 3 ký tự.',
+          'Please enter a cancellation reason of at least 3 characters.',
+        ),
+      );
       return;
     }
 
@@ -177,13 +197,18 @@ export function RoomBookingModal({
       } | null;
 
       if (!res.ok || !json?.success) {
-        setErrorMessage(json?.error?.message ?? 'Không thể hủy lịch phòng họp.');
+        setErrorMessage(
+          json?.error?.message ??
+            tr('Không thể hủy lịch phòng họp.', 'Unable to cancel meeting room booking.'),
+        );
         return;
       }
 
       onSaved();
     } catch {
-      setErrorMessage('Lỗi kết nối máy chủ. Vui lòng thử lại.');
+      setErrorMessage(
+        tr('Lỗi kết nối máy chủ. Vui lòng thử lại.', 'Server connection error. Please try again.'),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -195,11 +220,14 @@ export function RoomBookingModal({
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              {isEdit ? 'Chi tiết lịch đặt phòng họp' : 'Đặt lịch phòng họp'}
+              {isEdit
+                ? tr('Chi tiết lịch đặt phòng họp', 'Meeting Room Booking Details')
+                : tr('Đặt lịch phòng họp', 'Book a Meeting Room')}
             </h2>
             {initialBooking && (
               <p className="text-xs text-slate-500">
-                Người đặt: {initialBooking.bookedByEmployeeName} ({initialBooking.bookedByDepartmentName})
+                {tr('Người đặt:', 'Booked by:')} {initialBooking.bookedByEmployeeName} (
+                {initialBooking.bookedByDepartmentName})
               </p>
             )}
           </div>
@@ -208,7 +236,7 @@ export function RoomBookingModal({
             disabled={isSubmitting}
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -217,13 +245,17 @@ export function RoomBookingModal({
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 p-6">
           {initialBooking?.status === 'CANCELLED' && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              <div className="font-semibold text-rose-700">Lịch họp đã bị hủy</div>
+              <div className="font-semibold text-rose-700">
+                {tr('Lịch họp đã bị hủy', 'Meeting booking cancelled')}
+              </div>
               {initialBooking.cancelReason && (
-                <div className="mt-1 text-xs">Lý do: {initialBooking.cancelReason}</div>
+                <div className="mt-1 text-xs">
+                  {tr('Lý do:', 'Reason:')} {initialBooking.cancelReason}
+                </div>
               )}
               {initialBooking.cancelledByName && (
                 <div className="mt-0.5 text-xs text-slate-500">
-                  Người hủy: {initialBooking.cancelledByName}
+                  {tr('Người hủy:', 'Cancelled by:')} {initialBooking.cancelledByName}
                 </div>
               )}
             </div>
@@ -247,7 +279,7 @@ export function RoomBookingModal({
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-700">
-              Phòng họp <span className="text-rose-500">*</span>
+              {tr('Phòng họp', 'Meeting room')} <span className="text-rose-500">*</span>
             </label>
             <select
               value={roomId}
@@ -258,7 +290,8 @@ export function RoomBookingModal({
             >
               {activeRooms.map((r) => (
                 <option key={r.id} value={r.id}>
-                  [{r.code}] {r.name} — {r.capacity} chỗ {r.floor ? `(${r.floor})` : ''}
+                  [{r.code}] {r.name} — {r.capacity} {tr('chỗ', 'seats')}{' '}
+                  {r.floor ? `(${r.floor})` : ''}
                 </option>
               ))}
             </select>
@@ -266,7 +299,7 @@ export function RoomBookingModal({
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
                   <IconUsers size={13} />
-                  Tối đa {selectedRoom.capacity} người
+                  {tr(`Tối đa ${selectedRoom.capacity} người`, `Max ${selectedRoom.capacity} people`)}
                 </span>
                 {selectedRoom.equipment.slice(0, 4).map((eq) => (
                   <span key={eq} className="rounded-md bg-blue-50 px-2 py-0.5 text-blue-700">
@@ -279,7 +312,7 @@ export function RoomBookingModal({
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-700">
-              Tiêu đề cuộc họp <span className="text-rose-500">*</span>
+              {tr('Tiêu đề cuộc họp', 'Meeting title')} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -287,7 +320,10 @@ export function RoomBookingModal({
               disabled={!canModify || isSubmitting}
               onChange={(e) => setTitle(e.target.value)}
               required
-              placeholder="VD: Giao ban tuần Phòng Công nghệ"
+              placeholder={tr(
+                'VD: Giao ban tuần Phòng Công nghệ',
+                'e.g. Engineering Weekly Sync',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 disabled:bg-slate-50"
             />
           </div>
@@ -295,7 +331,7 @@ export function RoomBookingModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Bắt đầu <span className="text-rose-500">*</span>
+                {tr('Bắt đầu', 'Start')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="datetime-local"
@@ -309,7 +345,7 @@ export function RoomBookingModal({
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">
-                Kết thúc <span className="text-rose-500">*</span>
+                {tr('Kết thúc', 'End')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="datetime-local"
@@ -324,7 +360,7 @@ export function RoomBookingModal({
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-700">
-              Số người tham dự <span className="text-rose-500">*</span>
+              {tr('Số người tham dự', 'Attendees')} <span className="text-rose-500">*</span>
             </label>
             <input
               type="number"
@@ -340,14 +376,17 @@ export function RoomBookingModal({
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-700">
-              Ghi chú / Yêu cầu chuẩn bị
+              {tr('Ghi chú / Yêu cầu chuẩn bị', 'Notes / Setup requirements')}
             </label>
             <textarea
               rows={3}
               value={note}
               disabled={!canModify || isSubmitting}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: Chuẩn bị trà nước, cáp HDMI, kết nối họp trực tuyến..."
+              placeholder={tr(
+                'VD: Chuẩn bị trà nước, cáp HDMI, kết nối họp trực tuyến...',
+                'e.g. Prepare refreshments, HDMI cable, video conference setup...',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 disabled:bg-slate-50"
             />
           </div>
@@ -355,13 +394,17 @@ export function RoomBookingModal({
           {isEdit && canModify && isCancelPanelOpen && (
             <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
               <label className="block text-xs font-semibold text-rose-800">
-                Lý do hủy lịch phòng họp <span className="text-rose-600">*</span>
+                {tr('Lý do hủy lịch phòng họp', 'Reason for cancelling booking')}{' '}
+                <span className="text-rose-600">*</span>
               </label>
               <textarea
                 rows={2}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="VD: Dời lịch họp sang tuần sau do đối tác thay đổi kế hoạch"
+                placeholder={tr(
+                  'VD: Dời lịch họp sang tuần sau do đối tác thay đổi kế hoạch',
+                  'e.g. Rescheduled to next week due to partner availability',
+                )}
                 className="w-full rounded-xl border border-rose-300 bg-white px-3 py-2 text-sm outline-none focus:border-rose-500"
               />
               <div className="flex justify-end gap-2">
@@ -371,7 +414,7 @@ export function RoomBookingModal({
                   onClick={() => setIsCancelPanelOpen(false)}
                   className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  Đóng
+                  {tr('Đóng', 'Close')}
                 </button>
                 <button
                   type="button"
@@ -380,7 +423,7 @@ export function RoomBookingModal({
                   className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700 disabled:opacity-60"
                 >
                   {isSubmitting && <IconLoader2 size={14} className="animate-spin" />}
-                  <span>Xác nhận hủy lịch</span>
+                  <span>{tr('Xác nhận hủy lịch', 'Confirm Cancellation')}</span>
                 </button>
               </div>
             </div>
@@ -396,7 +439,7 @@ export function RoomBookingModal({
                   className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 px-3.5 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
                 >
                   <IconBan size={16} />
-                  <span>Hủy lịch họp</span>
+                  <span>{tr('Hủy lịch họp', 'Cancel Booking')}</span>
                 </button>
               )}
             </div>
@@ -408,7 +451,7 @@ export function RoomBookingModal({
                 onClick={onClose}
                 className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
-                {canModify ? 'Đóng' : 'Đóng cửa sổ'}
+                {canModify ? tr('Đóng', 'Close') : tr('Đóng cửa sổ', 'Close Window')}
               </button>
               {canModify && (
                 <button
@@ -417,7 +460,11 @@ export function RoomBookingModal({
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
                   {isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
-                  <span>{isEdit ? 'Cập nhật lịch' : 'Xác nhận đặt phòng'}</span>
+                  <span>
+                    {isEdit
+                      ? tr('Cập nhật lịch', 'Update Booking')
+                      : tr('Xác nhận đặt phòng', 'Confirm Booking')}
+                  </span>
                 </button>
               )}
             </div>

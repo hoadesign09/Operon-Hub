@@ -66,4 +66,21 @@ describe('Midnight Command Dual-Rail Portal Navigation', () => {
     expect(getUserInitials('Admin')).toBe('AD');
     expect(getUserInitials('   ')).toBe('OH');
   });
+
+  it('localizes Dual-Rail groups, nav items, and breadcrumbs when locale is set to English', () => {
+    const modules = getAuthorizedModules([], true);
+    const groupsEn = buildDualRailGroups(modules, 'en');
+
+    expect(groupsEn.find((g) => g.key === 'workspace')?.shortLabel).toBe('Home');
+    expect(groupsEn.find((g) => g.key === 'hrm')?.title).toBe('Human Resources (HRM)');
+    expect(groupsEn.find((g) => g.key === 'admin')?.title).toBe('System Administration');
+    expect(resolvePageContextLabel('/hrm/employees/42', groupsEn, 'en')).toEqual({
+      groupTitle: 'Human Resources (HRM)',
+      itemLabel: 'Employees 360°',
+    });
+    expect(resolvePageContextLabel('/settings/workflows', groupsEn, 'en')).toEqual({
+      groupTitle: 'System Administration',
+      itemLabel: 'Approval Workflows',
+    });
+  });
 });

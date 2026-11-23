@@ -9,6 +9,7 @@ import {
   IconUpload,
   IconX,
 } from '@tabler/icons-react';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface ImportErrorItem {
   rowNumber: number;
@@ -34,6 +35,7 @@ export function AttendanceImportModal({
   onClose,
   onImported,
 }: AttendanceImportModalProps) {
+  const { tr } = useI18n();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -45,7 +47,12 @@ export function AttendanceImportModal({
     setSummary(null);
 
     if (!selectedFile) {
-      setErrorMsg('Vui lòng chọn file Excel (.xlsx) để import.');
+      setErrorMsg(
+        tr(
+          'Vui lòng chọn file Excel (.xlsx) để import.',
+          'Please select an Excel (.xlsx) file to import.',
+        ),
+      );
       return;
     }
 
@@ -65,7 +72,10 @@ export function AttendanceImportModal({
       };
 
       if (!res.ok || !json.success || !json.data) {
-        setErrorMsg(json.error?.message ?? 'Import file chấm công thất bại.');
+        setErrorMsg(
+          json.error?.message ??
+            tr('Import file chấm công thất bại.', 'Failed to import attendance file.'),
+        );
         setIsUploading(false);
         return;
       }
@@ -76,7 +86,12 @@ export function AttendanceImportModal({
         onImported();
       }
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ khi tải file Excel.');
+      setErrorMsg(
+        tr(
+          'Lỗi kết nối máy chủ khi tải file Excel.',
+          'Server connection error while uploading Excel file.',
+        ),
+      );
       setIsUploading(false);
     }
   }
@@ -88,7 +103,10 @@ export function AttendanceImportModal({
           <div className="flex items-center gap-2">
             <IconFileSpreadsheet size={20} className="text-emerald-600" />
             <h3 className="text-base font-semibold text-slate-900">
-              Import Dữ liệu Chấm công từ Excel (.xlsx)
+              {tr(
+                'Import Dữ liệu Chấm công từ Excel (.xlsx)',
+                'Import Attendance Data from Excel (.xlsx)',
+              )}
             </h3>
           </div>
           <button
@@ -96,7 +114,7 @@ export function AttendanceImportModal({
             onClick={onClose}
             disabled={isUploading}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -105,13 +123,20 @@ export function AttendanceImportModal({
         <div className="space-y-4 p-6">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 text-xs text-slate-700">
             <div>
-              <p className="font-semibold text-blue-900">Cấu trúc file chuẩn (.xlsx, tối đa 5MB)</p>
+              <p className="font-semibold text-blue-900">
+                {tr(
+                  'Cấu trúc file chuẩn (.xlsx, tối đa 5MB)',
+                  'Standard file structure (.xlsx, max 5MB)',
+                )}
+              </p>
               <p className="mt-0.5 text-slate-600">
-                Các cột: <span className="font-medium">Mã NV</span>,{' '}
-                <span className="font-medium">Ngày công</span> (YYYY-MM-DD hoặc DD/MM/YYYY),{' '}
-                <span className="font-medium">Giờ vào</span> (HH:mm),{' '}
-                <span className="font-medium">Giờ ra</span> (HH:mm),{' '}
-                <span className="font-medium">Ghi chú</span>.
+                {tr('Các cột:', 'Columns:')}{' '}
+                <span className="font-medium">{tr('Mã NV', 'Employee Code')}</span>,{' '}
+                <span className="font-medium">{tr('Ngày công', 'Work Date')}</span>{' '}
+                {tr('(YYYY-MM-DD hoặc DD/MM/YYYY)', '(YYYY-MM-DD or DD/MM/YYYY)')},{' '}
+                <span className="font-medium">{tr('Giờ vào', 'Check-in')}</span> (HH:mm),{' '}
+                <span className="font-medium">{tr('Giờ ra', 'Check-out')}</span> (HH:mm),{' '}
+                <span className="font-medium">{tr('Ghi chú', 'Note')}</span>.
               </p>
             </div>
             <a
@@ -120,7 +145,7 @@ export function AttendanceImportModal({
               className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
             >
               <IconDownload size={15} />
-              <span>Tải file mẫu .xlsx</span>
+              <span>{tr('Tải file mẫu .xlsx', 'Download .xlsx Template')}</span>
             </a>
           </div>
 
@@ -133,7 +158,7 @@ export function AttendanceImportModal({
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-700">
-                Chọn file Excel từ máy tính *
+                {tr('Chọn file Excel từ máy tính *', 'Select Excel file from computer *')}
               </label>
               <input
                 type="file"
@@ -148,20 +173,27 @@ export function AttendanceImportModal({
               <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                   <IconCheck size={18} className="text-emerald-600" />
-                  <span>Kết quả xử lý ({summary.totalRows} dòng)</span>
+                  <span>
+                    {tr(
+                      `Kết quả xử lý (${summary.totalRows} dòng)`,
+                      `Import Results (${summary.totalRows} rows)`,
+                    )}
+                  </span>
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="rounded-lg bg-white p-2.5 border border-slate-200">
                     <div className="text-lg font-bold text-emerald-600">{summary.createdCount}</div>
-                    <div className="text-[11px] text-slate-500">Tạo mới</div>
+                    <div className="text-[11px] text-slate-500">{tr('Tạo mới', 'Created')}</div>
                   </div>
                   <div className="rounded-lg bg-white p-2.5 border border-slate-200">
                     <div className="text-lg font-bold text-blue-600">{summary.updatedCount}</div>
-                    <div className="text-[11px] text-slate-500">Cập nhật</div>
+                    <div className="text-[11px] text-slate-500">{tr('Cập nhật', 'Updated')}</div>
                   </div>
                   <div className="rounded-lg bg-white p-2.5 border border-slate-200">
                     <div className="text-lg font-bold text-rose-600">{summary.errorCount}</div>
-                    <div className="text-[11px] text-slate-500">Dòng lỗi</div>
+                    <div className="text-[11px] text-slate-500">
+                      {tr('Dòng lỗi', 'Failed Rows')}
+                    </div>
                   </div>
                 </div>
 
@@ -170,10 +202,12 @@ export function AttendanceImportModal({
                     <table className="w-full text-left text-xs">
                       <thead className="sticky top-0 bg-rose-50 text-rose-800">
                         <tr>
-                          <th className="px-3 py-1.5 font-semibold">Dòng</th>
-                          <th className="px-3 py-1.5 font-semibold">Mã NV</th>
-                          <th className="px-3 py-1.5 font-semibold">Ngày</th>
-                          <th className="px-3 py-1.5 font-semibold">Chi tiết lỗi</th>
+                          <th className="px-3 py-1.5 font-semibold">{tr('Dòng', 'Row')}</th>
+                          <th className="px-3 py-1.5 font-semibold">{tr('Mã NV', 'Emp. Code')}</th>
+                          <th className="px-3 py-1.5 font-semibold">{tr('Ngày', 'Date')}</th>
+                          <th className="px-3 py-1.5 font-semibold">
+                            {tr('Chi tiết lỗi', 'Error Details')}
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-rose-100">
@@ -201,7 +235,7 @@ export function AttendanceImportModal({
                 disabled={isUploading}
                 className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
-                Đóng
+                {tr('Đóng', 'Close')}
               </button>
               <button
                 type="submit"
@@ -213,7 +247,9 @@ export function AttendanceImportModal({
                 ) : (
                   <IconUpload size={16} />
                 )}
-                <span>{isUploading ? 'Đang xử lý...' : 'Bắt đầu Import'}</span>
+                <span>
+                  {isUploading ? tr('Đang xử lý...', 'Processing...') : tr('Bắt đầu Import', 'Start Import')}
+                </span>
               </button>
             </div>
           </form>

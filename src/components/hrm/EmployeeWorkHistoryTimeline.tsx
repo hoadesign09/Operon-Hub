@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   IconArrowRight,
   IconHistory,
@@ -17,6 +17,7 @@ import type {
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface WorkHistoryView {
   id: number;
@@ -37,30 +38,35 @@ export interface WorkHistoryView {
 
 const CHANGE_TYPE_META: Record<
   WorkHistoryView['changeType'],
-  { label: string; badgeClass: string; dotClass: string }
+  { vi: string; en: string; badgeClass: string; dotClass: string }
 > = {
   HIRE: {
-    label: 'Tuyển dụng',
+    vi: 'Tuyển dụng',
+    en: 'Hired',
     badgeClass: 'bg-emerald-50 text-emerald-700',
     dotClass: 'bg-emerald-500',
   },
   PROMOTION: {
-    label: 'Bổ nhiệm / Thăng chức',
+    vi: 'Bổ nhiệm / Thăng chức',
+    en: 'Promotion / Appointment',
     badgeClass: 'bg-blue-50 text-blue-700',
     dotClass: 'bg-blue-600',
   },
   TRANSFER: {
-    label: 'Điều chuyển công tác',
+    vi: 'Điều chuyển công tác',
+    en: 'Transfer',
     badgeClass: 'bg-indigo-50 text-indigo-700',
     dotClass: 'bg-indigo-600',
   },
   SALARY_ADJUST: {
-    label: 'Điều chỉnh lương',
+    vi: 'Điều chỉnh lương',
+    en: 'Salary Adjustment',
     badgeClass: 'bg-amber-50 text-amber-700',
     dotClass: 'bg-amber-500',
   },
   TERMINATION: {
-    label: 'Quyết định thôi việc',
+    vi: 'Quyết định thôi việc',
+    en: 'Termination',
     badgeClass: 'bg-rose-50 text-rose-700',
     dotClass: 'bg-rose-600',
   },
@@ -88,6 +94,12 @@ export function EmployeeWorkHistoryTimeline({
   positions = [],
   onProfileSynced,
 }: EmployeeWorkHistoryTimelineProps) {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const [items, setItems] = useState<WorkHistoryView[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -120,14 +132,24 @@ export function EmployeeWorkHistoryTimeline({
           error?: { message?: string };
         };
         if (!res.ok || !json.success) {
-          throw new Error(json.error?.message ?? 'Không thể tải quá trình công tác.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current(
+                'Không thể tải quá trình công tác.',
+                'Failed to load work history.',
+              ),
+          );
         }
         setItems(json.data ?? []);
         setErrorMessage(null);
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === 'AbortError') return;
-        setErrorMessage(err instanceof Error ? err.message : 'Lỗi kết nối.');
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : trRef.current('Lỗi kết nối.', 'Connection error.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
@@ -169,7 +191,13 @@ export function EmployeeWorkHistoryTimeline({
         error?: { message?: string };
       };
       if (!res.ok || !json.success) {
-        setFormError(json.error?.message ?? 'Không thể ghi nhận quyết định công tác.');
+        setFormError(
+          json.error?.message ??
+            tr(
+              'Không thể ghi nhận quyết định công tác.',
+              'Failed to record work history decision.',
+            ),
+        );
         return;
       }
 
@@ -183,7 +211,9 @@ export function EmployeeWorkHistoryTimeline({
         onProfileSynced();
       }
     } catch {
-      setFormError('Lỗi kết nối khi lưu quyết định.');
+      setFormError(
+        tr('Lỗi kết nối khi lưu quyết định.', 'Connection error while saving decision.'),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -229,7 +259,7 @@ export function EmployeeWorkHistoryTimeline({
           className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
         >
           <IconRefresh size={14} />
-          <span>Thử lại</span>
+          <span>{tr('Thử lại', 'Retry')}</span>
         </button>
       </div>
     );
@@ -245,7 +275,11 @@ export function EmployeeWorkHistoryTimeline({
             className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
           >
             <IconPlus size={15} />
-            <span>{showForm ? 'Ẩn biểu mẫu' : 'Ghi nhận quyết định mới'}</span>
+            <span>
+              {showForm
+                ? tr('Ẩn biểu mẫu', 'Hide Form')
+                : tr('Ghi nhận quyết định mới', 'Record New Decision')}
+            </span>
           </button>
         </div>
       )}
@@ -256,7 +290,7 @@ export function EmployeeWorkHistoryTimeline({
           className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
         >
           <div className="text-sm font-bold text-slate-900">
-            Tạo Quyết định Biến động Công tác
+            {tr('Tạo Quyết định Biến động Công tác', 'Create Work History Decision')}
           </div>
           {formError && (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
@@ -266,7 +300,9 @@ export function EmployeeWorkHistoryTimeline({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Loại biến động</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Loại biến động', 'Change Type')}
+              </label>
               <select
                 value={changeType}
                 onChange={(e) =>
@@ -276,13 +312,15 @@ export function EmployeeWorkHistoryTimeline({
               >
                 {Object.entries(CHANGE_TYPE_META).map(([k, v]) => (
                   <option key={k} value={k}>
-                    {v.label}
+                    {locale === 'en' ? v.en : v.vi}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Ngày hiệu lực</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Ngày hiệu lực', 'Effective Date')}
+              </label>
               <input
                 type="date"
                 required
@@ -292,12 +330,14 @@ export function EmployeeWorkHistoryTimeline({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Số quyết định</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Số quyết định', 'Decision No.')}
+              </label>
               <input
                 type="text"
                 value={decisionNo}
                 onChange={(e) => setDecisionNo(e.target.value)}
-                placeholder="VD: QD-BN-2026-01"
+                placeholder={tr('VD: QD-BN-2026-01', 'e.g. DEC-2026-01')}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
               />
             </div>
@@ -306,7 +346,7 @@ export function EmployeeWorkHistoryTimeline({
               <>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Chi nhánh mới
+                    {tr('Chi nhánh mới', 'New Branch')}
                   </label>
                   <select
                     value={toBranchId}
@@ -316,7 +356,7 @@ export function EmployeeWorkHistoryTimeline({
                     }}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
                   >
-                    <option value="">-- Giữ nguyên --</option>
+                    <option value="">{tr('-- Giữ nguyên --', '-- Keep unchanged --')}</option>
                     {branches.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name}
@@ -326,14 +366,14 @@ export function EmployeeWorkHistoryTimeline({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Phòng ban mới
+                    {tr('Phòng ban mới', 'New Department')}
                   </label>
                   <select
                     value={toDepartmentId}
                     onChange={(e) => setToDepartmentId(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
                   >
-                    <option value="">-- Giữ nguyên --</option>
+                    <option value="">{tr('-- Giữ nguyên --', '-- Keep unchanged --')}</option>
                     {filteredDepts.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.name}
@@ -343,14 +383,14 @@ export function EmployeeWorkHistoryTimeline({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Chức danh mới
+                    {tr('Chức danh mới', 'New Position')}
                   </label>
                   <select
                     value={toPositionId}
                     onChange={(e) => setToPositionId(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
                   >
-                    <option value="">-- Giữ nguyên --</option>
+                    <option value="">{tr('-- Giữ nguyên --', '-- Keep unchanged --')}</option>
                     {positions.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -365,7 +405,7 @@ export function EmployeeWorkHistoryTimeline({
               <>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Mức lương cũ (VNĐ)
+                    {tr('Mức lương cũ (VNĐ)', 'Previous Salary (VND)')}
                   </label>
                   <input
                     type="number"
@@ -377,7 +417,7 @@ export function EmployeeWorkHistoryTimeline({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    Mức lương mới (VNĐ)
+                    {tr('Mức lương mới (VNĐ)', 'New Salary (VND)')}
                   </label>
                   <input
                     type="number"
@@ -391,12 +431,17 @@ export function EmployeeWorkHistoryTimeline({
             )}
 
             <div className="sm:col-span-3">
-              <label className="mb-1 block text-xs font-medium text-slate-700">Ghi chú</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Ghi chú', 'Note')}
+              </label>
               <input
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Mô tả lý do điều chuyển / bổ nhiệm / tăng lương..."
+                placeholder={tr(
+                  'Mô tả lý do điều chuyển / bổ nhiệm / tăng lương...',
+                  'Describe reason for transfer, promotion, or salary adjustment...',
+                )}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs"
               />
             </div>
@@ -410,8 +455,10 @@ export function EmployeeWorkHistoryTimeline({
               className="h-4 w-4 rounded border-slate-300 text-blue-600"
             />
             <span>
-              Tự động đồng bộ Chi nhánh / Phòng ban / Chức danh (hoặc trạng thái Thôi việc) về Hồ
-              sơ nhân viên
+              {tr(
+                'Tự động đồng bộ Chi nhánh / Phòng ban / Chức danh (hoặc trạng thái Thôi việc) về Hồ sơ nhân viên',
+                'Automatically sync Branch / Department / Position (or Terminated status) to Employee Profile',
+              )}
             </span>
           </label>
 
@@ -421,7 +468,7 @@ export function EmployeeWorkHistoryTimeline({
               onClick={() => setShowForm(false)}
               className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -429,7 +476,11 @@ export function EmployeeWorkHistoryTimeline({
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting && <IconLoader2 size={14} className="animate-spin" />}
-              <span>{isSubmitting ? 'Đang lưu...' : 'Lưu quyết định'}</span>
+              <span>
+                {isSubmitting
+                  ? tr('Đang lưu...', 'Saving...')
+                  : tr('Lưu quyết định', 'Save Decision')}
+              </span>
             </button>
           </div>
         </form>
@@ -439,7 +490,7 @@ export function EmployeeWorkHistoryTimeline({
         <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
           <IconHistory size={32} className="mx-auto text-slate-300" />
           <p className="mt-2 text-sm font-medium text-slate-700">
-            Chưa có lịch sử quá trình công tác nào
+            {tr('Chưa có lịch sử quá trình công tác nào', 'No work history records yet')}
           </p>
         </div>
       ) : (
@@ -457,10 +508,10 @@ export function EmployeeWorkHistoryTimeline({
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.badgeClass}`}
                       >
-                        {meta.label}
+                        {locale === 'en' ? meta.en : meta.vi}
                       </span>
                       <span className="text-xs font-semibold text-slate-700">
-                        Hiệu lực: {formatDateVN(item.effectiveDate)}
+                        {tr('Hiệu lực:', 'Effective:')} {formatDateVN(item.effectiveDate)}
                       </span>
                       {item.decisionNo && (
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">
@@ -472,7 +523,9 @@ export function EmployeeWorkHistoryTimeline({
                     <div className="mt-2 space-y-1 text-xs text-slate-600">
                       {(item.fromDepartmentName || item.toDepartmentName) && (
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-slate-400">Phòng ban:</span>
+                          <span className="text-slate-400">
+                            {tr('Phòng ban:', 'Department:')}
+                          </span>
                           {item.fromDepartmentName && <span>{item.fromDepartmentName}</span>}
                           {item.fromDepartmentName && item.toDepartmentName && (
                             <IconArrowRight size={13} className="text-slate-400" />
@@ -484,7 +537,9 @@ export function EmployeeWorkHistoryTimeline({
                       )}
                       {(item.fromPositionName || item.toPositionName) && (
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-slate-400">Chức danh:</span>
+                          <span className="text-slate-400">
+                            {tr('Chức danh:', 'Position:')}
+                          </span>
                           {item.fromPositionName && <span>{item.fromPositionName}</span>}
                           {item.fromPositionName && item.toPositionName && (
                             <IconArrowRight size={13} className="text-slate-400" />
@@ -496,7 +551,9 @@ export function EmployeeWorkHistoryTimeline({
                       )}
                       {(item.fromSalary !== null || item.toSalary !== null) && (
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-slate-400">Mức lương:</span>
+                          <span className="text-slate-400">
+                            {tr('Mức lương:', 'Salary:')}
+                          </span>
                           {item.fromSalary !== null && <span>{formatVND(item.fromSalary)}</span>}
                           {item.fromSalary !== null && item.toSalary !== null && (
                             <IconArrowRight size={13} className="text-slate-400" />
@@ -515,7 +572,7 @@ export function EmployeeWorkHistoryTimeline({
                       type="button"
                       onClick={() => setDeletingItem(item)}
                       className="rounded-lg border border-rose-200 p-1.5 text-rose-600 hover:bg-rose-50"
-                      title="Xóa bản ghi"
+                      title={tr('Xóa bản ghi', 'Delete record')}
                     >
                       <IconTrash size={14} />
                     </button>
@@ -529,9 +586,12 @@ export function EmployeeWorkHistoryTimeline({
 
       <ConfirmModal
         isOpen={deletingItem !== null}
-        title="Xác nhận xóa quyết định công tác"
-        description="Bạn có chắc muốn xóa mềm bản ghi quá trình công tác này?"
-        confirmLabel="Xóa bản ghi"
+        title={tr('Xác nhận xóa quyết định công tác', 'Confirm Work History Deletion')}
+        description={tr(
+          'Bạn có chắc muốn xóa mềm bản ghi quá trình công tác này?',
+          'Are you sure you want to delete this work history record?',
+        )}
+        confirmLabel={tr('Xóa bản ghi', 'Delete Record')}
         isProcessing={isDeleting}
         onCancel={() => setDeletingItem(null)}
         onConfirm={() => void handleDelete()}

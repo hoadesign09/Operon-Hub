@@ -1790,6 +1790,102 @@
       "status": "PASS",
       "last_task_id": "TASK-20261123-19",
       "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-028",
+      "module": "core",
+      "feature": "Portable i18n Engine, SSR cookie operon_locale & 100% parity từ điển VI/EN",
+      "spec_ref": "FR-I18N-01",
+      "target_files": [
+        "src/lib/portable/i18n-engine.ts",
+        "src/shared/i18n/config.ts",
+        "src/shared/i18n/dictionaries/vi.ts",
+        "src/shared/i18n/dictionaries/en.ts",
+        "src/shared/i18n/translator.ts",
+        "src/shared/i18n/I18nContext.tsx",
+        "src/app/layout.tsx",
+        "tests/unit/i18n.test.ts"
+      ],
+      "type": "FR",
+      "preconditions": "Vitest + static check en.ts",
+      "steps": [
+        "Chạy tests/unit/i18n.test.ts kiểm tra normalizeLocale, parseCookieValue, interpolateTemplate, createTranslator",
+        "Kiểm tra 100% key và {token} khớp nhau giữa vi.ts và en.ts",
+        "Quét en.ts đảm bảo không có ký tự tiếng Việt có dấu bị sót"
+      ],
+      "expected_result": "7/7 unit tests PASS, 100% key/token parity, 0 chuỗi tiếng Việt lọt trong en.ts",
+      "actual_result": "PASS — 7/7 tests PASS, 0 tiếng Việt lọt trong en.ts",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-21",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-029",
+      "module": "core",
+      "feature": "Chuyển ngôn ngữ EN trên Core Shell, Login, Dashboard, Charts, System Status & Account Hub",
+      "spec_ref": "UI-I18N-01",
+      "target_files": [
+        "src/layouts/portal-navigation.ts",
+        "src/layouts/PortalShell.tsx",
+        "src/components/portal/LanguageSwitcher.tsx",
+        "src/components/portal/NotificationBell.tsx",
+        "src/components/portal/ChangePasswordModal.tsx",
+        "src/app/login/page.tsx",
+        "src/app/(portal)/dashboard/page.tsx",
+        "src/components/hrm/HrmDashboardCharts.tsx",
+        "src/components/system/SystemStatusCard.tsx",
+        "src/app/(portal)/my/profile/page.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Chuyển LanguageSwitcher sang EN + chạy unit test navigation EN",
+      "steps": [
+        "Quét toàn bộ 11 file đã tích hợp useI18n/translateApp tìm chuỗi tiếng Việt hardcode",
+        "Chạy tests/unit/portal-shell-navigation.test.ts xác nhận Dual-Rail và breadcrumb bản EN"
+      ],
+      "expected_result": "0 dòng tiếng Việt hardcode trong 11 file lõi, 6/6 navigation tests PASS",
+      "actual_result": "PASS — 0 tiếng Việt hardcode trong 11 file lõi, 6/6 tests PASS",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-21",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-030",
+      "module": "core",
+      "feature": "Độ phủ tiếng Anh toàn Portal (toàn bộ 21 trang & 29 component/modal, không tính dữ liệu DB)",
+      "spec_ref": "UI-I18N-02",
+      "target_files": [
+        "src/app/(portal)/approvals/page.tsx",
+        "src/app/(portal)/settings/branches/page.tsx",
+        "src/app/(portal)/settings/users-roles/page.tsx",
+        "src/app/(portal)/settings/workflows/page.tsx",
+        "src/app/(portal)/settings/audit-logs/page.tsx",
+        "src/app/(portal)/my/requests/page.tsx",
+        "src/app/(portal)/my/attendance/page.tsx",
+        "src/app/(portal)/my/payslips/page.tsx",
+        "src/app/(portal)/my/assets/page.tsx",
+        "src/app/(portal)/hrm/organization/page.tsx",
+        "src/app/(portal)/hrm/employees/page.tsx",
+        "src/app/(portal)/hrm/contracts/page.tsx",
+        "src/app/(portal)/hrm/requests/page.tsx",
+        "src/app/(portal)/hrm/attendance/page.tsx",
+        "src/app/(portal)/hrm/payroll/page.tsx",
+        "src/app/(portal)/hrm/office/assets/page.tsx",
+        "src/app/(portal)/hrm/office/meeting-rooms/page.tsx",
+        "src/app/(portal)/hrm/office/announcements/page.tsx",
+        "src/components/ui/ConfirmModal.tsx",
+        "src/components/portal/PortalAuthContext.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Chuyển ngôn ngữ sang EN và quét toàn bộ UI tĩnh trên mọi route",
+      "steps": [
+        "Quét 100% file UI dưới src/app, src/components, src/layouts tìm chuỗi tiếng Việt tĩnh không qua i18n",
+        "Đối chiếu các panel nhúng trong /my/profile và các modal dùng chung (ConfirmModal, PortalAuthContext)"
+      ],
+      "expected_result": "0 file UI production còn chuỗi tiếng Việt tĩnh khi bật EN (chỉ dữ liệu DB giữ nguyên)",
+      "actual_result": "PASS (Loop 2) — TypeScript AST audit quét 59/59 file UI production đạt 0 chuỗi tiếng Việt hardcode và 0 chuỗi lọt vào nhánh EN; 62/62 suites (159/159 tests), typecheck, eslint và next build (136 routes) PASS",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-21",
+      "last_tested_at": "2026-11-24"
     }
   ],
   "runs": [
@@ -2047,6 +2143,30 @@
         "TC-HRM-001..TC-HRM-047"
       ],
       "test_log_file": ".agents/logs/test/2026-11-23_PHASE1-CONSOLIDATED.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-21",
+      "total_executed": 3,
+      "passed": 2,
+      "failed": 1,
+      "regression_matched": [
+        "TC-CORE-026",
+        "TC-CORE-027"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-21.test.log.md"
+    },
+    {
+      "run_date": "2026-11-24",
+      "task_id": "TASK-20261123-21",
+      "total_executed": 3,
+      "passed": 3,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-026",
+        "TC-CORE-027"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-21.test.log.md"
     }
   ]
 }

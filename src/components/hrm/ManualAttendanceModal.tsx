@@ -5,6 +5,7 @@ import { IconLoader2, IconX } from '@tabler/icons-react';
 import type { AttendanceStatus } from '@/config/database';
 import type { SimpleEmployeeOption } from '@/components/hrm/ShiftAssignmentModal';
 import type { WorkShiftRecord } from '@/components/hrm/WorkShiftFormModal';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 export interface AttendanceLogRecord {
   id: number;
@@ -44,6 +45,7 @@ export function ManualAttendanceModal({
   onClose,
   onSuccess,
 }: ManualAttendanceModalProps) {
+  const { tr } = useI18n();
   const isEdit = Boolean(initialData);
   const [employeeId, setEmployeeId] = useState<string>(
     initialData ? String(initialData.employeeId) : employees[0] ? String(employees[0].id) : '',
@@ -65,7 +67,12 @@ export function ManualAttendanceModal({
     e.preventDefault();
     setErrorMsg(null);
     if (note.trim().length < 3) {
-      setErrorMsg('Vui lòng nhập lý do điều chỉnh chấm công (tối thiểu 3 ký tự).');
+      setErrorMsg(
+        tr(
+          'Vui lòng nhập lý do điều chỉnh chấm công (tối thiểu 3 ký tự).',
+          'Please enter a reason for the attendance adjustment (at least 3 characters).',
+        ),
+      );
       return;
     }
 
@@ -104,14 +111,22 @@ export function ManualAttendanceModal({
       };
 
       if (!res.ok || !json.success) {
-        setErrorMsg(json.error?.message ?? 'Không thể lưu điều chỉnh chấm công.');
+        setErrorMsg(
+          json.error?.message ??
+            tr('Không thể lưu điều chỉnh chấm công.', 'Unable to save attendance adjustment.'),
+        );
         setIsSubmitting(false);
         return;
       }
 
       onSuccess();
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ khi lưu chấm công.');
+      setErrorMsg(
+        tr(
+          'Lỗi kết nối máy chủ khi lưu chấm công.',
+          'Server connection error while saving attendance.',
+        ),
+      );
       setIsSubmitting(false);
     }
   }
@@ -122,15 +137,18 @@ export function ManualAttendanceModal({
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h3 className="text-base font-semibold text-slate-900">
             {isEdit
-              ? `Điều chỉnh chấm công — ${initialData?.employeeCode}`
-              : 'Chấm công tay (Ghi nhận Audit Log)'}
+              ? tr(
+                  `Điều chỉnh chấm công — ${initialData?.employeeCode}`,
+                  `Adjust Attendance — ${initialData?.employeeCode}`,
+                )
+              : tr('Chấm công tay (Ghi nhận Audit Log)', 'Manual Attendance (Audit Logged)')}
           </h3>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -146,14 +164,14 @@ export function ManualAttendanceModal({
           {isEdit ? (
             <div className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs text-slate-700">
               <span className="font-semibold">{initialData?.employeeCode}</span> —{' '}
-              {initialData?.employeeName} • Ngày{' '}
+              {initialData?.employeeName} • {tr('Ngày', 'Date')}{' '}
               <span className="font-semibold">{initialData?.workDate}</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Nhân viên *
+                  {tr('Nhân viên *', 'Employee *')}
                 </label>
                 <select
                   required
@@ -162,7 +180,7 @@ export function ManualAttendanceModal({
                   onChange={(e) => setEmployeeId(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
                 >
-                  <option value="">-- Chọn nhân viên --</option>
+                  <option value="">{tr('-- Chọn nhân viên --', '-- Select employee --')}</option>
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.id}>
                       {emp.employeeCode} - {emp.fullName}
@@ -172,7 +190,7 @@ export function ManualAttendanceModal({
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Ngày công *
+                  {tr('Ngày công *', 'Work date *')}
                 </label>
                 <input
                   type="date"
@@ -189,7 +207,7 @@ export function ManualAttendanceModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Ca làm việc (để trống = tự động)
+                {tr('Ca làm việc (để trống = tự động)', 'Work shift (leave blank = auto)')}
               </label>
               <select
                 disabled={isSubmitting}
@@ -197,7 +215,9 @@ export function ManualAttendanceModal({
                 onChange={(e) => setShiftId(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="">Tự động theo phân ca NV</option>
+                <option value="">
+                  {tr('Tự động theo phân ca NV', 'Auto from employee shift assignment')}
+                </option>
                 {shifts.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.code} - {s.name} ({s.startTime}–{s.endTime})
@@ -207,7 +227,7 @@ export function ManualAttendanceModal({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
-                Ghi đè trạng thái (tùy chọn)
+                {tr('Ghi đè trạng thái (tùy chọn)', 'Override status (optional)')}
               </label>
               <select
                 disabled={isSubmitting}
@@ -215,19 +235,23 @@ export function ManualAttendanceModal({
                 onChange={(e) => setStatus(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
               >
-                <option value="">Tự động tính từ giờ vào/ra</option>
-                <option value="PRESENT">Đúng giờ (PRESENT)</option>
-                <option value="LATE">Đi muộn (LATE)</option>
-                <option value="ABSENT">Vắng mặt (ABSENT)</option>
-                <option value="LEAVE">Nghỉ phép (LEAVE)</option>
-                <option value="HOLIDAY">Ngày lễ (HOLIDAY)</option>
+                <option value="">
+                  {tr('Tự động tính từ giờ vào/ra', 'Auto-calculate from check-in/out')}
+                </option>
+                <option value="PRESENT">{tr('Đúng giờ (PRESENT)', 'Present (PRESENT)')}</option>
+                <option value="LATE">{tr('Đi muộn (LATE)', 'Late (LATE)')}</option>
+                <option value="ABSENT">{tr('Vắng mặt (ABSENT)', 'Absent (ABSENT)')}</option>
+                <option value="LEAVE">{tr('Nghỉ phép (LEAVE)', 'On Leave (LEAVE)')}</option>
+                <option value="HOLIDAY">{tr('Ngày lễ (HOLIDAY)', 'Holiday (HOLIDAY)')}</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Giờ vào</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Giờ vào', 'Check-in time')}
+              </label>
               <input
                 type="time"
                 disabled={isSubmitting}
@@ -237,7 +261,9 @@ export function ManualAttendanceModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Giờ ra</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Giờ ra', 'Check-out time')}
+              </label>
               <input
                 type="time"
                 disabled={isSubmitting}
@@ -250,7 +276,10 @@ export function ManualAttendanceModal({
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-700">
-              Lý do điều chỉnh (bắt buộc lưu Audit Log) *
+              {tr(
+                'Lý do điều chỉnh (bắt buộc lưu Audit Log) *',
+                'Adjustment reason (required for Audit Log) *',
+              )}
             </label>
             <textarea
               rows={2}
@@ -259,7 +288,10 @@ export function ManualAttendanceModal({
               disabled={isSubmitting}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: Quên bấm check-out, đã xác nhận với trưởng bộ phận"
+              placeholder={tr(
+                'VD: Quên bấm check-out, đã xác nhận với trưởng bộ phận',
+                'e.g. Forgot to check out, confirmed with department manager',
+              )}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
             />
           </div>
@@ -271,7 +303,7 @@ export function ManualAttendanceModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Hủy
+              {tr('Hủy', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -279,7 +311,7 @@ export function ManualAttendanceModal({
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
-              <span>Lưu chấm công</span>
+              <span>{tr('Lưu chấm công', 'Save Attendance')}</span>
             </button>
           </div>
         </form>

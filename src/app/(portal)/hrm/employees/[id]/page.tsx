@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState, type FormEvent } from 'react';
+import { use, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import {
   IconArrowLeft,
@@ -26,6 +26,7 @@ import {
 import { EmployeeWorkHistoryTimeline } from '@/components/hrm/EmployeeWorkHistoryTimeline';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { formatDateVN } from '@/lib/portable/date-utils';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface EmployeeDetailData {
   id: number;
@@ -67,18 +68,21 @@ interface EmployeeDetailData {
   sensitiveFieldsMasked: boolean;
 }
 
-const STATUS_LABELS: Record<EmployeeDetailData['employmentStatus'], string> = {
-  PROBATION: 'Thử việc',
-  ACTIVE: 'Chính thức',
-  ON_LEAVE: 'Tạm nghỉ',
-  RESIGNED: 'Đã nghỉ việc',
-  TERMINATED: 'Chấm dứt HĐ',
+const STATUS_LABELS: Record<
+  EmployeeDetailData['employmentStatus'],
+  { vi: string; en: string }
+> = {
+  PROBATION: { vi: 'Thử việc', en: 'Probation' },
+  ACTIVE: { vi: 'Chính thức', en: 'Active' },
+  ON_LEAVE: { vi: 'Tạm nghỉ', en: 'On Leave' },
+  RESIGNED: { vi: 'Đã nghỉ việc', en: 'Resigned' },
+  TERMINATED: { vi: 'Chấm dứt HĐ', en: 'Terminated' },
 };
 
-const GENDER_LABELS = {
-  MALE: 'Nam',
-  FEMALE: 'Nữ',
-  OTHER: 'Khác',
+const GENDER_LABELS: Record<'MALE' | 'FEMALE' | 'OTHER', { vi: string; en: string }> = {
+  MALE: { vi: 'Nam', en: 'Male' },
+  FEMALE: { vi: 'Nữ', en: 'Female' },
+  OTHER: { vi: 'Khác', en: 'Other' },
 };
 
 export default function EmployeeDetailPage({
@@ -88,6 +92,11 @@ export default function EmployeeDetailPage({
 }) {
   const { id } = use(params);
   const { user, hasPermission } = usePortalAuth();
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
   const canUpdate = hasPermission('hrm.employees.update');
   const canReadContracts = hasPermission('hrm.contracts.read');
   const canManageContracts = hasPermission('hrm.contracts.manage');
@@ -142,7 +151,10 @@ export default function EmployeeDetailPage({
           error?: { message?: string };
         };
         if (!res.ok || !json.success || !json.data) {
-          throw new Error(json.error?.message ?? 'Không thể tải hồ sơ nhân viên.');
+          throw new Error(
+            json.error?.message ??
+              trRef.current('Không thể tải hồ sơ nhân viên.', 'Failed to load employee profile.'),
+          );
         }
         setEmployee(json.data);
         setErrorMessage(null);
@@ -151,7 +163,9 @@ export default function EmployeeDetailPage({
         if (err instanceof Error && err.name === 'AbortError') {
           return;
         }
-        setErrorMessage(err instanceof Error ? err.message : 'Lỗi kết nối.');
+        setErrorMessage(
+          err instanceof Error ? err.message : trRef.current('Lỗi kết nối.', 'Connection error.'),
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -251,16 +265,27 @@ export default function EmployeeDetailPage({
       if (!res.ok || !json.success || !json.data) {
         setSaveFeedback({
           type: 'error',
-          message: json.error?.message ?? 'Không thể cập nhật hồ sơ nhân viên.',
+          message:
+            json.error?.message ??
+            tr('Không thể cập nhật hồ sơ nhân viên.', 'Failed to update employee profile.'),
         });
         return;
       }
 
       setEmployee(json.data);
       setIsEditing(false);
-      setSaveFeedback({ type: 'success', message: 'Đã cập nhật hồ sơ nhân viên thành công.' });
+      setSaveFeedback({
+        type: 'success',
+        message: tr(
+          'Đã cập nhật hồ sơ nhân viên thành công.',
+          'Employee profile updated successfully.',
+        ),
+      });
     } catch {
-      setSaveFeedback({ type: 'error', message: 'Lỗi kết nối khi lưu hồ sơ.' });
+      setSaveFeedback({
+        type: 'error',
+        message: tr('Lỗi kết nối khi lưu hồ sơ.', 'Connection error while saving profile.'),
+      });
     } finally {
       setIsSaving(false);
     }
@@ -279,14 +304,14 @@ export default function EmployeeDetailPage({
     return (
       <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-sm">
         <p className="text-sm font-medium text-rose-700">
-          {errorMessage ?? 'Không tìm thấy hồ sơ nhân viên.'}
+          {errorMessage ?? tr('Không tìm thấy hồ sơ nhân viên.', 'Employee profile not found.')}
         </p>
         <div className="mt-4 flex items-center justify-center gap-3">
           <Link
             href="/hrm/employees"
             className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Quay lại danh sách
+            {tr('Quay lại danh sách', 'Back to list')}
           </Link>
           <button
             type="button"
@@ -297,7 +322,7 @@ export default function EmployeeDetailPage({
             className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconRefresh size={16} />
-            <span>Thử lại</span>
+            <span>{tr('Thử lại', 'Retry')}</span>
           </button>
         </div>
       </div>
@@ -314,7 +339,7 @@ export default function EmployeeDetailPage({
           className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-blue-600"
         >
           <IconArrowLeft size={16} />
-          <span>Quay lại Danh sách Nhân viên</span>
+          <span>{tr('Quay lại Danh sách Nhân viên', 'Back to Employee Directory')}</span>
         </Link>
       </div>
 
@@ -331,15 +356,17 @@ export default function EmployeeDetailPage({
                   {employee.employeeCode}
                 </span>
                 <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                  {STATUS_LABELS[employee.employmentStatus]}
+                  {locale === 'en'
+                    ? STATUS_LABELS[employee.employmentStatus].en
+                    : STATUS_LABELS[employee.employmentStatus].vi}
                 </span>
               </div>
               <p className="mt-1 text-sm text-slate-600">
                 {employee.positionName} • {employee.departmentName} • {employee.branchName}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                {employee.workEmail} {employee.phone ? `• ${employee.phone}` : ''} • Vào làm:{' '}
-                {formatDateVN(employee.hireDate)}
+                {employee.workEmail} {employee.phone ? `• ${employee.phone}` : ''} •{' '}
+                {tr('Vào làm:', 'Hired:')} {formatDateVN(employee.hireDate)}
               </p>
             </div>
           </div>
@@ -351,7 +378,7 @@ export default function EmployeeDetailPage({
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               <IconEdit size={16} />
-              <span>Chỉnh sửa hồ sơ</span>
+              <span>{tr('Chỉnh sửa hồ sơ', 'Edit Profile')}</span>
             </button>
           )}
         </div>
@@ -367,7 +394,7 @@ export default function EmployeeDetailPage({
             }`}
           >
             <IconUser size={16} />
-            <span>Thông tin chung</span>
+            <span>{tr('Thông tin chung', 'Overview')}</span>
           </button>
           {canReadContracts && (
             <button
@@ -380,7 +407,7 @@ export default function EmployeeDetailPage({
               }`}
             >
               <IconFileCertificate size={16} />
-              <span>Hợp đồng lao động</span>
+              <span>{tr('Hợp đồng lao động', 'Labor Contracts')}</span>
             </button>
           )}
           <button
@@ -393,7 +420,7 @@ export default function EmployeeDetailPage({
             }`}
           >
             <IconHistory size={16} />
-            <span>Quá trình công tác</span>
+            <span>{tr('Quá trình công tác', 'Work History')}</span>
           </button>
           <button
             type="button"
@@ -405,7 +432,9 @@ export default function EmployeeDetailPage({
             }`}
           >
             <IconFileText size={16} />
-            <span>Tài liệu ({employee.documents.length})</span>
+            <span>
+              {tr('Tài liệu', 'Documents')} ({employee.documents.length})
+            </span>
           </button>
           <button
             type="button"
@@ -417,7 +446,7 @@ export default function EmployeeDetailPage({
             }`}
           >
             <IconShieldCheck size={16} />
-            <span>Tài khoản & Liên kết</span>
+            <span>{tr('Tài khoản & Liên kết', 'Account & Links')}</span>
           </button>
         </div>
       </div>
@@ -438,8 +467,10 @@ export default function EmployeeDetailPage({
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           {employee.sensitiveFieldsMasked && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
-              Một số thông tin nhạy cảm (CCCD, Mã số thuế, BHXH, Tài khoản ngân hàng) đã được ẩn
-              theo quyền xem cơ bản của vai trò hiện tại.
+              {tr(
+                'Một số thông tin nhạy cảm (CCCD, Mã số thuế, BHXH, Tài khoản ngân hàng) đã được ẩn theo quyền xem cơ bản của vai trò hiện tại.',
+                'Some sensitive fields (National ID, Tax ID, Social Insurance, Bank Account) are masked based on your current role permissions.',
+              )}
             </div>
           )}
 
@@ -447,7 +478,9 @@ export default function EmployeeDetailPage({
             <form onSubmit={(e) => void handleSave(e)} className="space-y-5">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-700">Họ tên</label>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    {tr('Họ tên', 'Full Name')}
+                  </label>
                   <input
                     type="text"
                     required
@@ -458,7 +491,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Chi nhánh
+                    {tr('Chi nhánh', 'Branch')}
                   </label>
                   <select
                     value={formState.branchId}
@@ -482,7 +515,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Phòng ban
+                    {tr('Phòng ban', 'Department')}
                   </label>
                   <select
                     value={formState.departmentId}
@@ -500,7 +533,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Chức danh
+                    {tr('Chức danh', 'Position')}
                   </label>
                   <select
                     value={formState.positionId}
@@ -518,7 +551,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Trạng thái
+                    {tr('Trạng thái', 'Status')}
                   </label>
                   <select
                     value={formState.employmentStatus}
@@ -533,14 +566,14 @@ export default function EmployeeDetailPage({
                   >
                     {Object.entries(STATUS_LABELS).map(([val, label]) => (
                       <option key={val} value={val}>
-                        {label}
+                        {locale === 'en' ? label.en : label.vi}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Giới tính
+                    {tr('Giới tính', 'Gender')}
                   </label>
                   <select
                     value={formState.gender}
@@ -552,15 +585,15 @@ export default function EmployeeDetailPage({
                     }
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                   >
-                    <option value="">-- Chọn --</option>
-                    <option value="MALE">Nam</option>
-                    <option value="FEMALE">Nữ</option>
-                    <option value="OTHER">Khác</option>
+                    <option value="">{tr('-- Chọn --', '-- Select --')}</option>
+                    <option value="MALE">{tr('Nam', 'Male')}</option>
+                    <option value="FEMALE">{tr('Nữ', 'Female')}</option>
+                    <option value="OTHER">{tr('Khác', 'Other')}</option>
                   </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Ngày sinh
+                    {tr('Ngày sinh', 'Date of Birth')}
                   </label>
                   <input
                     type="date"
@@ -571,7 +604,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Điện thoại
+                    {tr('Điện thoại', 'Phone')}
                   </label>
                   <input
                     type="text"
@@ -582,7 +615,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Email cá nhân
+                    {tr('Email cá nhân', 'Personal Email')}
                   </label>
                   <input
                     type="email"
@@ -593,7 +626,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Số CCCD / CMND
+                    {tr('Số CCCD / CMND', 'National ID')}
                   </label>
                   <input
                     type="text"
@@ -604,7 +637,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Mã số thuế TNCN
+                    {tr('Mã số thuế TNCN', 'Personal Tax ID')}
                   </label>
                   <input
                     type="text"
@@ -615,7 +648,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Số sổ BHXH
+                    {tr('Số sổ BHXH', 'Social Insurance No.')}
                   </label>
                   <input
                     type="text"
@@ -628,7 +661,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Ngân hàng nhận lương
+                    {tr('Ngân hàng nhận lương', 'Payroll Bank')}
                   </label>
                   <input
                     type="text"
@@ -639,7 +672,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Số tài khoản ngân hàng
+                    {tr('Số tài khoản ngân hàng', 'Bank Account No.')}
                   </label>
                   <input
                     type="text"
@@ -650,7 +683,7 @@ export default function EmployeeDetailPage({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-700">
-                    Số người phụ thuộc
+                    {tr('Số người phụ thuộc', 'Dependents')}
                   </label>
                   <input
                     type="number"
@@ -664,7 +697,9 @@ export default function EmployeeDetailPage({
                   />
                 </div>
                 <div className="sm:col-span-2 lg:col-span-3">
-                  <label className="mb-1 block text-xs font-semibold text-slate-700">Địa chỉ</label>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    {tr('Địa chỉ', 'Address')}
+                  </label>
                   <input
                     type="text"
                     value={formState.address}
@@ -677,8 +712,10 @@ export default function EmployeeDetailPage({
               {(formState.employmentStatus === 'RESIGNED' ||
                 formState.employmentStatus === 'TERMINATED') && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
-                  Lưu ý: Khi chuyển sang trạng thái nghỉ việc, tài khoản đăng nhập Portal liên kết
-                  của nhân viên sẽ tự động bị khóa và thu hồi phiên đăng nhập.
+                  {tr(
+                    'Lưu ý: Khi chuyển sang trạng thái nghỉ việc, tài khoản đăng nhập Portal liên kết của nhân viên sẽ tự động bị khóa và thu hồi phiên đăng nhập.',
+                    'Note: Changing the status to Resigned or Terminated will automatically lock the linked Portal account and revoke active sessions.',
+                  )}
                 </div>
               )}
 
@@ -689,7 +726,7 @@ export default function EmployeeDetailPage({
                   onClick={() => setIsEditing(false)}
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  Hủy
+                  {tr('Hủy', 'Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -701,56 +738,64 @@ export default function EmployeeDetailPage({
                   ) : (
                     <IconDeviceFloppy size={16} />
                   )}
-                  <span>{isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
+                  <span>
+                    {isSaving ? tr('Đang lưu...', 'Saving...') : tr('Lưu thay đổi', 'Save Changes')}
+                  </span>
                 </button>
               </div>
             </form>
           ) : (
             <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <dt className="text-xs text-slate-500">Giới tính</dt>
+                <dt className="text-xs text-slate-500">{tr('Giới tính', 'Gender')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
-                  {employee.gender ? GENDER_LABELS[employee.gender] : '—'}
+                  {employee.gender
+                    ? locale === 'en'
+                      ? GENDER_LABELS[employee.gender].en
+                      : GENDER_LABELS[employee.gender].vi
+                    : '—'}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Ngày sinh</dt>
+                <dt className="text-xs text-slate-500">{tr('Ngày sinh', 'Date of Birth')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {employee.dateOfBirth ? formatDateVN(employee.dateOfBirth) : '—'}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Số người phụ thuộc</dt>
+                <dt className="text-xs text-slate-500">{tr('Số người phụ thuộc', 'Dependents')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{employee.dependentsCount}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Email công việc</dt>
+                <dt className="text-xs text-slate-500">{tr('Email công việc', 'Work Email')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{employee.workEmail}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Email cá nhân</dt>
+                <dt className="text-xs text-slate-500">{tr('Email cá nhân', 'Personal Email')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {employee.personalEmail ?? '—'}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Điện thoại</dt>
+                <dt className="text-xs text-slate-500">{tr('Điện thoại', 'Phone')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{employee.phone ?? '—'}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">CCCD / CMND</dt>
+                <dt className="text-xs text-slate-500">{tr('CCCD / CMND', 'National ID')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {employee.sensitiveFieldsMasked ? '••••••••' : (employee.nationalId ?? '—')}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Mã số thuế</dt>
+                <dt className="text-xs text-slate-500">{tr('Mã số thuế', 'Tax ID')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {employee.sensitiveFieldsMasked ? '••••••••' : (employee.taxCode ?? '—')}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Số sổ BHXH</dt>
+                <dt className="text-xs text-slate-500">
+                  {tr('Số sổ BHXH', 'Social Insurance No.')}
+                </dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {employee.sensitiveFieldsMasked
                     ? '••••••••'
@@ -758,25 +803,29 @@ export default function EmployeeDetailPage({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Ngân hàng nhận lương</dt>
+                <dt className="text-xs text-slate-500">
+                  {tr('Ngân hàng nhận lương', 'Payroll Bank')}
+                </dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {employee.sensitiveFieldsMasked ? '••••••••' : (employee.bankName ?? '—')}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Số tài khoản</dt>
+                <dt className="text-xs text-slate-500">{tr('Số tài khoản', 'Bank Account No.')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {employee.sensitiveFieldsMasked ? '••••••••' : (employee.bankAccountNo ?? '—')}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Ngày vào làm</dt>
+                <dt className="text-xs text-slate-500">{tr('Ngày vào làm', 'Hire Date')}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {formatDateVN(employee.hireDate)}
                 </dd>
               </div>
               <div className="sm:col-span-2 lg:col-span-3">
-                <dt className="text-xs text-slate-500">Địa chỉ liên hệ</dt>
+                <dt className="text-xs text-slate-500">
+                  {tr('Địa chỉ liên hệ', 'Contact Address')}
+                </dt>
                 <dd className="mt-0.5 font-medium text-slate-900">{employee.address ?? '—'}</dd>
               </div>
             </dl>
@@ -826,14 +875,17 @@ export default function EmployeeDetailPage({
       {activeTab === 'links' && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900">Tài khoản đăng nhập Portal</h3>
+            <h3 className="text-sm font-bold text-slate-900">
+              {tr('Tài khoản đăng nhập Portal', 'Portal Login Account')}
+            </h3>
             {employee.userId ? (
               <div className="mt-3 space-y-1.5 text-sm">
                 <div>
-                  Email đăng nhập: <strong className="font-mono">{employee.userEmail}</strong>
+                  {tr('Email đăng nhập:', 'Login email:')}{' '}
+                  <strong className="font-mono">{employee.userEmail}</strong>
                 </div>
                 <div>
-                  Trạng thái:{' '}
+                  {tr('Trạng thái:', 'Status:')}{' '}
                   <span
                     className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
                       employee.userStatus === 'LOCKED'
@@ -841,29 +893,40 @@ export default function EmployeeDetailPage({
                         : 'bg-emerald-50 text-emerald-700'
                     }`}
                   >
-                    {employee.userStatus === 'LOCKED' ? 'Đã khóa' : 'Đang hoạt động'}
+                    {employee.userStatus === 'LOCKED'
+                      ? tr('Đã khóa', 'Locked')
+                      : tr('Đang hoạt động', 'Active')}
                   </span>
                 </div>
               </div>
             ) : (
               <p className="mt-2 text-xs text-slate-500">
-                Hồ sơ này chưa được liên kết với tài khoản đăng nhập Portal nào.
+                {tr(
+                  'Hồ sơ này chưa được liên kết với tài khoản đăng nhập Portal nào.',
+                  'This profile is not yet linked to any Portal login account.',
+                )}
               </p>
             )}
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900">Quản lý & Quan hệ báo cáo</h3>
+            <h3 className="text-sm font-bold text-slate-900">
+              {tr('Quản lý & Quan hệ báo cáo', 'Management & Reporting Lines')}
+            </h3>
             <div className="mt-3 space-y-1.5 text-sm text-slate-700">
               <div>
-                Quản lý trực tiếp: <strong>{employee.managerName ?? 'Chưa chỉ định'}</strong>
+                {tr('Quản lý trực tiếp:', 'Direct manager:')}{' '}
+                <strong>{employee.managerName ?? tr('Chưa chỉ định', 'Unassigned')}</strong>
               </div>
               <div>
-                Số nhân sự báo cáo trực tiếp: <strong>{employee.directReportsCount}</strong>
+                {tr('Số nhân sự báo cáo trực tiếp:', 'Direct reports:')}{' '}
+                <strong>{employee.directReportsCount}</strong>
               </div>
               <p className="pt-2 text-xs text-slate-500">
-                Các phân mục Hợp đồng lao động và Quá trình công tác sẽ được tự động gắn vào hồ sơ
-                360° ở giai đoạn kế tiếp (TASK-06).
+                {tr(
+                  'Các phân mục Hợp đồng lao động và Quá trình công tác sẽ được tự động gắn vào hồ sơ 360° ở giai đoạn kế tiếp (TASK-06).',
+                  'Labor Contracts and Work History sections will be automatically linked to the 360° Employee Profile in the next phase (TASK-06).',
+                )}
               </p>
             </div>
           </div>

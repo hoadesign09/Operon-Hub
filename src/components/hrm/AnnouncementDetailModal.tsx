@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   IconCheck,
   IconEye,
@@ -16,6 +16,7 @@ import type {
   AnnouncementItem,
   AnnouncementReadersResult,
 } from '@/modules/hrm/office/announcements.service';
+import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface AnnouncementDetailModalProps {
   announcement: AnnouncementItem;
@@ -24,11 +25,26 @@ interface AnnouncementDetailModalProps {
   onMarkedRead: (announcementId: number) => void;
 }
 
-const CATEGORY_BADGES: Record<AnnouncementItem['category'], { label: string; cls: string }> = {
-  GENERAL: { label: 'Thông báo chung', cls: 'bg-slate-100 text-slate-700' },
-  HR_POLICY: { label: 'Chính sách HR', cls: 'bg-blue-50 text-blue-700' },
-  EVENT: { label: 'Sự kiện nội bộ', cls: 'bg-emerald-50 text-emerald-700' },
-  URGENT: { label: 'Khẩn cấp', cls: 'bg-rose-100 text-rose-700' },
+const CATEGORY_BADGES: Record<
+  AnnouncementItem['category'],
+  { label: { vi: string; en: string }; cls: string }
+> = {
+  GENERAL: {
+    label: { vi: 'Thông báo chung', en: 'General' },
+    cls: 'bg-slate-100 text-slate-700',
+  },
+  HR_POLICY: {
+    label: { vi: 'Chính sách HR', en: 'HR Policy' },
+    cls: 'bg-blue-50 text-blue-700',
+  },
+  EVENT: {
+    label: { vi: 'Sự kiện nội bộ', en: 'Internal Event' },
+    cls: 'bg-emerald-50 text-emerald-700',
+  },
+  URGENT: {
+    label: { vi: 'Khẩn cấp', en: 'Urgent' },
+    cls: 'bg-rose-100 text-rose-700',
+  },
 };
 
 export function AnnouncementDetailModal({
@@ -37,6 +53,12 @@ export function AnnouncementDetailModal({
   onClose,
   onMarkedRead,
 }: AnnouncementDetailModalProps) {
+  const { locale, tr } = useI18n();
+  const trRef = useRef(tr);
+  useEffect(() => {
+    trRef.current = tr;
+  }, [tr]);
+
   const [activeTab, setActiveTab] = useState<'content' | 'readers'>('content');
   const [isRead, setIsRead] = useState(announcement.isReadByMe);
   const [readCount, setReadCount] = useState(announcement.readCount);
@@ -117,7 +139,13 @@ export function AnnouncementDetailModal({
           } | null;
 
           if (!res.ok || !json?.success || !json.data) {
-            setReadersError(json?.error?.message ?? 'Không thể tải danh sách thống kê người đọc.');
+            setReadersError(
+              json?.error?.message ??
+                trRef.current(
+                  'Không thể tải danh sách thống kê người đọc.',
+                  'Unable to load reader statistics.',
+                ),
+            );
             return;
           }
           setReadersData(json.data);
@@ -125,7 +153,12 @@ export function AnnouncementDetailModal({
           if (err instanceof DOMException && err.name === 'AbortError') {
             return;
           }
-          setReadersError('Lỗi kết nối khi tải danh sách người đọc.');
+          setReadersError(
+            trRef.current(
+              'Lỗi kết nối khi tải danh sách người đọc.',
+              'Connection error while loading readers list.',
+            ),
+          );
         } finally {
           setIsLoadingReaders(false);
         }
@@ -152,7 +185,9 @@ export function AnnouncementDetailModal({
       } | null;
 
       if (!res.ok || !json?.success || !json.data) {
-        setMarkError(json?.error?.message ?? 'Không thể đánh dấu đã đọc.');
+        setMarkError(
+          json?.error?.message ?? tr('Không thể đánh dấu đã đọc.', 'Unable to mark as read.'),
+        );
         return;
       }
 
@@ -162,7 +197,7 @@ export function AnnouncementDetailModal({
       setReadRate(json.data.readRatePercent);
       onMarkedRead(announcement.id);
     } catch {
-      setMarkError('Lỗi kết nối máy chủ.');
+      setMarkError(tr('Lỗi kết nối máy chủ.', 'Server connection error.'));
     } finally {
       setIsMarking(false);
     }
@@ -179,29 +214,36 @@ export function AnnouncementDetailModal({
               {announcement.isPinned && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
                   <IconPin size={12} />
-                  Ghim
+                  {tr('Ghim', 'Pinned')}
                 </span>
               )}
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.cls}`}>
-                {badge.label}
+                {badge.label[locale]}
               </span>
               <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                {announcement.branchName ?? 'Toàn công ty'}
+                {announcement.branchName ?? tr('Toàn công ty', 'Company-wide')}
               </span>
             </div>
             <h2 className="text-lg font-bold text-slate-900">{announcement.title}</h2>
             <p className="text-xs text-slate-500">
-              Người đăng: <span className="font-medium text-slate-700">{announcement.authorName}</span> •{' '}
+              {tr('Người đăng:', 'Posted by:')}{' '}
+              <span className="font-medium text-slate-700">{announcement.authorName}</span> •{' '}
               {announcement.publishedAt
-                ? `Xuất bản: ${formatDateTimeVN(announcement.publishedAt)}`
-                : `Bản nháp tạo lúc ${formatDateTimeVN(announcement.createdAt)}`}
+                ? tr(
+                    `Xuất bản: ${formatDateTimeVN(announcement.publishedAt)}`,
+                    `Published: ${formatDateTimeVN(announcement.publishedAt)}`,
+                  )
+                : tr(
+                    `Bản nháp tạo lúc ${formatDateTimeVN(announcement.createdAt)}`,
+                    `Draft created at ${formatDateTimeVN(announcement.createdAt)}`,
+                  )}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
-            aria-label="Đóng"
+            aria-label={tr('Đóng', 'Close')}
           >
             <IconX size={18} />
           </button>
@@ -219,7 +261,7 @@ export function AnnouncementDetailModal({
               }`}
             >
               <IconEye size={16} />
-              <span>Nội dung thông báo</span>
+              <span>{tr('Nội dung thông báo', 'Announcement Content')}</span>
             </button>
             <button
               type="button"
@@ -232,7 +274,10 @@ export function AnnouncementDetailModal({
             >
               <IconUsers size={16} />
               <span>
-                Thống kê đọc ({readCount}/{targetCount} • {readRate}%)
+                {tr(
+                  `Thống kê đọc (${readCount}/${targetCount} • ${readRate}%)`,
+                  `Read Stats (${readCount}/${targetCount} • ${readRate}%)`,
+                )}
               </span>
             </button>
           </div>
@@ -253,9 +298,12 @@ export function AnnouncementDetailModal({
 
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-600">
-                  Tỷ lệ tiếp nhận toàn phạm vi:{' '}
+                  {tr('Tỷ lệ tiếp nhận toàn phạm vi:', 'Overall read rate:')}{' '}
                   <span className="font-semibold text-slate-900">
-                    {readCount}/{targetCount} nhân viên ({readRate}%)
+                    {tr(
+                      `${readCount}/${targetCount} nhân viên (${readRate}%)`,
+                      `${readCount}/${targetCount} employees (${readRate}%)`,
+                    )}
                   </span>
                 </div>
 
@@ -264,7 +312,7 @@ export function AnnouncementDetailModal({
                     {isRead ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                         <IconCheck size={14} />
-                        Bạn đã xác nhận đọc
+                        {tr('Bạn đã xác nhận đọc', 'You have marked as read')}
                       </span>
                     ) : (
                       <button
@@ -278,7 +326,7 @@ export function AnnouncementDetailModal({
                         ) : (
                           <IconCheck size={14} />
                         )}
-                        <span>Đánh dấu đã đọc</span>
+                        <span>{tr('Đánh dấu đã đọc', 'Mark as Read')}</span>
                       </button>
                     )}
                   </div>
@@ -290,19 +338,21 @@ export function AnnouncementDetailModal({
               {readersData && (
                 <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
-                    <div className="text-xs text-slate-500">Tổng nhân sự mục tiêu</div>
+                    <div className="text-xs text-slate-500">
+                      {tr('Tổng nhân sự mục tiêu', 'Total Target Employees')}
+                    </div>
                     <div className="mt-1 text-xl font-bold text-slate-900">
                       {readersData.summary.targetEmployeeCount}
                     </div>
                   </div>
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-center">
-                    <div className="text-xs text-emerald-700">Đã đọc</div>
+                    <div className="text-xs text-emerald-700">{tr('Đã đọc', 'Read')}</div>
                     <div className="mt-1 text-xl font-bold text-emerald-800">
                       {readersData.summary.readCount} ({readersData.summary.readRatePercent}%)
                     </div>
                   </div>
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center">
-                    <div className="text-xs text-amber-700">Chưa đọc</div>
+                    <div className="text-xs text-amber-700">{tr('Chưa đọc', 'Unread')}</div>
                     <div className="mt-1 text-xl font-bold text-amber-800">
                       {readersData.summary.unreadCount}
                     </div>
@@ -320,7 +370,10 @@ export function AnnouncementDetailModal({
                     type="text"
                     value={readerSearch}
                     onChange={(e) => setReaderSearch(e.target.value)}
-                    placeholder="Tìm tên, mã NV, phòng ban..."
+                    placeholder={tr(
+                      'Tìm tên, mã NV, phòng ban...',
+                      'Search name, employee code, department...',
+                    )}
                     className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500"
                   />
                 </div>
@@ -329,9 +382,9 @@ export function AnnouncementDetailModal({
                   onChange={(e) => setReaderFilter(e.target.value as 'all' | 'read' | 'unread')}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
                 >
-                  <option value="all">Tất cả</option>
-                  <option value="read">Đã đọc</option>
-                  <option value="unread">Chưa đọc</option>
+                  <option value="all">{tr('Tất cả', 'All')}</option>
+                  <option value="read">{tr('Đã đọc', 'Read')}</option>
+                  <option value="unread">{tr('Chưa đọc', 'Unread')}</option>
                 </select>
               </div>
 
@@ -350,22 +403,25 @@ export function AnnouncementDetailModal({
                     className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700"
                   >
                     <IconRefresh size={14} />
-                    <span>Thử lại</span>
+                    <span>{tr('Thử lại', 'Retry')}</span>
                   </button>
                 </div>
               ) : !readersData || readersData.items.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-                  Không có nhân viên nào khớp bộ lọc hiện tại.
+                  {tr(
+                    'Không có nhân viên nào khớp bộ lọc hiện tại.',
+                    'No employees match the current filter.',
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
                       <tr>
-                        <th className="px-4 py-2.5">Nhân viên</th>
-                        <th className="px-4 py-2.5">Phòng ban</th>
-                        <th className="px-4 py-2.5">Trạng thái</th>
-                        <th className="px-4 py-2.5">Thời điểm đọc</th>
+                        <th className="px-4 py-2.5">{tr('Nhân viên', 'Employee')}</th>
+                        <th className="px-4 py-2.5">{tr('Phòng ban', 'Department')}</th>
+                        <th className="px-4 py-2.5">{tr('Trạng thái', 'Status')}</th>
+                        <th className="px-4 py-2.5">{tr('Thời điểm đọc', 'Read At')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
@@ -381,11 +437,11 @@ export function AnnouncementDetailModal({
                           <td className="px-4 py-2.5">
                             {item.isRead ? (
                               <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                                Đã đọc
+                                {tr('Đã đọc', 'Read')}
                               </span>
                             ) : (
                               <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-                                Chưa đọc
+                                {tr('Chưa đọc', 'Unread')}
                               </span>
                             )}
                           </td>
@@ -408,7 +464,7 @@ export function AnnouncementDetailModal({
             onClick={onClose}
             className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Đóng
+            {tr('Đóng', 'Close')}
           </button>
         </div>
       </div>
