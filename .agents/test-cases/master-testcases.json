@@ -1,0 +1,2052 @@
+{
+  "cases": [
+    {
+      "tc_id": "TC-CORE-001",
+      "module": "core",
+      "feature": "Khởi tạo dự án Next.js, TypeScript, Lint, Build & MIT Audit",
+      "spec_ref": "FR-01",
+      "target_files": [
+        "package.json",
+        "tsconfig.json",
+        "next.config.ts",
+        "eslint.config.mjs",
+        "vitest.config.ts"
+      ],
+      "type": "FUNCTIONAL",
+      "preconditions": "Node.js v24+, đã chạy npm install",
+      "steps": [
+        "Chạy node .agents/scripts/check-license.js --audit",
+        "Chạy npm run typecheck",
+        "Chạy npm run lint",
+        "Chạy npm run build"
+      ],
+      "expected_result": "Audit chỉ có ngoại lệ đã duyệt (typescript: Apache-2.0), toàn bộ gói còn lại MIT; typecheck/lint/build đều exit 0",
+      "actual_result": "PASS (Regression TASK-02) — 21/21 gói MIT (bao gồm jose) + ngoại lệ typescript; typecheck/lint/build 20 routes đều exit 0",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-002",
+      "module": "core",
+      "feature": "Validate biến môi trường & nhận diện Local/Dev DB",
+      "spec_ref": "FR-02",
+      "target_files": [
+        "src/config/env.ts",
+        "src/config/database.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Môi trường Vitest",
+      "steps": [
+        "Kiểm tra isLocalDevDatabase với development + localhost/127.0.0.1",
+        "Kiểm tra tương thích ngược env.ts sau khi bổ sung biến JWT_*"
+      ],
+      "expected_result": "Chỉ trả true khi NODE_ENV=development và DB_HOST là localhost/127.0.0.1; không phá vỡ tương thích ngược",
+      "actual_result": "PASS (Regression TASK-02) — Toàn bộ test migrator-guard và kết nối MySQL Local hoạt động ổn định",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-003",
+      "module": "core",
+      "feature": "Migration Runner khóa an toàn môi trường & kiểm tra khối UP/DOWN",
+      "spec_ref": "FR-03, DB-01",
+      "target_files": [
+        "database/migrator.ts",
+        "tests/database/migrator-guard.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest + CLI tsx",
+      "steps": [
+        "Chạy tests/database/migrator-guard.test.ts",
+        "Chạy npm run db:status kiểm tra trạng thái migration thực tế"
+      ],
+      "expected_result": "Chặn môi trường không phải Local/Dev; hiển thị APPLIED cho các migration đã chạy",
+      "actual_result": "PASS — 4/4 unit tests pass; db:status xác nhận APPLIED cả 2 file migration trên Local MySQL",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-004",
+      "module": "core",
+      "feature": "Migration bảng Core settings chuẩn InnoDB, utf8mb4, audit & rollback DOWN",
+      "spec_ref": "DB-02",
+      "target_files": [
+        "database/migrations/20261123_000001_init_settings.sql"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy npm run db:migrate & npm run db:status"
+      ],
+      "expected_result": "Bảng settings được tạo thành công trên MySQL Local và ghi nhận APPLIED",
+      "actual_result": "PASS — [APPLIED] 20261123_000001_init_settings.sql",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-005",
+      "module": "core",
+      "feature": "Portable password-hasher (scrypt + timingSafeEqual)",
+      "spec_ref": "FR-04",
+      "target_files": [
+        "src/lib/portable/password-hasher.ts",
+        "tests/portable/password-hasher.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Hash cùng 1 mật khẩu 2 lần và verify",
+        "Kiểm tra mật khẩu rỗng và chuỗi hash sai định dạng"
+      ],
+      "expected_result": "Mỗi lần hash sinh salt riêng, verify đúng trả true, sai trả false, rỗng ném lỗi rõ ràng",
+      "actual_result": "PASS — 3/3 test cases trong password-hasher.test.ts đều đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-02",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-006",
+      "module": "core",
+      "feature": "Portable date-utils (format VN & đếm ngày làm việc trừ cuối tuần/lễ)",
+      "spec_ref": "FR-04",
+      "target_files": [
+        "src/lib/portable/date-utils.ts",
+        "tests/portable/date-utils.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gọi formatDateVN, formatDateTimeVN với giá trị hợp lệ và null/invalid",
+        "Gọi countWorkingDays với khoảng ngày có cuối tuần, ngày lễ và khoảng ngược"
+      ],
+      "expected_result": "Format đúng DD/MM/YYYY, trả fallback khi lỗi, đếm chính xác ngày làm việc",
+      "actual_result": "PASS — 3/3 test cases trong date-utils.test.ts đều đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-02",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-007",
+      "module": "core",
+      "feature": "Portable currency-utils (làm tròn an toàn, format VNĐ & parse chuỗi tiền)",
+      "spec_ref": "FR-04",
+      "target_files": [
+        "src/lib/portable/currency-utils.ts",
+        "tests/portable/currency-utils.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra roundCurrency(1.005, 2) và giá trị NaN/-0",
+        "Kiểm tra formatVND với số, chuỗi DECIMAL, null và parseCurrencyInput"
+      ],
+      "expected_result": "Làm tròn đúng 1.01, format chuẩn '15.000.000 ₫', parse chính xác chuỗi VNĐ",
+      "actual_result": "PASS — 3/3 test cases trong currency-utils.test.ts đều đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-02",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-008",
+      "module": "core",
+      "feature": "Portable pagination & retryAsync",
+      "spec_ref": "FR-04",
+      "target_files": [
+        "src/lib/portable/pagination.ts",
+        "src/lib/portable/retry.ts",
+        "tests/portable/pagination.test.ts",
+        "tests/portable/retry.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra parsePaginationParams chặn sortBy SQL injection ngoài whitelist và giới hạn maxLimit",
+        "Kiểm tra retryAsync thử lại thành công và dừng sớm theo shouldRetry"
+      ],
+      "expected_result": "Chuẩn hóa phân trang an toàn, metadata chính xác kể cả total=0, retry hoạt động đúng",
+      "actual_result": "PASS — 3/3 test pagination + 2/2 test retry đều đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-02",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-009",
+      "module": "core",
+      "feature": "API GET /api/v1/health & Module Registry",
+      "spec_ref": "FR-05, API-01",
+      "target_files": [
+        "src/app/api/v1/health/route.ts",
+        "src/modules/registry.ts",
+        "src/shared/api-response.ts",
+        "tests/api/health.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest với mock pingDatabase",
+      "steps": [
+        "Gọi GET /api/v1/health khi MySQL UP sau khi mở rộng registry.ts thêm navItems",
+        "Gọi GET /api/v1/health khi MySQL DOWN kiểm tra 503 không lộ mật khẩu"
+      ],
+      "expected_result": "Giữ nguyên 100% contract 200 HEALTHY và 503 DEGRADED, không phá vỡ tương thích ngược",
+      "actual_result": "PASS (Regression TASK-02) — 2/2 test API health đạt 100%",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-010",
+      "module": "core",
+      "feature": "Điều hướng gốc (/) & Màn hình Dashboard trạng thái hệ thống",
+      "spec_ref": "UI-01, UI-03",
+      "target_files": [
+        "src/app/page.tsx",
+        "src/app/(portal)/dashboard/page.tsx",
+        "src/components/system/SystemStatusCard.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Next.js build & ESLint pass",
+      "steps": [
+        "Kiểm tra route / chuyển hướng động theo cookie phiên (/login <-> /dashboard)",
+        "Kiểm tra SystemStatusCard hiển thị trên /dashboard với đủ 4 trạng thái UI"
+      ],
+      "expected_result": "Route / là dynamic redirect, /dashboard build sạch, ESLint 0 lỗi",
+      "actual_result": "PASS (Updated TASK-02) — Route / dynamic redirect và /dashboard biên dịch sạch không lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-011",
+      "module": "core",
+      "feature": "Portable token-hash (generateSecureToken & sha256Hex)",
+      "spec_ref": "FR-01",
+      "target_files": [
+        "src/lib/portable/token-hash.ts",
+        "tests/portable/token-hash.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Sinh 2 token base64url liên tiếp kiểm tra khác nhau và đủ độ dài",
+        "Băm SHA-256 kiểm tra định dạng 64 ký tự hex và chặn chuỗi rỗng"
+      ],
+      "expected_result": "Token ngẫu nhiên duy nhất, SHA-256 nhất quán 64 hex, ném lỗi khi input rỗng",
+      "actual_result": "PASS — 2/2 tests trong token-hash.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-012",
+      "module": "core",
+      "feature": "JWT HS256 (jose), Data Scope Hierarchy & RBAC Permission Check",
+      "spec_ref": "FR-01, FR-02",
+      "target_files": [
+        "src/modules/auth/jwt.ts",
+        "src/modules/auth/auth.service.ts",
+        "src/middlewares/auth.ts",
+        "tests/core/jwt-rbac.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Ký và xác thực JWT với secret đúng/sai/token lỗi",
+        "Kiểm tra resolveHighestDataScope (ALL > BRANCH > DEPARTMENT > OWN)",
+        "Kiểm tra hasRequiredPermission với SUPER_ADMIN và user thường"
+      ],
+      "expected_result": "JWT verify chuẩn, phân cấp Data Scope chính xác, SUPER_ADMIN có toàn quyền và user thường bị chặn khi thiếu quyền",
+      "actual_result": "PASS — 3/3 tests trong jwt-rbac.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-013",
+      "module": "core",
+      "feature": "Migration 8 bảng Core (Auth/RBAC/Branches/Audit) & Seed Core idempotent trên Local MySQL",
+      "spec_ref": "DB-01, DB-02, DB-03, DB-04, DB-05, DB-06, DB-07, DB-08, FR-06",
+      "target_files": [
+        "database/migrations/20261123_000002_init_core_auth_rbac_branches.sql",
+        "database/seed-core.ts",
+        "tests/database/core-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/core-migration.test.ts đối soát 8 bảng, utf8mb4, FK và thứ tự DOWN",
+        "Chạy npm run db:migrate trên Local MySQL",
+        "Chạy npm run db:seed:core 2 lần liên tiếp để kiểm tra tính idempotent"
+      ],
+      "expected_result": "8 bảng tạo thành công, db:status hiển thị APPLIED, seed chạy lại 2 lần đều OK không trùng lỗi",
+      "actual_result": "PASS — [UP OK] 20261123_000002_init_core_auth_rbac_branches.sql và [SEED CORE OK] thành công cả 2 lần chạy",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-014",
+      "module": "core",
+      "feature": "API Auth Login, Refresh, Logout, Me & Change Password",
+      "spec_ref": "API-01, API-02, API-03, API-04, FR-03",
+      "target_files": [
+        "src/app/api/v1/auth/login/route.ts",
+        "src/app/api/v1/auth/refresh/route.ts",
+        "src/app/api/v1/auth/logout/route.ts",
+        "src/app/api/v1/auth/me/route.ts",
+        "src/app/api/v1/auth/change-password/route.ts",
+        "tests/api/auth-login.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Next.js build",
+      "steps": [
+        "Gọi POST /api/v1/auth/login với tài khoản hợp lệ -> kiểm tra 200, HttpOnly cookies, không lộ password_hash",
+        "Kiểm tra lỗi 400 (email sai), 401 (sai mật khẩu), 403 (tài khoản LOCKED)",
+        "Xác nhận biên dịch sạch cả 5 route handler Auth"
+      ],
+      "expected_result": "Đúng HTTP status, set/clear cookies chuẩn, không rò rỉ dữ liệu nhạy cảm",
+      "actual_result": "PASS — 3/3 tests trong auth-login.test.ts đạt và 5/5 route biên dịch thành công",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-015",
+      "module": "core",
+      "feature": "API CRUD Chi nhánh + Enforcement Auth/RBAC (401/403/201/409)",
+      "spec_ref": "FR-04, API-05",
+      "target_files": [
+        "src/modules/branches/branches.service.ts",
+        "src/modules/branches/branches.schema.ts",
+        "src/app/api/v1/core/branches/route.ts",
+        "src/app/api/v1/core/branches/[id]/route.ts",
+        "tests/api/branches.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gọi GET /api/v1/core/branches không có token -> kỳ vọng 401",
+        "Gọi POST với user thiếu quyền core.branches.create -> kỳ vọng 403",
+        "Gọi POST hợp lệ -> 201 (tự động uppercase code) và trùng mã -> 409"
+      ],
+      "expected_result": "Chặn chặt 401/403/409 và trả 201 đúng cấu trúc JSON chuẩn",
+      "actual_result": "PASS — 3/3 tests trong branches.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-016",
+      "module": "core",
+      "feature": "API Quản lý Tài khoản, Vai trò/Ma trận Quyền & Audit Logs",
+      "spec_ref": "FR-03, FR-05, API-06, API-07, API-08",
+      "target_files": [
+        "src/modules/users/users.service.ts",
+        "src/modules/roles/roles.service.ts",
+        "src/modules/audit/audit.service.ts",
+        "src/app/api/v1/core/users/route.ts",
+        "src/app/api/v1/core/users/[id]/route.ts",
+        "src/app/api/v1/core/roles/route.ts",
+        "src/app/api/v1/core/roles/[id]/permissions/route.ts",
+        "src/app/api/v1/core/permissions/route.ts",
+        "src/app/api/v1/core/audit-logs/route.ts"
+      ],
+      "type": "API",
+      "preconditions": "TypeScript strict + Next.js build",
+      "steps": [
+        "Kiểm tra typecheck, lint và next build cho toàn bộ 6 route handler Users/Roles/Permissions/Audit",
+        "Đối soát luật chặn tự khóa chính mình (CANNOT_LOCK_SELF), chặn sửa SUPER_ADMIN, lọc trường nhạy cảm ở audit_logs"
+      ],
+      "expected_result": "Toàn bộ route biên dịch sạch, chuẩn phân quyền withAuth và không có N+1 query",
+      "actual_result": "PASS — 6/6 route handler build sạch, typecheck & lint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-017",
+      "module": "core",
+      "feature": "Giao diện Đăng nhập (/login) & Khung Portal App Shell",
+      "spec_ref": "UI-01, UI-02",
+      "target_files": [
+        "src/app/login/page.tsx",
+        "src/app/(portal)/layout.tsx",
+        "src/layouts/PortalShell.tsx",
+        "src/components/portal/PortalAuthContext.tsx",
+        "src/components/portal/ChangePasswordModal.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Next.js build & ESLint React 19",
+      "steps": [
+        "Kiểm tra biên dịch /login và layout /(portal)",
+        "Đối soát auto-refresh khi 401, Sidebar lọc theo RBAC, Branch Filter, ChangePasswordModal và khóa nút chống double-click"
+      ],
+      "expected_result": "Biên dịch sạch, ESLint 0 lỗi/cảnh báo, đầy đủ trạng thái Loading/Error/Success & responsive",
+      "actual_result": "PASS — Route /login và PortalShell build sạch, ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-018",
+      "module": "core",
+      "feature": "Giao diện Quản lý Chi nhánh (/settings/branches)",
+      "spec_ref": "UI-04",
+      "target_files": [
+        "src/app/(portal)/settings/branches/page.tsx",
+        "src/components/ui/ConfirmModal.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Next.js build & ESLint React 19",
+      "steps": [
+        "Kiểm tra biên dịch /settings/branches",
+        "Đối soát debounce tìm kiếm 300ms, AbortController, Modal Tạo/Sửa, ConfirmModal xóa mềm và 4 trạng thái UI"
+      ],
+      "expected_result": "Biên dịch sạch, ESLint 0 lỗi, đủ 4 trạng thái Loading/Empty/Error/Success",
+      "actual_result": "PASS — Route /settings/branches build sạch, ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-019",
+      "module": "core",
+      "feature": "Giao diện Quản lý Người dùng, Ma trận Phân quyền & Audit Logs",
+      "spec_ref": "UI-05",
+      "target_files": [
+        "src/app/(portal)/settings/users-roles/page.tsx",
+        "src/app/(portal)/settings/audit-logs/page.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Next.js build & ESLint React 19",
+      "steps": [
+        "Kiểm tra biên dịch /settings/users-roles và /settings/audit-logs",
+        "Đối soát 2 Tab (Tài khoản + Ma trận quyền), ConfirmModal khóa/mở khóa, formatDateTimeVN và đủ 4 trạng thái UI"
+      ],
+      "expected_result": "Biên dịch sạch, ESLint 0 lỗi, disable chỉnh sửa SUPER_ADMIN và khóa nút chống double-click",
+      "actual_result": "PASS — Cả 2 route build sạch, ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-03",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-020",
+      "module": "core",
+      "feature": "Portable approval-engine (evaluateWorkflowConditions & computeApprovalTransition)",
+      "spec_ref": "FR-01",
+      "target_files": [
+        "src/lib/portable/approval-engine.ts",
+        "tests/portable/approval-engine.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Đánh giá điều kiện minDays/maxDays/minAmount/maxAmount và null",
+        "Kiểm tra chuyển bước duyệt đa cấp APPROVE/REJECT/CANCEL và lỗi biên step"
+      ],
+      "expected_result": "Đánh giá điều kiện chính xác, chuyển bước đúng trạng thái PENDING/APPROVED/REJECTED/CANCELLED",
+      "actual_result": "PASS — 3/3 tests trong approval-engine.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-04",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-021",
+      "module": "core",
+      "feature": "Migration 5 bảng Approvals & Notifications + Seed quyền & 2 quy trình mẫu trên Local MySQL",
+      "spec_ref": "DB-01, DB-02, DB-03, DB-04, DB-05, FR-05",
+      "target_files": [
+        "database/migrations/20261123_000003_init_core_approvals_notifications.sql",
+        "database/seed-core.ts",
+        "tests/database/approvals-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/approvals-migration.test.ts đối soát 5 bảng & thứ tự DOWN",
+        "Chạy npm run db:migrate, npm run db:status và 2 lần npm run db:seed:core"
+      ],
+      "expected_result": "Migration 000003 APPLIED, seed chạy lại 2 lần idempotent không lỗi",
+      "actual_result": "PASS — [APPLIED] 000001/000002/000003 và [SEED CORE OK] thành công cả 2 lần",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-04",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-022",
+      "module": "core",
+      "feature": "API CRUD Luồng duyệt (/api/v1/approvals/workflows)",
+      "spec_ref": "FR-02, API-01",
+      "target_files": [
+        "src/modules/approvals/approvals.schema.ts",
+        "src/modules/approvals/workflows.service.ts",
+        "src/app/api/v1/approvals/workflows/route.ts",
+        "src/app/api/v1/approvals/workflows/[id]/route.ts",
+        "tests/api/approvals-workflow.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gửi POST workflow bước ROLE thiếu approverRoleId -> kỳ vọng 400 VALIDATION_ERROR",
+        "Gửi POST workflow hợp lệ -> kỳ vọng 201"
+      ],
+      "expected_result": "Validate chặt từng loại bước duyệt và tạo mới 201 chuẩn JSON",
+      "actual_result": "PASS — 2/2 tests trong approvals-workflow.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-04",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-023",
+      "module": "core",
+      "feature": "API Xử lý Phê duyệt, Hộp thư & Lịch sử (/api/v1/approvals/*)",
+      "spec_ref": "FR-03, API-02, API-03, API-04",
+      "target_files": [
+        "src/modules/approvals/approvals.service.ts",
+        "src/app/api/v1/approvals/inbox/route.ts",
+        "src/app/api/v1/approvals/[id]/history/route.ts",
+        "src/app/api/v1/approvals/[id]/action/route.ts",
+        "tests/api/approvals-action.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gửi REJECT không có lý do -> kỳ vọng 400",
+        "Gửi APPROVE hợp lệ -> 200; gửi trên đơn đã đóng -> 409",
+        "Kiểm tra canUserActOnApproval chặn người không phải người duyệt/người gửi"
+      ],
+      "expected_result": "Chặn đúng 400/403/409 và trả 200 khi hợp lệ",
+      "actual_result": "PASS — 3/3 tests trong approvals-action.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-04",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-024",
+      "module": "core",
+      "feature": "API Trung tâm Thông báo nội bộ chống IDOR (/api/v1/core/notifications/*)",
+      "spec_ref": "FR-04, API-05",
+      "target_files": [
+        "src/modules/notifications/notifications.service.ts",
+        "src/app/api/v1/core/notifications/route.ts",
+        "src/app/api/v1/core/notifications/[id]/read/route.ts",
+        "src/app/api/v1/core/notifications/read-all/route.ts",
+        "tests/api/notifications.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gọi GET /notifications kiểm tra lọc đúng userId và trả unreadCount",
+        "Gọi PATCH /notifications/999/read thuộc user khác -> kỳ vọng 404"
+      ],
+      "expected_result": "Giới hạn chặt theo userId đang đăng nhập, chống IDOR 100%",
+      "actual_result": "PASS — 2/2 tests trong notifications.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-04",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-025",
+      "module": "core",
+      "feature": "Giao diện Chuông Thông báo, Cấu hình Luồng duyệt & Hộp thư Phê duyệt",
+      "spec_ref": "UI-01, UI-02, UI-03",
+      "target_files": [
+        "src/components/portal/NotificationBell.tsx",
+        "src/layouts/PortalShell.tsx",
+        "src/app/(portal)/settings/workflows/page.tsx",
+        "src/app/(portal)/approvals/page.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Next.js build & ESLint React 19",
+      "steps": [
+        "Biên dịch production routes /approvals, /settings/workflows và NotificationBell trên PortalShell",
+        "Kiểm tra ESLint React 19, 4 trạng thái UI, AbortController và khóa nút chống double-click"
+      ],
+      "expected_result": "Toàn bộ 30 routes build sạch, ESLint 0 lỗi/0 cảnh báo",
+      "actual_result": "PASS — Build production & ESLint sạch 100%",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-04",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-001",
+      "module": "hrm",
+      "feature": "Portable tree-utils (buildTree O(n), collectDescendantIds, wouldCreateCycle)",
+      "spec_ref": "FR-01",
+      "target_files": [
+        "src/lib/portable/tree-utils.ts",
+        "tests/portable/tree-utils.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Dựng cây nhiều tầng kèm node mồ côi (orphan)",
+        "Thu thập toàn bộ ID hậu duệ và phát hiện vòng lặp trực tiếp/đa tầng"
+      ],
+      "expected_result": "Dựng cây đúng cấu trúc, phát hiện 100% vòng lặp cha-con và self-loop",
+      "actual_result": "PASS — 3/3 tests trong tree-utils.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-05",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-002",
+      "module": "hrm",
+      "feature": "Migration bảng departments & positions + Seed Cơ cấu tổ chức mẫu trên Local MySQL",
+      "spec_ref": "DB-01, DB-02, FR-04",
+      "target_files": [
+        "database/migrations/20261123_000004_init_hrm_organization.sql",
+        "database/seed-core.ts",
+        "tests/database/hrm-org-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/hrm-org-migration.test.ts kiểm định schema UP/DOWN",
+        "Chạy npm run db:migrate, npm run db:status và 2 lần npm run db:seed:core"
+      ],
+      "expected_result": "Migration 000004 APPLIED, seed 4 phòng ban & 6 chức danh mẫu idempotent 2 lần không lỗi",
+      "actual_result": "PASS — [APPLIED] 000001..000004 và [SEED CORE OK] thành công cả 2 lần",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-05",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-003",
+      "module": "hrm",
+      "feature": "API CRUD Phòng ban & Org Chart Tree (chống cycle, chặn xóa có con)",
+      "spec_ref": "FR-02, FR-04, API-01, API-02",
+      "target_files": [
+        "src/modules/hrm/organization/departments.service.ts",
+        "src/app/api/v1/hrm/org/departments/route.ts",
+        "src/app/api/v1/hrm/org/departments/[id]/route.ts",
+        "src/app/api/v1/hrm/org/departments/tree/route.ts",
+        "tests/api/hrm-departments.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "POST phòng ban hợp lệ -> 201 uppercase code; mã sai -> 400",
+        "PATCH gây vòng lặp cha-con -> 400; DELETE phòng có phòng con -> 400"
+      ],
+      "expected_result": "Validation chặt chẽ, chống cycle và bảo vệ toàn vẹn cây phòng ban",
+      "actual_result": "PASS — 2/2 tests trong hrm-departments.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-05",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-004",
+      "module": "hrm",
+      "feature": "API CRUD Chức danh (/api/v1/hrm/org/positions)",
+      "spec_ref": "FR-03, API-03",
+      "target_files": [
+        "src/modules/hrm/organization/positions.service.ts",
+        "src/app/api/v1/hrm/org/positions/route.ts",
+        "src/app/api/v1/hrm/org/positions/[id]/route.ts",
+        "tests/api/hrm-positions.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "User chỉ có hrm.org.read gửi POST -> kỳ vọng 403",
+        "Kiểm tra level ngoài khoảng 1..10 -> 400; hợp lệ -> 201; trùng mã -> 409"
+      ],
+      "expected_result": "Phân quyền RBAC chuẩn, validate biên level và chặn trùng mã chức danh",
+      "actual_result": "PASS — 2/2 tests trong hrm-positions.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-05",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-005",
+      "module": "hrm",
+      "feature": "Giao diện Cơ cấu Tổ chức (/hrm/organization — Org Chart, Phòng ban & Chức danh)",
+      "spec_ref": "UI-01",
+      "target_files": [
+        "src/components/hrm/OrgChartTree.tsx",
+        "src/app/(portal)/hrm/organization/page.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Next.js build & ESLint React 19",
+      "steps": [
+        "Biên dịch production route /hrm/organization",
+        "Kiểm tra ESLint React 19, đồng bộ selectedBranchId, 3 tab, 4 trạng thái UI & ConfirmModal"
+      ],
+      "expected_result": "36 routes build sạch, ESLint 0 lỗi/0 cảnh báo",
+      "actual_result": "PASS — Route /hrm/organization biên dịch sạch, ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-05",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-006",
+      "module": "hrm",
+      "feature": "Portable excel-exporter (buildExcelBuffer với exceljs MIT, tiếng Việt Unicode)",
+      "spec_ref": "FR-01",
+      "target_files": [
+        "src/lib/portable/excel-exporter.ts",
+        "tests/portable/excel-exporter.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest + exceljs (MIT)",
+      "steps": [
+        "Tạo buffer .xlsx từ mảng tiếng Việt có tiêu đề, phụ đề, định dạng số và đọc ngược kiểm tra từng ô",
+        "Kiểm tra mảng rỗng và ném lỗi khi cột rỗng hoặc tên sheet không hợp lệ"
+      ],
+      "expected_result": "Xuất buffer .xlsx hợp lệ giữ nguyên dấu tiếng Việt, không lỗi mảng rỗng, chặn cấu hình sai",
+      "actual_result": "PASS — 3/3 tests trong excel-exporter.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-06",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-007",
+      "module": "hrm",
+      "feature": "Migration 000005 (employees, employee_documents, FK departments) & Seed quyền + 3 NV mẫu",
+      "spec_ref": "DB-01, DB-02, DB-03, FR-06",
+      "target_files": [
+        "database/migrations/20261123_000005_init_hrm_employees.sql",
+        "database/seed-core.ts",
+        "tests/database/hrm-employees-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/hrm-employees-migration.test.ts kiểm tra UP/DOWN & thứ tự gỡ FK",
+        "Chạy npm run db:migrate, npm run db:status và 2 lần npm run db:seed:core"
+      ],
+      "expected_result": "Migration 000005 APPLIED (5/5), seed quyền & 3 NV mẫu HQ chạy lại 2 lần idempotent không lỗi",
+      "actual_result": "PASS — [APPLIED] 000001..000005 và [SEED CORE OK] thành công cả 2 lần",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-06",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-008",
+      "module": "hrm",
+      "feature": "Data Scope 4 tầng, Ẩn trường nhạy cảm & API CRUD Nhân viên + Tự động cấp tài khoản",
+      "spec_ref": "FR-02, FR-03, API-01, API-02",
+      "target_files": [
+        "src/modules/hrm/employees/employees.scope.ts",
+        "src/modules/hrm/employees/employees.service.ts",
+        "src/app/api/v1/hrm/employees/route.ts",
+        "src/app/api/v1/hrm/employees/[id]/route.ts",
+        "tests/api/hrm-employees.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra isEmployeeWithinScope cho BRANCH/DEPARTMENT/OWN và canViewSensitiveEmployeeFields",
+        "Gửi POST thiếu quyền (403), sai mã NV/email (400) và hợp lệ (201 kèm provisionedAccount)"
+      ],
+      "expected_result": "Phân quyền chặt 4 tầng, ẩn trường nhạy cảm theo vai trò, tạo mới tự uppercase mã NV & trả tài khoản tạm 1 lần",
+      "actual_result": "PASS — 4/4 tests trong hrm-employees.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-06",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-009",
+      "module": "hrm",
+      "feature": "API Export Excel danh sách nhân viên (/export) & Hồ sơ cá nhân ESS (/me)",
+      "spec_ref": "FR-01, FR-05, API-03, API-06",
+      "target_files": [
+        "src/app/api/v1/hrm/employees/export/route.ts",
+        "src/app/api/v1/hrm/employees/me/route.ts",
+        "tests/api/hrm-employees.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gọi GET /api/v1/hrm/employees/export kiểm tra Content-Type spreadsheetml.sheet và Content-Disposition",
+        "Gọi PATCH /api/v1/hrm/employees/me cho phép nhân viên ESS tự cập nhật thông tin liên hệ"
+      ],
+      "expected_result": "Trả binary .xlsx chuẩn header tải về; ESS cho phép tự cập nhật liên hệ an toàn không cần quyền HR",
+      "actual_result": "PASS — Cả 2 endpoint vượt qua kiểm định tự động và build sạch",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-06",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-010",
+      "module": "hrm",
+      "feature": "Bảo mật Upload/Download/Xóa mềm Tài liệu Hồ sơ Nhân viên (MIME, <=5MB, chống Path Traversal)",
+      "spec_ref": "FR-04, API-04, API-05",
+      "target_files": [
+        "src/modules/hrm/employees/employee-documents.service.ts",
+        "src/app/api/v1/hrm/employees/[id]/documents/route.ts",
+        "src/app/api/v1/hrm/employees/[id]/documents/[docId]/route.ts",
+        "src/app/api/v1/hrm/employees/[id]/documents/[docId]/download/route.ts",
+        "tests/api/hrm-employee-documents.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra validateDocumentUploadFile chặn file .exe và file > 5MB",
+        "Kiểm tra resolveSafeStoragePath chặn đường dẫn ../../.env",
+        "Kiểm tra DELETE tài liệu trả 403/400/200 theo quyền và ID"
+      ],
+      "expected_result": "Chặn tuyệt đối định dạng nguy hiểm, quá dung lượng và path traversal; phân quyền DELETE chính xác",
+      "actual_result": "PASS — 2/2 tests trong hrm-employee-documents.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-06",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-011",
+      "module": "hrm",
+      "feature": "Giao diện Danh sách NV (/hrm/employees), Hồ sơ 360° (/hrm/employees/[id]) & ESS (/my/profile)",
+      "spec_ref": "UI-01, UI-02, UI-03",
+      "target_files": [
+        "src/components/hrm/EmployeeFormModal.tsx",
+        "src/components/hrm/EmployeeDocumentsPanel.tsx",
+        "src/app/(portal)/hrm/employees/page.tsx",
+        "src/app/(portal)/hrm/employees/[id]/page.tsx",
+        "src/app/(portal)/my/profile/page.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Next.js build & ESLint React 19",
+      "steps": [
+        "Biên dịch production cả 3 route giao diện & 2 component HRM",
+        "Kiểm tra ESLint React 19, 4 trạng thái UI, ConfirmModal, AbortController, debounce 300ms & Export Excel"
+      ],
+      "expected_result": "46 routes build sạch, ESLint 0 lỗi/0 cảnh báo",
+      "actual_result": "PASS — Toàn bộ giao diện biên dịch sạch & ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-06",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-012",
+      "module": "hrm",
+      "feature": "Migration 000006 (employee_contracts & employee_work_histories) + Seed quyền & 3 HĐ mẫu",
+      "spec_ref": "DB-01, DB-02, FR-01, FR-05",
+      "target_files": [
+        "database/migrations/20261123_000006_init_hrm_contracts_histories.sql",
+        "database/seed-core.ts",
+        "tests/database/hrm-contracts-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/hrm-contracts-migration.test.ts kiểm tra DECIMAL(18,2), FK và khối UP/DOWN",
+        "Chạy npm run db:migrate, npm run db:status và 2 lần npm run db:seed:core"
+      ],
+      "expected_result": "6/6 migration APPLIED, seed 3 quyền hrm.contracts.* & 3 hợp đồng + 3 lịch sử công tác mẫu idempotent",
+      "actual_result": "PASS — [APPLIED] 000001..000006 và [SEED CORE OK] thành công cả 2 lần",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-07",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-013",
+      "module": "hrm",
+      "feature": "Logic cảnh báo hết hạn HĐ (15/30 ngày/Quá hạn), kiểm tra ngày & API CRUD/Expiring/Export Hợp đồng",
+      "spec_ref": "FR-02, FR-03, FR-05, API-01, API-02, API-03",
+      "target_files": [
+        "src/modules/hrm/contracts/contracts.service.ts",
+        "src/app/api/v1/hrm/contracts/route.ts",
+        "src/app/api/v1/hrm/contracts/[id]/route.ts",
+        "src/app/api/v1/hrm/contracts/expiring/route.ts",
+        "src/app/api/v1/hrm/contracts/export/route.ts",
+        "tests/api/hrm-contracts.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra classifyContractExpiry cho đủ 5 mức OVERDUE/URGENT_15D/WARNING_30D/SAFE/NONE",
+        "Kiểm tra validateContractDates chuẩn hóa INDEFINITE và chặn FIXED_TERM thiếu ngày hoặc ngày ngược",
+        "Gửi POST thiếu quyền (403), hợp lệ (201), GET /expiring (200) và GET /export (.xlsx header)"
+      ],
+      "expected_result": "Phân loại cảnh báo chính xác, kiểm tra ngày chặt chẽ, phân quyền RBAC & Export Excel chuẩn",
+      "actual_result": "PASS — 4/4 tests trong hrm-contracts.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-07",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-014",
+      "module": "hrm",
+      "feature": "API Quá trình Công tác (/employees/[id]/work-histories & /work-histories/[id])",
+      "spec_ref": "FR-04, API-04, API-05",
+      "target_files": [
+        "src/modules/hrm/contracts/work-histories.service.ts",
+        "src/app/api/v1/hrm/employees/[id]/work-histories/route.ts",
+        "src/app/api/v1/hrm/work-histories/[id]/route.ts",
+        "tests/api/hrm-work-histories.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gửi POST thiếu quyền (403), ngày hiệu lực sai định dạng (400), hợp lệ kèm syncToEmployeeProfile (201)",
+        "Gửi DELETE sai ID (400) và hợp lệ (200)"
+      ],
+      "expected_result": "Validate chặt định dạng ngày & quyền hrm.contracts.manage, trả đúng HTTP status",
+      "actual_result": "PASS — 2/2 tests trong hrm-work-histories.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-07",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-015",
+      "module": "hrm",
+      "feature": "Giao diện Hợp đồng (/hrm/contracts), Tab 360° (/hrm/employees/[id]) & ESS (/my/profile)",
+      "spec_ref": "UI-01, UI-02, UI-03",
+      "target_files": [
+        "src/components/hrm/ContractFormModal.tsx",
+        "src/components/hrm/EmployeeContractsPanel.tsx",
+        "src/components/hrm/EmployeeWorkHistoryTimeline.tsx",
+        "src/app/(portal)/hrm/contracts/page.tsx",
+        "src/app/(portal)/hrm/employees/[id]/page.tsx",
+        "src/app/(portal)/my/profile/page.tsx"
+      ],
+      "type": "UI",
+      "preconditions": "Next.js build & ESLint React 19",
+      "steps": [
+        "Biên dịch production route /hrm/contracts, /hrm/employees/[id] và /my/profile",
+        "Kiểm tra ESLint React 19, KPI Alert Cards, phụ cấp động, Timeline dọc, ConfirmModal & 4 trạng thái UI"
+      ],
+      "expected_result": "54 routes build sạch, ESLint 0 lỗi/0 cảnh báo",
+      "actual_result": "PASS — Toàn bộ 54 routes biên dịch sạch & ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-07",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-016",
+      "module": "hrm",
+      "feature": "Migration 000007 (leave_types, leave_balances, leave_requests) & Seed quyền + 5 loại phép + quỹ phép 2026",
+      "spec_ref": "DB-01, DB-02, DB-03, FR-05",
+      "target_files": [
+        "database/migrations/20261123_000007_init_hrm_leaves.sql",
+        "src/config/database.ts",
+        "database/seed-core.ts",
+        "tests/database/hrm-leaves-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/hrm-leaves-migration.test.ts đối soát 3 bảng, DECIMAL(5,2), FK và thứ tự DOWN",
+        "Chạy npm run db:migrate, npm run db:status và 2 lần npm run db:seed:core"
+      ],
+      "expected_result": "7/7 migrations APPLIED, seed 4 quyền hrm.requests.*, 5 loại phép VN và quỹ phép 2026 idempotent 2 lần không lỗi",
+      "actual_result": "PASS — [APPLIED] 000001..000007 và [SEED CORE OK] thành công cả 2 lần",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-08",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-017",
+      "module": "hrm",
+      "feature": "Logic tính ngày nghỉ (nửa ngày AM/PM, trừ T7/CN/lễ), chống trùng lịch, số dư & thâm niên",
+      "spec_ref": "FR-02, FR-03",
+      "target_files": [
+        "src/modules/hrm/requests/leave-calculator.ts",
+        "tests/hrm/leave-calculator.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra calculateLeaveDays cho cả ngày, nửa ngày AM/PM, xuyên cuối tuần, ngày lễ và cuối tuần hoàn toàn (0 ngày)",
+        "Kiểm tra chặn ngày ngược, nghỉ vắt năm và PM -> AM trong cùng ngày",
+        "Kiểm tra doLeaveRangesOverlap (biên AM/PM không trùng) và computeSeniorityBonusDays (+1 ngày/5 năm)"
+      ],
+      "expected_result": "Tính toán chính xác tuyệt đối, chặn đủ các ca biên lỗi và phát hiện trùng lịch chuẩn",
+      "actual_result": "PASS — 4/4 test groups trong leave-calculator.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-08",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-018",
+      "module": "hrm",
+      "feature": "API Quản trị Danh mục Loại nghỉ phép (/api/v1/hrm/requests/leave-types)",
+      "spec_ref": "FR-01, API-01",
+      "target_files": [
+        "src/modules/hrm/requests/leave-types.service.ts",
+        "src/app/api/v1/hrm/requests/leave-types/route.ts",
+        "src/app/api/v1/hrm/requests/leave-types/[id]/route.ts",
+        "tests/api/hrm-leave-types.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Nhân viên đọc GET /leave-types -> 200; gửi POST thiếu hrm.requests.manage -> 403",
+        "HR Manager tạo mới -> 201 (tự uppercase mã); trùng mã -> 409"
+      ],
+      "expected_result": "Phân quyền RBAC chặt chẽ, chuẩn hóa mã và chặn trùng mã loại phép",
+      "actual_result": "PASS — 2/2 test groups trong hrm-leave-types.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-08",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-019",
+      "module": "hrm",
+      "feature": "API Quỹ phép năm: Tra cứu, Khởi tạo hàng loạt & Điều chỉnh (/api/v1/hrm/requests/leave-balances/*)",
+      "spec_ref": "FR-02, API-02, API-03, API-04",
+      "target_files": [
+        "src/modules/hrm/requests/leave-balances.service.ts",
+        "src/app/api/v1/hrm/requests/leave-balances/route.ts",
+        "src/app/api/v1/hrm/requests/leave-balances/initialize/route.ts",
+        "src/app/api/v1/hrm/requests/leave-balances/[id]/route.ts",
+        "tests/api/hrm-leave-balances.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gửi POST /initialize với năm sai -> 400; hợp lệ -> 201",
+        "Gửi PATCH /[id] điều chỉnh hợp lệ -> 200; làm số dư âm -> 400"
+      ],
+      "expected_result": "Validate năm và số dư chặt chẽ, trả đúng HTTP status 201/200/400",
+      "actual_result": "PASS — 2/2 test groups trong hrm-leave-balances.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-08",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-020",
+      "module": "hrm",
+      "feature": "API Đơn nghỉ phép (/leaves, /submit, /cancel, /export), Approval Completion Hook & Giao diện /my/requests, /hrm/requests",
+      "spec_ref": "FR-04, FR-05, API-05, API-06, API-07, API-08, API-09, UI-01, UI-02",
+      "target_files": [
+        "src/modules/approvals/approval-hooks.ts",
+        "src/modules/approvals/register-module-hooks.ts",
+        "src/modules/hrm/requests/leave-approval-hook.ts",
+        "src/modules/hrm/requests/leave-requests.service.ts",
+        "src/app/api/v1/hrm/requests/leaves/route.ts",
+        "src/app/api/v1/hrm/requests/leaves/[id]/route.ts",
+        "src/app/api/v1/hrm/requests/leaves/[id]/submit/route.ts",
+        "src/app/api/v1/hrm/requests/leaves/[id]/cancel/route.ts",
+        "src/app/api/v1/hrm/requests/leaves/export/route.ts",
+        "src/components/hrm/LeaveRequestFormModal.tsx",
+        "src/components/hrm/LeaveTypeFormModal.tsx",
+        "src/components/hrm/InitializeBalancesModal.tsx",
+        "src/app/(portal)/my/requests/page.tsx",
+        "src/app/(portal)/hrm/requests/page.tsx",
+        "tests/api/hrm-leave-requests.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Next.js build & ESLint React 19",
+      "steps": [
+        "Kiểm tra POST /leaves (400/201/409), POST /submit (200), POST /cancel (200), GET /export (.xlsx header)",
+        "Kiểm tra dispatchApprovalCompletionHook kích hoạt đúng handler theo entityType",
+        "Biên dịch production route /my/requests và /hrm/requests kèm ESLint 0 lỗi"
+      ],
+      "expected_result": "Toàn bộ 3 test groups pass, 66 routes build sạch, ESLint 0 lỗi/0 cảnh báo",
+      "actual_result": "PASS — 3/3 test groups pass, 66 routes build sạch & ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-08",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-021",
+      "module": "hrm",
+      "feature": "Migration 000008 (overtime_requests & business_trip_requests) + Seed quy trình duyệt BUSINESS_TRIP",
+      "spec_ref": "DB-01, DB-02, FR-04",
+      "target_files": [
+        "database/migrations/20261123_000008_init_hrm_ot_business_trips.sql",
+        "src/config/database.ts",
+        "database/seed-core.ts",
+        "tests/database/hrm-ot-trip-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/hrm-ot-trip-migration.test.ts kiểm tra DECIMAL(5,2), DECIMAL(18,2), ENUM hệ số OT và thứ tự DOWN",
+        "Chạy npm run db:migrate, npm run db:status và 2 lần npm run db:seed:core"
+      ],
+      "expected_result": "8/8 migrations APPLIED, quy trình duyệt BUSINESS_TRIP được seed idempotent 2 lần không lỗi",
+      "actual_result": "PASS — [APPLIED] 000001..000008 và [SEED CORE OK] thành công cả 2 lần",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-09",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-022",
+      "module": "hrm",
+      "feature": "Logic tính giờ OT, phân loại hệ số 150%/200%/300%, chống trùng giờ OT & tính ngày/trùng lịch công tác",
+      "spec_ref": "FR-01, FR-03",
+      "target_files": [
+        "src/modules/hrm/requests/ot-trip-calculator.ts",
+        "tests/hrm/ot-trip-calculator.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra classifyOtRateType cho ngày thường (150%), T7/CN (200%), cờ ngày lễ & holidays[] (300%)",
+        "Kiểm tra calculateOtHours (biên 0.5–12h, giờ ngược), doTimeRangesOverlap (cho phép sát giờ) và calculateTripDays/doDateRangesOverlap"
+      ],
+      "expected_result": "Phân loại hệ số & tính toán chính xác 100%, chặn đủ các ca biên lỗi và trùng lịch",
+      "actual_result": "PASS — 4/4 test groups trong ot-trip-calculator.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-09",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-023",
+      "module": "hrm",
+      "feature": "API Đơn Tăng ca OT (/overtimes, /submit, /cancel, /export) & Hook đồng bộ duyệt",
+      "spec_ref": "FR-02, FR-04, API-01, API-02, API-03, API-04, API-09",
+      "target_files": [
+        "src/modules/hrm/requests/overtime-requests.service.ts",
+        "src/modules/hrm/requests/ot-trip-approval-hooks.ts",
+        "src/modules/approvals/register-module-hooks.ts",
+        "src/app/api/v1/hrm/requests/overtimes/route.ts",
+        "src/app/api/v1/hrm/requests/overtimes/[id]/route.ts",
+        "src/app/api/v1/hrm/requests/overtimes/[id]/submit/route.ts",
+        "src/app/api/v1/hrm/requests/overtimes/[id]/cancel/route.ts",
+        "src/app/api/v1/hrm/requests/overtimes/export/route.ts",
+        "tests/api/hrm-overtimes.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gửi POST /overtimes sai định dạng giờ (400), hợp lệ (201), trùng khung giờ (409)",
+        "Gửi POST /submit (200), POST /cancel (200) và GET /export kiểm tra header .xlsx"
+      ],
+      "expected_result": "Validate chặt chẽ, trả đúng HTTP status & header tải file Excel chuẩn",
+      "actual_result": "PASS — 2/2 test groups trong hrm-overtimes.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-09",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-024",
+      "module": "hrm",
+      "feature": "API Đơn Công tác (/business-trips/*) & Giao diện nâng cấp /my/requests (3 tabs), /hrm/requests (5 tabs)",
+      "spec_ref": "FR-03, FR-04, API-05, API-06, API-07, API-08, API-09, UI-01, UI-02",
+      "target_files": [
+        "src/modules/hrm/requests/business-trip-requests.service.ts",
+        "src/app/api/v1/hrm/requests/business-trips/route.ts",
+        "src/app/api/v1/hrm/requests/business-trips/[id]/route.ts",
+        "src/app/api/v1/hrm/requests/business-trips/[id]/submit/route.ts",
+        "src/app/api/v1/hrm/requests/business-trips/[id]/cancel/route.ts",
+        "src/app/api/v1/hrm/requests/business-trips/export/route.ts",
+        "src/components/hrm/OvertimeRequestFormModal.tsx",
+        "src/components/hrm/BusinessTripFormModal.tsx",
+        "src/app/(portal)/my/requests/page.tsx",
+        "src/app/(portal)/hrm/requests/page.tsx",
+        "tests/api/hrm-business-trips.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Next.js build & ESLint React 19",
+      "steps": [
+        "Gửi POST /business-trips chi phí âm (400), hợp lệ (201), trùng lịch (409), /submit (200), /cancel (200), /export (.xlsx)",
+        "Biên dịch production /my/requests và /hrm/requests kèm ESLint 0 lỗi"
+      ],
+      "expected_result": "2/2 test groups pass, 76 routes build sạch, ESLint 0 lỗi/0 cảnh báo",
+      "actual_result": "PASS — 2/2 test groups pass, 76 routes build sạch & ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-09",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-025",
+      "module": "hrm",
+      "feature": "Portable excel-importer (parseExcelBuffer tự dò dòng header, tiếng Việt, chặn file rỗng & vượt maxRows)",
+      "spec_ref": "FR-01",
+      "target_files": [
+        "src/lib/portable/excel-importer.ts",
+        "tests/portable/excel-importer.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest + exceljs (MIT)",
+      "steps": [
+        "Đọc buffer .xlsx có tiêu đề/phụ đề bằng parseExcelBuffer với expectedHeaders",
+        "Kiểm tra chặn buffer rỗng và file vượt giới hạn maxRows"
+      ],
+      "expected_result": "Nhận diện chính xác dòng header, giữ nguyên dấu tiếng Việt, chặn file rỗng và vượt giới hạn dòng",
+      "actual_result": "PASS — 2/2 tests trong excel-importer.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-10",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-026",
+      "module": "hrm",
+      "feature": "Migration 000009 (work_shifts, employee_shift_assignments, holidays, attendance_logs) & Seed RBAC/Ca/Ngày lễ VN",
+      "spec_ref": "DB-01, DB-02, DB-03, DB-04, FR-06",
+      "target_files": [
+        "database/migrations/20261123_000009_init_hrm_attendance.sql",
+        "src/config/database.ts",
+        "database/seed-core.ts",
+        "tests/database/hrm-attendance-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/hrm-attendance-migration.test.ts kiểm tra 4 bảng, DECIMAL(4,2)/DECIMAL(5,2), UQ và thứ tự DOWN",
+        "Chạy npm run db:migrate, npm run db:status và 2 lần npm run db:seed:core"
+      ],
+      "expected_result": "9/9 migrations APPLIED, seed 5 quyền hrm.attendance.*, 2 ca mẫu, phân ca & 5 ngày lễ VN 2026 idempotent 2 lần",
+      "actual_result": "PASS — [APPLIED] 000001..000009 và [SEED CORE OK] thành công cả 2 lần",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-10",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-027",
+      "module": "hrm",
+      "feature": "Engine tính giờ công ca, phút đi muộn/về sớm theo dung sai, trừ nghỉ trưa & parse ngày/giờ Excel",
+      "spec_ref": "FR-01",
+      "target_files": [
+        "src/modules/hrm/attendance/attendance-calculator.ts",
+        "tests/hrm/attendance-calculator.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra computeShiftWorkingHours cho ca hành chính, ca nửa ngày và các ca lỗi biên",
+        "Kiểm tra computeAttendanceMetrics (trong grace, quá grace, về sớm, nghỉ trưa, ngày lễ, vắng mặt, override, check-out < check-in)",
+        "Kiểm tra parseFlexibleWorkDate & parseFlexibleTime với định dạng ISO, VN và Excel serial"
+      ],
+      "expected_result": "Tính toán chuẩn xác 100%, chặn đủ ca biên lỗi và parse đúng các định dạng ngày/giờ Excel",
+      "actual_result": "PASS — 4/4 test groups trong attendance-calculator.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-10",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-028",
+      "module": "hrm",
+      "feature": "API Quản trị Ca làm việc, Phân ca hàng loạt & Lịch Ngày lễ (/api/v1/hrm/attendance/{shifts,shift-assignments,holidays})",
+      "spec_ref": "FR-02, FR-03, API-01, API-02, API-03",
+      "target_files": [
+        "src/modules/hrm/attendance/shifts.service.ts",
+        "src/modules/hrm/attendance/holidays.service.ts",
+        "src/app/api/v1/hrm/attendance/shifts/route.ts",
+        "src/app/api/v1/hrm/attendance/shifts/[id]/route.ts",
+        "src/app/api/v1/hrm/attendance/shift-assignments/route.ts",
+        "src/app/api/v1/hrm/attendance/shift-assignments/[id]/route.ts",
+        "src/app/api/v1/hrm/attendance/holidays/route.ts",
+        "src/app/api/v1/hrm/attendance/holidays/[id]/route.ts",
+        "tests/api/hrm-shifts-holidays.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra POST /shifts thiếu quyền (403), hợp lệ tự uppercase code (201), trùng mã (409)",
+        "Kiểm tra POST /shift-assignments ngày ngược (400), hợp lệ (201) và POST /holidays (201)"
+      ],
+      "expected_result": "Phân quyền RBAC chặt chẽ, validate ngày/giờ chuẩn và trả đúng HTTP status",
+      "actual_result": "PASS — 2/2 test groups trong hrm-shifts-holidays.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-10",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-029",
+      "module": "hrm",
+      "feature": "API ESS Chấm công (/me, /check-in, /check-out), Chỉnh tay có Audit Log (/logs) & Export Excel (/export)",
+      "spec_ref": "FR-04, FR-05, API-04, API-05, API-06, API-07, API-10",
+      "target_files": [
+        "src/modules/hrm/attendance/attendance-logs.service.ts",
+        "src/app/api/v1/hrm/attendance/me/route.ts",
+        "src/app/api/v1/hrm/attendance/check-in/route.ts",
+        "src/app/api/v1/hrm/attendance/check-out/route.ts",
+        "src/app/api/v1/hrm/attendance/logs/route.ts",
+        "src/app/api/v1/hrm/attendance/logs/[id]/route.ts",
+        "src/app/api/v1/hrm/attendance/export/route.ts",
+        "tests/api/hrm-attendance-logs.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest",
+      "steps": [
+        "Gọi GET /me (200), POST /check-in (201 & 409 double check-in), POST /check-out (200)",
+        "Gọi POST /logs thiếu lý do (400), hợp lệ (201) và GET /export kiểm tra header .xlsx"
+      ],
+      "expected_result": "Chặn double check-in & thiếu lý do chỉnh tay, trả đúng HTTP status và header tải file Excel",
+      "actual_result": "PASS — 2/2 test groups trong hrm-attendance-logs.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-10",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-030",
+      "module": "hrm",
+      "feature": "API Import Excel (/import/template, /import) & Giao diện /my/attendance, /hrm/attendance (4 Tabs + 5 Modals)",
+      "spec_ref": "FR-05, API-08, API-09, UI-01, UI-02",
+      "target_files": [
+        "src/modules/hrm/attendance/attendance-import.service.ts",
+        "src/app/api/v1/hrm/attendance/import/template/route.ts",
+        "src/app/api/v1/hrm/attendance/import/route.ts",
+        "src/components/hrm/WorkShiftFormModal.tsx",
+        "src/components/hrm/ShiftAssignmentModal.tsx",
+        "src/components/hrm/HolidayFormModal.tsx",
+        "src/components/hrm/ManualAttendanceModal.tsx",
+        "src/components/hrm/AttendanceImportModal.tsx",
+        "src/app/(portal)/my/attendance/page.tsx",
+        "src/app/(portal)/hrm/attendance/page.tsx",
+        "tests/api/hrm-attendance-import.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Next.js build & ESLint React 19",
+      "steps": [
+        "Kiểm tra validateImportExcelFile chặn .csv, file rỗng, file > 5MB",
+        "Kiểm tra GET /import/template sinh .xlsx đọc ngược thành công bằng parseExcelBuffer và POST /import (400/200)",
+        "Biên dịch production /my/attendance và /hrm/attendance kèm ESLint 0 lỗi"
+      ],
+      "expected_result": "3/3 test groups pass, 92 routes build sạch, ESLint 0 lỗi/0 cảnh báo",
+      "actual_result": "PASS — 3/3 test groups pass, 92 routes build sạch & ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-10",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-031",
+      "module": "hrm",
+      "feature": "Migration 000010 (attendance_summaries chuẩn InnoDB/utf8mb4/DECIMAL(5,2)/UQ & DOWN rollback)",
+      "spec_ref": "DB-01",
+      "target_files": [
+        "database/migrations/20261123_000010_init_hrm_attendance_summaries.sql",
+        "src/config/database.ts",
+        "tests/database/hrm-attendance-summaries-migration.test.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local/Dev đang chạy với .env hợp lệ",
+      "steps": [
+        "Chạy tests/database/hrm-attendance-summaries-migration.test.ts kiểm tra cấu trúc bảng, DECIMAL(5,2), UQ và DOWN",
+        "Chạy npm run db:migrate & npm run db:status trên Local MySQL"
+      ],
+      "expected_result": "10/10 migrations APPLIED, bảng attendance_summaries tạo thành công",
+      "actual_result": "PASS — [UP OK] 20261123_000010_init_hrm_attendance_summaries.sql (10/10 APPLIED)",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-11",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-032",
+      "module": "hrm",
+      "feature": "Engine tổng hợp công tháng (5 nguồn dữ liệu, cắt đơn phép vắt tháng, chống cộng kép công tác & ngày lễ, OT 150/200/300%)",
+      "spec_ref": "FR-01",
+      "target_files": [
+        "src/modules/hrm/attendance/attendance-summary-calculator.ts",
+        "tests/hrm/attendance-summary-calculator.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra computeMonthlyAttendanceSummary tổng hợp đủ chấm công (đủ/nửa/thiếu check-out), công tác, phép CL/KL, ngày lễ và OT 150/200/300",
+        "Kiểm tra sliceLeaveDaysInMonth cắt đúng đơn nghỉ phép vắt qua 2 tháng (30/10 -> 03/11)",
+        "Kiểm tra không cộng công kép khi đi làm vào ngày lễ"
+      ],
+      "expected_result": "Mọi chỉ số standardWorkDays, actualWorkDays, payableDays, OT và thống kê đi muộn/về sớm chính xác 100%",
+      "actual_result": "PASS — 3/3 test groups trong attendance-summary-calculator.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-11",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-033",
+      "module": "hrm",
+      "feature": "API & UI Tổng hợp, Chỉnh tay (Audit Log), Chốt/Mở khóa & Xuất Excel Bảng công tháng (/summaries/*, /hrm/attendance, /my/attendance)",
+      "spec_ref": "FR-02, FR-03, FR-04, FR-05, API-01, API-02, API-03, API-04, API-05, API-06, API-07, UI-01, UI-02",
+      "target_files": [
+        "src/modules/hrm/attendance/attendance-summaries.service.ts",
+        "src/app/api/v1/hrm/attendance/summaries/route.ts",
+        "src/app/api/v1/hrm/attendance/summaries/calculate/route.ts",
+        "src/app/api/v1/hrm/attendance/summaries/[id]/route.ts",
+        "src/app/api/v1/hrm/attendance/summaries/lock/route.ts",
+        "src/app/api/v1/hrm/attendance/summaries/unlock/route.ts",
+        "src/app/api/v1/hrm/attendance/summaries/export/route.ts",
+        "src/app/api/v1/hrm/attendance/summaries/me/route.ts",
+        "src/components/hrm/AttendanceSummaryEditModal.tsx",
+        "src/components/hrm/AttendanceSummariesPanel.tsx",
+        "src/app/(portal)/hrm/attendance/page.tsx",
+        "src/app/(portal)/my/attendance/page.tsx",
+        "tests/api/hrm-attendance-summaries.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Next.js build & ESLint React 19",
+      "steps": [
+        "Kiểm tra POST /lock chặn 403 khi thiếu quyền hrm.attendance.lock, POST /unlock chặn 400 thiếu lý do, PATCH /[id] chặn 409 khi LOCKED",
+        "Kiểm tra GET /summaries, POST /calculate, GET /me và GET /export (.xlsx header)",
+        "Biên dịch production /hrm/attendance (5 tabs) và /my/attendance (Card bảng công tháng) kèm ESLint 0 lỗi"
+      ],
+      "expected_result": "2/2 test groups pass, 99 routes build sạch, ESLint 0 lỗi/0 cảnh báo",
+      "actual_result": "PASS — 2/2 test groups pass, 99 routes build sạch & ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-11",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-034",
+      "module": "hrm",
+      "feature": "Portable PDF Generator tiếng Việt chuẩn Unicode (font Roboto A4/A5, ký hiệu ₫, Zero Business Coupling)",
+      "spec_ref": "FR-07",
+      "target_files": [
+        "src/lib/portable/pdf-generator.ts",
+        "tests/portable/pdf-generator.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "pdfmake (MIT) đã cài đặt",
+      "steps": [
+        "Gọi buildStructuredPdfDocument + generatePdfBuffer với nội dung tiếng Việt có dấu đầy đủ & ký hiệu ₫ (A4 & A5)",
+        "Kiểm tra buffer bắt đầu bằng %PDF- và không import ngược nghiệp vụ dự án"
+      ],
+      "expected_result": "Sinh PDF hợp lệ tiếng Việt không vỡ dấu, đạt Zero Business Coupling",
+      "actual_result": "PASS — 2/2 tests trong pdf-generator.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-12",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-035",
+      "module": "hrm",
+      "feature": "Migration 000011 bảng lương (payroll_periods, payslips, payslip_items) & Seed quyền/cấu hình hrm.payroll.config",
+      "spec_ref": "DB-01, DB-02, DB-03, DB-04",
+      "target_files": [
+        "database/migrations/20261123_000011_init_hrm_payroll.sql",
+        "src/config/database.ts",
+        "database/seed-core.ts",
+        "tests/database/hrm-payroll-migration.test.ts"
+      ],
+      "type": "DB",
+      "preconditions": "Local MySQL 8+ (127.0.0.1)",
+      "steps": [
+        "Chạy npm run db:migrate tạo 3 bảng với InnoDB, utf8mb4_unicode_ci, DECIMAL(18,2)/DECIMAL(5,2)",
+        "Chạy npm run db:seed:core 2 lần liên tiếp kiểm tra idempotent cho 4 quyền hrm.payroll.* và settings hrm.payroll.config"
+      ],
+      "expected_result": "11/11 migrations APPLIED, 3/3 schema tests PASS, seed idempotent 2x thành công",
+      "actual_result": "PASS — 11/11 migrations APPLIED, 3/3 tests PASS, 4 quyền & config đã lưu MySQL",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-12",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-036",
+      "module": "hrm",
+      "feature": "Engine Tính lương VN thuần (Công chuẩn, Phụ cấp, OT 150/200/300 miễn thuế phần vượt 100%, BHXH/YT/TN có trần, Thuế TNCN 7 bậc)",
+      "spec_ref": "FR-01, FR-03",
+      "target_files": [
+        "src/modules/hrm/payroll/payroll-calculator.ts",
+        "src/modules/hrm/payroll/payroll-config.service.ts",
+        "tests/hrm/payroll-calculator.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra calculateProgressivePit đủ 7 bậc thuế TNCN VN",
+        "Kiểm tra prorated salary, phụ cấp, OT 150/200/300 miễn thuế chênh lệch >100%, trần đóng BH 46.8tr/99.2tr",
+        "Kiểm tra hợp đồng PROBATION miễn trích BH bắt buộc và khoản thưởng/khấu trừ thủ công"
+      ],
+      "expected_result": "Tất cả công thức tính Gross, BH, TNTT, Thuế TNCN và Net chính xác tuyệt đối",
+      "actual_result": "PASS — 4/4 test groups trong payroll-calculator.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-12",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-037",
+      "module": "hrm",
+      "feature": "11 API & UI Quản trị Kỳ lương (/hrm/payroll), Điều chỉnh thưởng/khấu trừ, Duyệt/Chi trả, Excel/PDF & ESS (/my/payslips)",
+      "spec_ref": "FR-02, FR-04, FR-05, FR-06, FR-07, API-01..11, UI-01..04",
+      "target_files": [
+        "src/modules/hrm/payroll/payroll.service.ts",
+        "src/modules/hrm/payroll/payslip-pdf.service.ts",
+        "src/app/api/v1/hrm/payroll/config/route.ts",
+        "src/app/api/v1/hrm/payroll/periods/route.ts",
+        "src/app/api/v1/hrm/payroll/periods/[id]/route.ts",
+        "src/app/api/v1/hrm/payroll/periods/[id]/calculate/route.ts",
+        "src/app/api/v1/hrm/payroll/periods/[id]/approve/route.ts",
+        "src/app/api/v1/hrm/payroll/periods/[id]/reopen/route.ts",
+        "src/app/api/v1/hrm/payroll/periods/[id]/pay/route.ts",
+        "src/app/api/v1/hrm/payroll/periods/[id]/export/route.ts",
+        "src/app/api/v1/hrm/payroll/payslips/me/route.ts",
+        "src/app/api/v1/hrm/payroll/payslips/[id]/route.ts",
+        "src/app/api/v1/hrm/payroll/payslips/[id]/pdf/route.ts",
+        "src/components/hrm/PayrollPeriodFormModal.tsx",
+        "src/components/hrm/PayslipDetailModal.tsx",
+        "src/app/(portal)/hrm/payroll/page.tsx",
+        "src/app/(portal)/my/payslips/page.tsx",
+        "tests/api/hrm-payroll.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Next.js production build & ESLint",
+      "steps": [
+        "Kiểm tra RBAC 403 cho EMPLOYEE trên API quản trị nhưng truy cập được /payslips/me & tải PDF chính chủ",
+        "Kiểm tra đầy đủ vòng đời config, tạo kỳ, tính lương, chỉnh thưởng thủ công, duyệt, mở lại (validate lý do), chi trả & xuất Excel",
+        "Biên dịch production /hrm/payroll & /my/payslips đạt 0 lỗi TS/ESLint"
+      ],
+      "expected_result": "2/2 API test groups PASS, 112 routes build sạch, ESLint 0 lỗi",
+      "actual_result": "PASS — 2/2 API test groups PASS, 112 routes build sạch & ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-12",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-038",
+      "module": "hrm",
+      "feature": "Migration 000012 Kho tài sản (assets, asset_assignments) & Seed 3 quyền hrm.assets.* + 4 tài sản mẫu",
+      "spec_ref": "DB-01, DB-02, DB-03",
+      "target_files": [
+        "database/migrations/20261123_000012_init_hrm_assets.sql",
+        "src/config/database.ts",
+        "database/seed-core.ts",
+        "tests/database/hrm-assets-migration.test.ts"
+      ],
+      "type": "DB",
+      "preconditions": "Local MySQL 8+ (127.0.0.1)",
+      "steps": [
+        "Chạy npm run db:migrate tạo 2 bảng assets & asset_assignments với InnoDB, utf8mb4_unicode_ci, DECIMAL(18,2)",
+        "Chạy npm run db:seed:core 2 lần liên tiếp kiểm tra idempotent cho 3 quyền hrm.assets.* và 4 tài sản mẫu"
+      ],
+      "expected_result": "12/12 migrations APPLIED, 2/2 schema tests PASS, seed idempotent 2x thành công",
+      "actual_result": "PASS — 12/12 migrations APPLIED, 2/2 tests PASS, 3 quyền & 4 tài sản mẫu tồn tại trên MySQL",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-13",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-039",
+      "module": "hrm",
+      "feature": "Offboarding Guard cảnh báo tài sản chưa thu hồi khi nhân viên nghỉ việc & Biên bản bàn giao PDF tiếng Việt A4",
+      "spec_ref": "FR-02, FR-03, FR-04, FR-06",
+      "target_files": [
+        "src/modules/hrm/office/assets.service.ts",
+        "src/modules/hrm/office/asset-handover-pdf.service.ts",
+        "src/modules/hrm/employees/employees.schema.ts",
+        "src/modules/hrm/employees/employees.service.ts"
+      ],
+      "type": "INTEGRATION",
+      "preconditions": "Local MySQL đã seed NV0003 giữ TS-LT-001",
+      "steps": [
+        "Kiểm tra getUnreturnedAssetsForEmployee cho NV0003 trả về tài sản TS-LT-001 đang ACTIVE",
+        "Kiểm tra generateAssetHandoverPdf(1) sinh PDF tiếng Việt A4 chuẩn header %PDF-1.3"
+      ],
+      "expected_result": "Phát hiện chính xác tài sản chưa thu hồi và sinh file PDF tiếng Việt hợp lệ",
+      "actual_result": "PASS — NV0003 phát hiện TS-LT-001; PDF bien-ban-tai-san-TS-LT-001-1.pdf (41094 bytes, %PDF-1.3) hợp lệ",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-13",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-040",
+      "module": "hrm",
+      "feature": "8 API & UI Quản trị Kho Tài sản (/hrm/office/assets), Cấp phát/Thu hồi, Offboarding Alerts, Excel & ESS (/my/assets)",
+      "spec_ref": "FR-01..06, API-01..08, UI-01..04",
+      "target_files": [
+        "src/app/api/v1/hrm/admin-ops/assets/route.ts",
+        "src/app/api/v1/hrm/admin-ops/assets/[id]/route.ts",
+        "src/app/api/v1/hrm/admin-ops/assets/[id]/assign/route.ts",
+        "src/app/api/v1/hrm/admin-ops/assets/[id]/return/route.ts",
+        "src/app/api/v1/hrm/admin-ops/assets/offboarding-alerts/route.ts",
+        "src/app/api/v1/hrm/admin-ops/assets/export/route.ts",
+        "src/app/api/v1/hrm/admin-ops/assets/me/route.ts",
+        "src/app/api/v1/hrm/admin-ops/assets/assignments/[id]/pdf/route.ts",
+        "src/components/hrm/AssetFormModal.tsx",
+        "src/components/hrm/AssetAssignReturnModal.tsx",
+        "src/components/hrm/AssetDetailModal.tsx",
+        "src/app/(portal)/hrm/office/assets/page.tsx",
+        "src/app/(portal)/my/assets/page.tsx",
+        "tests/api/hrm-assets.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Next.js build & ESLint React 19",
+      "steps": [
+        "Kiểm tra RBAC 403 cho EMPLOYEE khi quản trị nhưng cho phép /me và tải PDF chính chủ",
+        "Kiểm tra CRUD, cấp phát/thu hồi, chặn 409 khi xóa TS đang cấp phát, offboarding alerts & xuất Excel",
+        "Biên dịch production /hrm/office/assets & /my/assets đạt 0 lỗi TS/ESLint"
+      ],
+      "expected_result": "2/2 API suites PASS, 122 routes build sạch, ESLint 0 lỗi",
+      "actual_result": "PASS — 2/2 API suites PASS, 122 routes build sạch & ESLint 0 lỗi",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-13",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-041",
+      "module": "hrm",
+      "feature": "Migration 000013 (meeting_rooms, room_bookings, announcements, announcement_reads) & Seed 5 quyền + 3 phòng họp HQ + 2 thông báo mẫu",
+      "spec_ref": "DB-01, DB-02, DB-03, DB-04, DB-05, FR-05",
+      "target_files": [
+        "database/migrations/20261123_000013_init_hrm_rooms_announcements.sql",
+        "src/config/database.ts",
+        "database/seed-core.ts",
+        "tests/database/hrm-rooms-announcements-migration.test.ts"
+      ],
+      "type": "DB",
+      "preconditions": "Local MySQL 8+ (127.0.0.1)",
+      "steps": [
+        "Chạy npm run db:migrate tạo 4 bảng InnoDB/utf8mb4 với composite index schedule & composite PK announcement_reads",
+        "Chạy npm run db:seed:core 2 lần liên tiếp kiểm tra idempotent cho 5 quyền hrm.{rooms,announcements}.*, 3 phòng họp HQ và 2 thông báo mẫu"
+      ],
+      "expected_result": "13/13 migrations APPLIED, 3/3 schema tests PASS, seed idempotent 2x thành công",
+      "actual_result": "PASS — 13/13 migrations APPLIED, 3/3 tests PASS, seed 2x [SEED CORE OK]",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-14",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-042",
+      "module": "hrm",
+      "feature": "Logic kiểm tra khung giờ đặt phòng (15p..12h, quá khứ), giao khoảng thời gian vs sát biên, sức chứa, thiết bị & tỷ lệ đọc",
+      "spec_ref": "FR-01, FR-02, FR-04",
+      "target_files": [
+        "src/modules/hrm/office/room-booking-validator.ts",
+        "src/modules/hrm/office/announcements.service.ts",
+        "tests/hrm/room-booking-validator.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra validateBookingTimeRange cho hợp lệ, giờ ngược, quá ngắn (<15p), quá dài (>12h), quá khứ và ngày không tồn tại",
+        "Kiểm tra doBookingIntervalsOverlap cho nối tiếp sát biên (false) và trùng một phần/toàn phần (true)",
+        "Kiểm tra validateRoomCapacity, normalizeEquipmentList và computeReadRatePercent"
+      ],
+      "expected_result": "3/3 unit test groups PASS, xử lý chính xác mọi ca biên",
+      "actual_result": "PASS — 3/3 test groups trong room-booking-validator.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-14",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-043",
+      "module": "hrm",
+      "feature": "5 API & UI Phòng họp (/hrm/office/meeting-rooms Calendar Ngày/Tuần) + Transaction FOR UPDATE chống double-booking thực tế trên MySQL",
+      "spec_ref": "FR-01, FR-02, FR-05, API-01..05, UI-01, UI-02, UI-05",
+      "target_files": [
+        "src/modules/hrm/office/meeting-rooms.service.ts",
+        "src/app/api/v1/hrm/admin-ops/meeting-rooms/route.ts",
+        "src/app/api/v1/hrm/admin-ops/meeting-rooms/[id]/route.ts",
+        "src/app/api/v1/hrm/admin-ops/room-bookings/route.ts",
+        "src/app/api/v1/hrm/admin-ops/room-bookings/[id]/route.ts",
+        "src/app/api/v1/hrm/admin-ops/room-bookings/[id]/cancel/route.ts",
+        "src/components/hrm/MeetingRoomFormModal.tsx",
+        "src/components/hrm/RoomBookingModal.tsx",
+        "src/app/(portal)/hrm/office/meeting-rooms/page.tsx",
+        "tests/api/hrm-meeting-rooms.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Local MySQL + Next.js build & ESLint React 19",
+      "steps": [
+        "Chạy tests/api/hrm-meeting-rooms.test.ts kiểm tra RBAC 403, CRUD phòng họp, 409 trùng lịch, 409 xóa phòng có lịch tương lai & hủy lịch",
+        "Chạy Live MySQL smoke test đặt 09:00-10:00, đặt trùng 09:30-10:30 (ROOM_BOOKING_CONFLICT), đặt nối tiếp 10:00-11:00 (thành công)",
+        "Biên dịch production /hrm/office/meeting-rooms đạt 0 lỗi TS/ESLint"
+      ],
+      "expected_result": "2/2 API suites PASS, Live MySQL double-booking check PASS, 134 routes build sạch",
+      "actual_result": "PASS — 2/2 API suites PASS, ROOM_BOOKING_CONFLICT & sát biên 10:00 xác thực trên MySQL, 134 routes build sạch",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-14",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-044",
+      "module": "hrm",
+      "feature": "5 API & UI Thông báo Nội bộ (/hrm/office/announcements), Ghim tin, Cảnh báo URGENT, Đánh dấu đã đọc idempotent & Thống kê người đọc",
+      "spec_ref": "FR-03, FR-04, FR-05, API-06..10, UI-03, UI-04, UI-05",
+      "target_files": [
+        "src/modules/hrm/office/announcements.service.ts",
+        "src/app/api/v1/hrm/admin-ops/announcements/route.ts",
+        "src/app/api/v1/hrm/admin-ops/announcements/[id]/route.ts",
+        "src/app/api/v1/hrm/admin-ops/announcements/[id]/publish/route.ts",
+        "src/app/api/v1/hrm/admin-ops/announcements/[id]/read/route.ts",
+        "src/app/api/v1/hrm/admin-ops/announcements/[id]/readers/route.ts",
+        "src/components/hrm/AnnouncementFormModal.tsx",
+        "src/components/hrm/AnnouncementDetailModal.tsx",
+        "src/app/(portal)/hrm/office/announcements/page.tsx",
+        "tests/api/hrm-announcements.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Local MySQL + Next.js build & ESLint React 19",
+      "steps": [
+        "Chạy tests/api/hrm-announcements.test.ts kiểm tra RBAC 403, vòng đời create/update/publish/409 re-publish/readers/soft delete",
+        "Chạy Live MySQL smoke test gọi markAnnouncementRead 2 lần liên tiếp xác thực INSERT IGNORE idempotent & tính readRatePercent",
+        "Biên dịch production /hrm/office/announcements đạt 0 lỗi TS/ESLint"
+      ],
+      "expected_result": "2/2 API suites PASS, Live MySQL read idempotency PASS, 134 routes build sạch",
+      "actual_result": "PASS — 2/2 API suites PASS, readIdempotent=true (33.3%) trên MySQL, 134 routes build sạch",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-14",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-045",
+      "module": "hrm",
+      "feature": "Logic phân quyền hiển thị Dashboard theo Role/Data Scope (chặn lộ quỹ lương) & công thức KPI/Biểu đồ",
+      "spec_ref": "FR-01, FR-02",
+      "target_files": [
+        "src/modules/hrm/dashboard/dashboard-metrics.ts",
+        "tests/hrm/dashboard-metrics.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Vitest",
+      "steps": [
+        "Kiểm tra resolveDashboardVisibility cho EMPLOYEE (OWN), HR_STAFF (BRANCH) và PAYROLL_ACCOUNTANT (ALL)",
+        "Kiểm tra computePercentage, computeDaysRemaining, formatPeriodMonthLabel, buildEmploymentStatusDistribution và buildAttendanceBreakdown"
+      ],
+      "expected_result": "Chặn canViewPayroll với các vai trò không có hrm.payroll.read; tính toán KPI & chuỗi biểu đồ chính xác 100%",
+      "actual_result": "PASS — 2/2 unit test groups trong dashboard-metrics.test.ts đạt",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-15",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-046",
+      "module": "hrm",
+      "feature": "API Dashboard Tổng hợp (/api/v1/hrm/dashboard/summary) & Giao diện /dashboard với 4 Biểu đồ Recharts (MIT) + ESS",
+      "spec_ref": "FR-01, FR-02, API-01, UI-01, UI-02",
+      "target_files": [
+        "src/modules/hrm/dashboard/dashboard.service.ts",
+        "src/app/api/v1/hrm/dashboard/summary/route.ts",
+        "src/components/hrm/HrmDashboardCharts.tsx",
+        "src/app/(portal)/dashboard/page.tsx",
+        "tests/api/hrm-dashboard.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest + Local MySQL + recharts (MIT) + Next.js build",
+      "steps": [
+        "Chạy tests/api/hrm-dashboard.test.ts kiểm tra RBAC 403, truyền tham số branchId/year/month và lỗi 403 FORBIDDEN_BRANCH",
+        "Chạy Live MySQL smoke test so sánh SUPER_ADMIN và EMPLOYEE (OWN) xác thực không lộ quỹ lương & nhận đủ ESS",
+        "Biên dịch production /dashboard kèm 4 biểu đồ Recharts và ESLint React 19"
+      ],
+      "expected_result": "2/2 API tests PASS, Live MySQL role-visibility PASS, 135 routes build sạch, ESLint 0 lỗi",
+      "actual_result": "PASS — 2/2 API tests PASS, Live MySQL empPayrollHidden=true & empWorkforceHidden=true, 135 routes build sạch",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-15",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-HRM-047",
+      "module": "core",
+      "feature": "Kiểm thử Hồi quy Kiến trúc Toàn hệ thống Giai đoạn 1: 11/11 Portable Zero Business Coupling, RBAC Matrix & CRM Plug-in Readiness",
+      "spec_ref": "FR-03, FR-04",
+      "target_files": [
+        "src/lib/portable/*",
+        "src/modules/registry.ts",
+        "src/modules/approvals/approval-hooks.ts",
+        "database/seed-core.ts",
+        "tests/architecture/system-regression-crm-readiness.test.ts"
+      ],
+      "type": "REGRESSION",
+      "preconditions": "Vitest + Toàn bộ 59 test suites Giai đoạn 1",
+      "steps": [
+        "Quét tĩnh toàn bộ 11 file trong src/lib/portable/ kiểm tra không import ngược nghiệp vụ/config/env",
+        "Kiểm tra PORTAL_MODULES có sẵn crm (COMING_SOON), lọc nav theo RBAC và cắm thử hook phê duyệt CRM_QUOTE vào Core Approval Engine",
+        "Chạy toàn bộ 59/59 test suites (142 tests), typecheck, lint, next build & MIT license audit"
+      ],
+      "expected_result": "4/4 architecture tests PASS, 59/59 test files (142/142 tests) PASS, 25/25 packages MIT (+typescript devDep đã duyệt)",
+      "actual_result": "PASS — 4/4 architecture tests PASS, 59/59 files (142/142 tests) PASS, 135 routes build sạch",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-15",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-026",
+      "module": "core",
+      "feature": "Giao diện chính Midnight Command (Phương án #2): Dual-Rail PortalShell, Split-Screen Login & Bento Dashboard",
+      "spec_ref": "UI-01, UI-02, UI-03, UI-04",
+      "target_files": [
+        "src/app/globals.css",
+        "src/app/layout.tsx",
+        "src/layouts/portal-navigation.ts",
+        "src/layouts/PortalShell.tsx",
+        "src/app/login/page.tsx",
+        "src/app/(portal)/dashboard/page.tsx",
+        "src/components/hrm/HrmDashboardCharts.tsx",
+        "src/components/portal/NotificationBell.tsx",
+        "src/components/system/SystemStatusCard.tsx",
+        "tests/unit/portal-shell-navigation.test.ts"
+      ],
+      "type": "UI",
+      "preconditions": "Vitest + ESLint React 19 + Next.js 16 production build",
+      "steps": [
+        "Chạy tests/unit/portal-shell-navigation.test.ts kiểm tra ánh xạ Dual-Rail theo pathname, bảo toàn RBAC & ẩn nhóm admin cho EMPLOYEE",
+        "Chạy hồi quy toàn bộ 61 test suites (149 tests), typecheck, eslint và next build 136 routes"
+      ],
+      "expected_result": "4/4 Dual-Rail tests PASS, 61/61 test files (149/149 tests) PASS, 0 lỗi TS/ESLint, 136 routes build sạch",
+      "actual_result": "PASS — 4/4 Dual-Rail tests PASS, 61/61 files (149/149 tests) PASS, 136/136 routes build sạch",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-17",
+      "last_tested_at": "2026-11-23"
+    },
+    {
+      "tc_id": "TC-CORE-027",
+      "module": "core",
+      "feature": "Tinh chỉnh UX/UI Portal: Design Studio 5 phương án, cursor: pointer toàn cục, Avatar gọn đáy Rail 1, Đăng xuất Topbar & Account Hub /my/profile",
+      "spec_ref": "UI-01, UI-02, UI-04",
+      "target_files": [
+        "src/app/globals.css",
+        "src/layouts/portal-navigation.ts",
+        "src/layouts/PortalShell.tsx",
+        "src/app/(portal)/my/profile/page.tsx",
+        "src/app/design-studio/page.tsx",
+        "tests/unit/portal-shell-navigation.test.ts",
+        "tests/unit/design-studio-data.test.ts"
+      ],
+      "type": "UI",
+      "preconditions": "Vitest + ESLint React 19 + Next.js 16 production build",
+      "steps": [
+        "Kiểm tra @layer base trong globals.css gán cursor: pointer cho mọi link/button/select và cursor: not-allowed cho trạng thái disabled",
+        "Kiểm tra getUserInitials, Avatar đáy Rail 1 dẫn tới /my/profile (Account & Security Hub cho cả SUPER_ADMIN & EMPLOYEE) và nút Đăng xuất ở góc trên phải Topbar",
+        "Chạy toàn bộ 61 test suites (150 tests), typecheck, eslint và next build 136 routes"
+      ],
+      "expected_result": "5/5 portal-shell-navigation tests + 3/3 design-studio tests PASS, 61/61 test files (150/150 tests) PASS, 0 lỗi TS/ESLint, 136 routes build sạch",
+      "actual_result": "PASS — 61/61 test files (150/150 tests) PASS, tsc & eslint 0 lỗi, 136/136 routes build sạch",
+      "status": "PASS",
+      "last_task_id": "TASK-20261123-19",
+      "last_tested_at": "2026-11-23"
+    }
+  ],
+  "runs": [
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-02",
+      "total_executed": 10,
+      "passed": 10,
+      "failed": 0,
+      "regression_matched": [],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-02.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-03",
+      "total_executed": 13,
+      "passed": 13,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-001",
+        "TC-CORE-002",
+        "TC-CORE-009",
+        "TC-CORE-010"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-03.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-04",
+      "total_executed": 10,
+      "passed": 10,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-04.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-05",
+      "total_executed": 9,
+      "passed": 9,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-05.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-06",
+      "total_executed": 14,
+      "passed": 14,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-001",
+        "TC-CORE-002",
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017",
+        "TC-CORE-021",
+        "TC-CORE-025",
+        "TC-HRM-002"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-06.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-07",
+      "total_executed": 13,
+      "passed": 13,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017",
+        "TC-CORE-021",
+        "TC-CORE-025",
+        "TC-HRM-002",
+        "TC-HRM-007",
+        "TC-HRM-011"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-07.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-08",
+      "total_executed": 15,
+      "passed": 15,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017",
+        "TC-CORE-021",
+        "TC-CORE-023",
+        "TC-CORE-025",
+        "TC-HRM-002",
+        "TC-HRM-007",
+        "TC-HRM-012"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-08.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-09",
+      "total_executed": 13,
+      "passed": 13,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-CORE-013",
+        "TC-CORE-021",
+        "TC-CORE-023",
+        "TC-HRM-002",
+        "TC-HRM-007",
+        "TC-HRM-012",
+        "TC-HRM-016",
+        "TC-HRM-020"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-09.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-10",
+      "total_executed": 17,
+      "passed": 17,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017",
+        "TC-CORE-021",
+        "TC-CORE-025",
+        "TC-HRM-002",
+        "TC-HRM-007",
+        "TC-HRM-012",
+        "TC-HRM-016",
+        "TC-HRM-021"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-10.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-11",
+      "total_executed": 9,
+      "passed": 9,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-HRM-016",
+        "TC-HRM-021",
+        "TC-HRM-026",
+        "TC-HRM-029",
+        "TC-HRM-030"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-11.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-12",
+      "total_executed": 14,
+      "passed": 14,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-CORE-007",
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017",
+        "TC-CORE-025",
+        "TC-HRM-006",
+        "TC-HRM-013",
+        "TC-HRM-031",
+        "TC-HRM-033"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-12.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-13",
+      "total_executed": 11,
+      "passed": 11,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-002",
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017",
+        "TC-CORE-025",
+        "TC-HRM-006",
+        "TC-HRM-008",
+        "TC-HRM-034"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-13.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-14",
+      "total_executed": 8,
+      "passed": 8,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-003",
+        "TC-CORE-008",
+        "TC-CORE-016",
+        "TC-HRM-038"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-14.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-15",
+      "total_executed": 14,
+      "passed": 14,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-001",
+        "TC-CORE-016",
+        "TC-CORE-017"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-15.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "TASK-20261123-17",
+      "total_executed": 5,
+      "passed": 5,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-001",
+        "TC-CORE-016",
+        "TC-HRM-046",
+        "TC-HRM-047"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-17.test.log.md"
+    },
+    {
+      "run_date": "2026-11-23",
+      "task_id": "PHASE1-CONSOLIDATED",
+      "total_executed": 74,
+      "passed": 74,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-001..TC-CORE-027",
+        "TC-HRM-001..TC-HRM-047"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-23_PHASE1-CONSOLIDATED.test.log.md"
+    }
+  ]
+}

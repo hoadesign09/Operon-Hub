@@ -1,0 +1,48 @@
+{
+  "name": "operon-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Operon Hub — Cổng quản lý vận hành doanh nghiệp SME (Core Portal + HRM, mở rộng CRM)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "tsx --env-file-if-exists=.env database/migrator.ts up",
+    "db:rollback": "tsx --env-file-if-exists=.env database/migrator.ts down",
+    "db:status": "tsx --env-file-if-exists=.env database/migrator.ts status",
+    "db:seed:core": "tsx --env-file-if-exists=.env database/seed-core.ts"
+  },
+  "dependencies": {
+    "@tabler/icons-react": "^3.34.0",
+    "clsx": "^2.1.1",
+    "dayjs": "^1.11.13",
+    "exceljs": "^4.4.0",
+    "jose": "^6.0.11",
+    "kysely": "^0.28.2",
+    "mysql2": "^3.14.1",
+    "next": "^16.4.6",
+    "pdfmake": "^0.2.20",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "recharts": "^3.11.0",
+    "tailwind-merge": "^3.3.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "^22.15.0",
+    "@types/pdfmake": "^0.2.12",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.28.0",
+    "eslint-config-next": "^16.4.6",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.3.5",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.0"
+  }
+}

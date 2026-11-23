@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --midnight-rail: #080e1a;
+  --midnight-panel: #0f172a;
+  --midnight-surface: #1e293b;
+  --midnight-canvas: #eef2f6;
+  --midnight-accent: #2563eb;
+  --midnight-cyan: #0ea5e9;
+}
+
+@layer base {
+  a[href],
+  [role="link"],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"],
+  select:disabled {
+    cursor: not-allowed;
+  }
+}
+
+body {
+  background-color: var(--midnight-canvas);
+}
+
+/* Subtle dark scrollbar for Midnight Command navigation panels */
+.midnight-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.midnight-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.midnight-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 9999px;
+}
+
+.midnight-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}

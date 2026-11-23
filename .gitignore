@@ -1,0 +1,30 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# Next.js
+/.next/
+/out/
+
+# Build & Coverage
+/build
+/dist
+/coverage
+
+# Environment
+.env
+.env*.local
+
+# Uploads & Logs
+/uploads
+*.log
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# OS
+.DS_Store
+Thumbs.db

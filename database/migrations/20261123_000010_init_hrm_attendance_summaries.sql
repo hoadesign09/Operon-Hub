@@ -1,0 +1,42 @@
+-- UP
+CREATE TABLE IF NOT EXISTS attendance_summaries (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  employee_id BIGINT UNSIGNED NOT NULL,
+  branch_id BIGINT UNSIGNED NOT NULL,
+  year SMALLINT UNSIGNED NOT NULL,
+  month TINYINT UNSIGNED NOT NULL,
+  standard_work_days DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  actual_work_days DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  business_trip_days DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  paid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  unpaid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  holiday_days DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  payable_days DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  ot_hours_150 DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  ot_hours_200 DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  ot_hours_300 DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  late_count INT UNSIGNED NOT NULL DEFAULT 0,
+  total_late_minutes INT UNSIGNED NOT NULL DEFAULT 0,
+  early_leave_count INT UNSIGNED NOT NULL DEFAULT 0,
+  total_early_leave_minutes INT UNSIGNED NOT NULL DEFAULT 0,
+  status ENUM('DRAFT', 'LOCKED') NOT NULL DEFAULT 'DRAFT',
+  locked_by BIGINT UNSIGNED NULL,
+  locked_at DATETIME NULL,
+  adjustment_note VARCHAR(500) NULL,
+  created_by BIGINT UNSIGNED NULL,
+  updated_by BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_attendance_summaries_emp_ym (employee_id, year, month),
+  KEY idx_attendance_summaries_branch_ym (branch_id, year, month),
+  KEY idx_attendance_summaries_status (status),
+  KEY idx_attendance_summaries_deleted_at (deleted_at),
+  CONSTRAINT fk_attendance_summaries_employee_id FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_attendance_summaries_branch_id FOREIGN KEY (branch_id) REFERENCES branches (id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_attendance_summaries_locked_by FOREIGN KEY (locked_by) REFERENCES users (id) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DOWN
+DROP TABLE IF EXISTS attendance_summaries;
