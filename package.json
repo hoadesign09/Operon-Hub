@@ -1,6 +1,7 @@
 {
   "name": "operon-hub",
   "version": "1.0.0",
+  "license": "MIT",
   "private": true,
   "description": "Operon Hub — Cổng quản lý vận hành doanh nghiệp SME (Core Portal + HRM, mở rộng CRM)",
   "scripts": {
