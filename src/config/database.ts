@@ -31,7 +31,7 @@ export type PayslipItemSource = 'AUTO' | 'MANUAL';
 export type AssetCategory = 'LAPTOP' | 'MONITOR' | 'PHONE' | 'FURNITURE' | 'OTHER';
 export type AssetStatus = 'AVAILABLE' | 'ASSIGNED' | 'MAINTENANCE' | 'RETIRED';
 export type AssetAssignmentStatus = 'ACTIVE' | 'RETURNED';
-export type RoomBookingStatus = 'CONFIRMED' | 'CANCELLED';
+export type RoomBookingStatus = 'PENDING' | 'IN_PROGRESS' | 'CANCELLED' | 'DONE';
 export type AnnouncementCategory = 'GENERAL' | 'HR_POLICY' | 'EVENT' | 'URGENT';
 export type AnnouncementStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 

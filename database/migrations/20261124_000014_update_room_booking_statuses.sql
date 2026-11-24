@@ -1,0 +1,29 @@
+-- UP
+ALTER TABLE room_bookings
+  MODIFY COLUMN status ENUM('CONFIRMED', 'PENDING', 'IN_PROGRESS', 'CANCELLED', 'DONE') NOT NULL DEFAULT 'PENDING';
+
+UPDATE room_bookings
+SET status = 'DONE'
+WHERE status = 'CONFIRMED' AND end_time <= NOW();
+
+UPDATE room_bookings
+SET status = 'IN_PROGRESS'
+WHERE status = 'CONFIRMED' AND start_time <= NOW() AND end_time > NOW();
+
+UPDATE room_bookings
+SET status = 'PENDING'
+WHERE status = 'CONFIRMED';
+
+ALTER TABLE room_bookings
+  MODIFY COLUMN status ENUM('PENDING', 'IN_PROGRESS', 'CANCELLED', 'DONE') NOT NULL DEFAULT 'PENDING';
+
+-- DOWN
+ALTER TABLE room_bookings
+  MODIFY COLUMN status ENUM('CONFIRMED', 'PENDING', 'IN_PROGRESS', 'CANCELLED', 'DONE') NOT NULL DEFAULT 'CONFIRMED';
+
+UPDATE room_bookings
+SET status = 'CONFIRMED'
+WHERE status IN ('PENDING', 'IN_PROGRESS', 'DONE');
+
+ALTER TABLE room_bookings
+  MODIFY COLUMN status ENUM('CONFIRMED', 'CANCELLED') NOT NULL DEFAULT 'CONFIRMED';

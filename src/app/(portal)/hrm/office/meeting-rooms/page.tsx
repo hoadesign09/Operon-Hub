@@ -9,6 +9,7 @@ import {
   IconClock,
   IconDoor,
   IconEdit,
+  IconEye,
   IconPlus,
   IconRefresh,
   IconTrash,
@@ -21,6 +22,7 @@ import {
 import { RoomBookingModal } from '@/components/hrm/RoomBookingModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import type { RoomBookingStatus } from '@/config/database';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
 import type {
   MeetingRoomItem,
@@ -28,9 +30,11 @@ import type {
   RoomBookingItem,
 } from '@/modules/hrm/office/meeting-rooms.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
+import { formatPeriodLabel } from '@/shared/i18n/translator';
 
 type MainTab = 'calendar' | 'rooms' | 'mine';
-type CalendarMode = 'day' | 'week';
+type CalendarMode = 'day' | 'week' | 'month';
+type BookingStatusFilter = 'ALL' | RoomBookingStatus;
 
 const DAY_HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 const WEEKDAY_SHORT: Array<{ vi: string; en: string }> = [
@@ -42,6 +46,65 @@ const WEEKDAY_SHORT: Array<{ vi: string; en: string }> = [
   { vi: 'T6', en: 'Fri' },
   { vi: 'T7', en: 'Sat' },
 ];
+const MONTH_WEEKDAY_HEADERS: Array<{ vi: string; en: string }> = [
+  { vi: 'T2', en: 'Mon' },
+  { vi: 'T3', en: 'Tue' },
+  { vi: 'T4', en: 'Wed' },
+  { vi: 'T5', en: 'Thu' },
+  { vi: 'T6', en: 'Fri' },
+  { vi: 'T7', en: 'Sat' },
+  { vi: 'CN', en: 'Sun' },
+];
+
+const BOOKING_STATUS_META: Record<
+  RoomBookingStatus,
+  {
+    vi: string;
+    en: string;
+    badgeCls: string;
+    dotCls: string;
+    cardCls: string;
+    timeCls: string;
+    titleCls: string;
+  }
+> = {
+  PENDING: {
+    vi: 'Chờ diễn ra',
+    en: 'Pending',
+    badgeCls: 'border-amber-200 bg-amber-50 text-amber-700',
+    dotCls: 'bg-amber-500',
+    cardCls: 'border-amber-200 bg-white hover:border-amber-400 hover:bg-amber-50/40',
+    timeCls: 'text-amber-700',
+    titleCls: 'text-slate-900',
+  },
+  IN_PROGRESS: {
+    vi: 'Đang diễn ra',
+    en: 'In-progress',
+    badgeCls: 'border-blue-200 bg-blue-50 text-blue-700',
+    dotCls: 'bg-blue-500 animate-pulse',
+    cardCls: 'border-blue-300 bg-blue-50/60 hover:border-blue-500 hover:bg-blue-100/60',
+    timeCls: 'text-blue-700',
+    titleCls: 'text-slate-900',
+  },
+  DONE: {
+    vi: 'Hoàn thành',
+    en: 'Done',
+    badgeCls: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    dotCls: 'bg-emerald-500',
+    cardCls: 'border-emerald-200 bg-emerald-50/30 hover:border-emerald-400 hover:bg-emerald-50/60',
+    timeCls: 'text-emerald-700',
+    titleCls: 'text-slate-800',
+  },
+  CANCELLED: {
+    vi: 'Đã hủy',
+    en: 'Cancelled',
+    badgeCls: 'border-rose-200 bg-rose-50 text-rose-600',
+    dotCls: 'bg-rose-500',
+    cardCls: 'border-slate-200 bg-slate-50/80 hover:border-slate-300 hover:bg-slate-100/80',
+    timeCls: 'text-slate-400',
+    titleCls: 'text-slate-500 line-through',
+  },
+};
 
 function formatIsoDateLocal(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -60,6 +123,27 @@ function addDays(baseDate: Date, delta: number): Date {
   const copy = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
   copy.setDate(copy.getDate() + delta);
   return copy;
+}
+
+function addMonths(baseDate: Date, delta: number): Date {
+  return new Date(baseDate.getFullYear(), baseDate.getMonth() + delta, 1);
+}
+
+function buildMonthGridDays(baseDate: Date): Date[] {
+  const firstOfMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+  const lastOfMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+  const gridStart = getMondayOfWeek(firstOfMonth);
+  const lastDayOfWeek = lastOfMonth.getDay();
+  const trailingDays = lastDayOfWeek === 0 ? 0 : 7 - lastDayOfWeek;
+  const gridEnd = addDays(lastOfMonth, trailingDays);
+
+  const days: Date[] = [];
+  let cursor = gridStart;
+  while (cursor.getTime() <= gridEnd.getTime()) {
+    days.push(cursor);
+    cursor = addDays(cursor, 1);
+  }
+  return days;
 }
 
 function formatTimeHHMM(iso: string): string {
@@ -105,7 +189,8 @@ export default function MeetingRoomsPage() {
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('week');
   const [anchorDate, setAnchorDate] = useState<Date>(() => new Date());
   const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('');
-  const [mineStatusFilter, setMineStatusFilter] = useState<'ALL' | 'CONFIRMED' | 'CANCELLED'>('ALL');
+  const [calendarStatusFilter, setCalendarStatusFilter] = useState<BookingStatusFilter>('ALL');
+  const [mineStatusFilter, setMineStatusFilter] = useState<BookingStatusFilter>('ALL');
 
   const [rooms, setRooms] = useState<MeetingRoomItem[]>([]);
   const [stats, setStats] = useState<MeetingRoomStats>({
@@ -142,16 +227,24 @@ export default function MeetingRoomsPage() {
     return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   }, [anchorDate]);
 
+  const monthDays = useMemo(() => buildMonthGridDays(anchorDate), [anchorDate]);
+
   const dateRange = useMemo(() => {
     if (calendarMode === 'day') {
       const iso = formatIsoDateLocal(anchorDate);
       return { dateFrom: iso, dateTo: iso };
     }
+    if (calendarMode === 'month') {
+      return {
+        dateFrom: formatIsoDateLocal(monthDays[0]),
+        dateTo: formatIsoDateLocal(monthDays[monthDays.length - 1]),
+      };
+    }
     return {
       dateFrom: formatIsoDateLocal(weekDays[0]),
       dateTo: formatIsoDateLocal(weekDays[6]),
     };
-  }, [anchorDate, calendarMode, weekDays]);
+  }, [anchorDate, calendarMode, monthDays, weekDays]);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -166,8 +259,7 @@ export default function MeetingRoomsPage() {
       try {
         const roomParams = new URLSearchParams({ limit: '100' });
         const calParams = new URLSearchParams({
-          limit: '300',
-          status: 'CONFIRMED',
+          limit: calendarMode === 'month' ? '500' : '300',
           dateFrom: dateRange.dateFrom,
           dateTo: dateRange.dateTo,
         });
@@ -183,6 +275,9 @@ export default function MeetingRoomsPage() {
         }
         if (selectedRoomFilter) {
           calParams.set('roomId', selectedRoomFilter);
+        }
+        if (calendarStatusFilter !== 'ALL') {
+          calParams.set('status', calendarStatusFilter);
         }
         if (mineStatusFilter !== 'ALL') {
           mineParams.set('status', mineStatusFilter);
@@ -246,7 +341,16 @@ export default function MeetingRoomsPage() {
     })();
 
     return () => controller.abort();
-  }, [dateRange.dateFrom, dateRange.dateTo, mineStatusFilter, reloadTick, selectedBranchId, selectedRoomFilter]);
+  }, [
+    calendarMode,
+    calendarStatusFilter,
+    dateRange.dateFrom,
+    dateRange.dateTo,
+    mineStatusFilter,
+    reloadTick,
+    selectedBranchId,
+    selectedRoomFilter,
+  ]);
 
   function openNewBookingModal(preset?: { roomId?: number | null; date?: string; startHour?: string }) {
     setActiveBooking(null);
@@ -280,6 +384,18 @@ export default function MeetingRoomsPage() {
     setIsRoomModalOpen(true);
   }
 
+  function handleNavigatePeriod(direction: -1 | 1) {
+    setAnchorDate((d) => {
+      if (calendarMode === 'day') {
+        return addDays(d, direction);
+      }
+      if (calendarMode === 'month') {
+        return addMonths(d, direction);
+      }
+      return addDays(d, direction * 7);
+    });
+  }
+
   async function handleConfirmDeleteRoom() {
     if (!deletingRoom) {
       return;
@@ -296,18 +412,25 @@ export default function MeetingRoomsPage() {
 
       if (!res.ok || !json?.success) {
         setErrorMessage(
-          json?.error?.message ?? tr('Không thể xóa phòng họp.', 'Failed to delete meeting room.'),
+          json?.error?.message ??
+            tr('Không thể lưu trữ phòng họp.', 'Failed to archive meeting room.'),
         );
         return;
       }
       setDeletingRoom(null);
       showToast(
-        tr(`Đã xóa phòng họp "${deletingRoom.name}".`, `Deleted meeting room "${deletingRoom.name}".`),
+        tr(
+          `Đã lưu trữ (ẩn) phòng họp "${deletingRoom.name}".`,
+          `Archived meeting room "${deletingRoom.name}".`,
+        ),
       );
       setReloadTick((v) => v + 1);
     } catch {
       setErrorMessage(
-        tr('Lỗi kết nối khi xóa phòng họp.', 'Connection error while deleting meeting room.'),
+        tr(
+          'Lỗi kết nối khi lưu trữ phòng họp.',
+          'Connection error while archiving meeting room.',
+        ),
       );
     } finally {
       setIsDeletingRoom(false);
@@ -323,9 +446,26 @@ export default function MeetingRoomsPage() {
   }, [rooms, selectedRoomFilter]);
 
   const anchorDateIso = formatIsoDateLocal(anchorDate);
+  const todayIso = formatIsoDateLocal(new Date(loadedAtMs));
+  const anchorMonth = anchorDate.getMonth();
+  const anchorYear = anchorDate.getFullYear();
   const upcomingMineCount = myBookings.filter(
-    (b) => b.status === 'CONFIRMED' && new Date(b.endTime).getTime() > loadedAtMs,
+    (b) => b.status === 'PENDING' || b.status === 'IN_PROGRESS',
   ).length;
+
+  function renderStatusBadge(status: RoomBookingStatus, compact: boolean = false) {
+    const meta = BOOKING_STATUS_META[status];
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full border font-semibold ${meta.badgeCls} ${
+          compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2.5 py-0.5 text-xs'
+        }`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${meta.dotCls}`} />
+        <span>{locale === 'en' ? meta.en : meta.vi}</span>
+      </span>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -337,8 +477,8 @@ export default function MeetingRoomsPage() {
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {tr(
-              'Tra cứu lịch trống theo ngày/tuần và đặt phòng họp chống trùng lịch tự động',
-              'Check daily/weekly availability and book meeting rooms with automatic conflict prevention',
+              'Tra cứu lịch trống theo ngày/tuần/tháng, theo dõi trạng thái cuộc họp và đặt phòng chống trùng lịch tự động',
+              'Check daily/weekly/monthly availability, track booking statuses, and book rooms with automatic conflict prevention',
             )}
           </p>
         </div>
@@ -398,7 +538,7 @@ export default function MeetingRoomsPage() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>{tr('Lịch họp sắp tới của tôi', 'My Upcoming Meetings')}</span>
+            <span>{tr('Lịch họp sắp tới / đang diễn ra của tôi', 'My Pending & In-progress')}</span>
             <IconClock size={18} className="text-amber-600" />
           </div>
           <div className="mt-2 text-2xl font-bold text-slate-900">{upcomingMineCount}</div>
@@ -437,6 +577,19 @@ export default function MeetingRoomsPage() {
         {activeTab === 'calendar' && (
           <div className="flex flex-wrap items-center gap-2 pb-2">
             <select
+              value={calendarStatusFilter}
+              onChange={(e) => setCalendarStatusFilter(e.target.value as BookingStatusFilter)}
+              aria-label={tr('Lọc theo trạng thái lịch họp', 'Filter by booking status')}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-blue-500"
+            >
+              <option value="ALL">{tr('Tất cả trạng thái', 'All Statuses')}</option>
+              <option value="PENDING">{tr('Chờ diễn ra (Pending)', 'Pending')}</option>
+              <option value="IN_PROGRESS">{tr('Đang diễn ra (In-progress)', 'In-progress')}</option>
+              <option value="DONE">{tr('Hoàn thành (Done)', 'Done')}</option>
+              <option value="CANCELLED">{tr('Đã hủy (Cancelled)', 'Cancelled')}</option>
+            </select>
+
+            <select
               value={selectedRoomFilter}
               onChange={(e) => setSelectedRoomFilter(e.target.value)}
               className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-blue-500"
@@ -468,12 +621,21 @@ export default function MeetingRoomsPage() {
               >
                 {tr('Theo tuần', 'Week')}
               </button>
+              <button
+                type="button"
+                onClick={() => setCalendarMode('month')}
+                className={`rounded-lg px-3 py-1 ${
+                  calendarMode === 'month' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {tr('Theo tháng', 'Month')}
+              </button>
             </div>
 
             <div className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-1.5 py-1">
               <button
                 type="button"
-                onClick={() => setAnchorDate((d) => addDays(d, calendarMode === 'day' ? -1 : -7))}
+                onClick={() => handleNavigatePeriod(-1)}
                 className="rounded-lg p-1 text-slate-600 hover:bg-slate-100"
                 aria-label={tr('Khoảng trước', 'Previous period')}
               >
@@ -488,7 +650,7 @@ export default function MeetingRoomsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setAnchorDate((d) => addDays(d, calendarMode === 'day' ? 1 : 7))}
+                onClick={() => handleNavigatePeriod(1)}
                 className="rounded-lg p-1 text-slate-600 hover:bg-slate-100"
                 aria-label={tr('Khoảng sau', 'Next period')}
               >
@@ -527,24 +689,144 @@ export default function MeetingRoomsPage() {
                     `Lịch ngày ${formatDateVN(anchorDateIso)}`,
                     `Schedule for ${formatDateVN(anchorDateIso)}`,
                   )
-                : tr(
-                    `Tuần từ ${formatDateVN(dateRange.dateFrom)} đến ${formatDateVN(dateRange.dateTo)}`,
-                    `Week of ${formatDateVN(dateRange.dateFrom)} – ${formatDateVN(dateRange.dateTo)}`,
-                  )}
+                : calendarMode === 'month'
+                  ? tr(
+                      `Lịch ${formatPeriodLabel('vi', anchorMonth + 1, anchorYear)}`,
+                      `Schedule for ${formatPeriodLabel('en', anchorMonth + 1, anchorYear)}`,
+                    )
+                  : tr(
+                      `Tuần từ ${formatDateVN(dateRange.dateFrom)} đến ${formatDateVN(dateRange.dateTo)}`,
+                      `Week of ${formatDateVN(dateRange.dateFrom)} – ${formatDateVN(dateRange.dateTo)}`,
+                    )}
             </h2>
             <span className="text-xs text-slate-500">
               {tr(
-                `Hiển thị ${bookings.length} lịch họp đã xác nhận • Nhấn vào ô trống để đặt nhanh`,
-                `Showing ${bookings.length} confirmed bookings • Click an empty slot to quick-book`,
+                `Hiển thị ${bookings.length} lịch họp • Nhấn vào lịch họp để Xem chi tiết (Sửa / Hủy)`,
+                `Showing ${bookings.length} bookings • Click any booking to View details (Edit / Cancel)`,
               )}
             </span>
           </div>
 
-          {calendarMode === 'week' ? (
+          {calendarMode === 'month' ? (
+            <div className="overflow-x-auto">
+              <div className="min-w-[780px]">
+                <div className="mb-1.5 grid grid-cols-7 gap-2">
+                  {MONTH_WEEKDAY_HEADERS.map((wd) => (
+                    <div
+                      key={wd.en}
+                      className="rounded-lg bg-slate-50 py-1.5 text-center text-[11px] font-bold tracking-wide text-slate-600 uppercase"
+                    >
+                      {locale === 'en' ? wd.en : wd.vi}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-2">
+                  {monthDays.map((dayDate) => {
+                    const iso = formatIsoDateLocal(dayDate);
+                    const isCurrentMonth = dayDate.getMonth() === anchorMonth;
+                    const isToday = iso === todayIso;
+                    const isPastDay = iso < todayIso;
+                    const dayBookings = bookings.filter((b) => bookingTouchesDate(b, iso));
+                    const visibleBookings = dayBookings.slice(0, 3);
+                    const overflowCount = dayBookings.length - visibleBookings.length;
+
+                    return (
+                      <div
+                        key={iso}
+                        className={`flex min-h-[124px] flex-col rounded-xl border p-2 transition ${
+                          isToday
+                            ? 'border-blue-400 bg-blue-50/40'
+                            : !isCurrentMonth
+                              ? 'border-slate-100 bg-slate-50/60 opacity-65'
+                              : isPastDay
+                                ? 'border-slate-200/70 bg-slate-50/50'
+                                : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <div className="mb-1.5 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAnchorDate(dayDate);
+                              setCalendarMode('day');
+                            }}
+                            title={tr('Xem lịch chi tiết ngày này', 'Open day view')}
+                            className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold transition ${
+                              isToday
+                                ? 'bg-blue-600 text-white'
+                                : isPastDay
+                                  ? 'text-slate-400 hover:bg-slate-200/70 hover:text-slate-700'
+                                  : 'text-slate-800 hover:bg-slate-100'
+                            }`}
+                          >
+                            {dayDate.getDate()}
+                          </button>
+
+                          {canBookRooms && !isPastDay && (
+                            <button
+                              type="button"
+                              title={tr('Đặt phòng vào ngày này', 'Book a room on this day')}
+                              onClick={() =>
+                                openNewBookingModal({
+                                  date: iso,
+                                  startHour: isToday ? undefined : '09:00',
+                                })
+                              }
+                              className="rounded-md p-0.5 text-slate-400 hover:bg-blue-100 hover:text-blue-700"
+                            >
+                              <IconPlus size={14} />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex-1 space-y-1">
+                          {visibleBookings.map((bk) => {
+                            const meta = BOOKING_STATUS_META[bk.status];
+                            return (
+                              <button
+                                key={bk.id}
+                                type="button"
+                                onClick={() => openBookingDetailModal(bk)}
+                                title={`${formatTimeHHMM(bk.startTime)}–${formatTimeHHMM(bk.endTime)} • ${bk.title} (${bk.roomCode})`}
+                                className={`flex w-full items-center gap-1.5 rounded-lg border px-1.5 py-1 text-left text-[11px] transition ${meta.cardCls}`}
+                              >
+                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dotCls}`} />
+                                <span className={`shrink-0 font-semibold tabular-nums ${meta.timeCls}`}>
+                                  {formatTimeHHMM(bk.startTime)}
+                                </span>
+                                <span className={`truncate font-medium ${meta.titleCls}`}>
+                                  {bk.title}
+                                </span>
+                              </button>
+                            );
+                          })}
+
+                          {overflowCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAnchorDate(dayDate);
+                                setCalendarMode('day');
+                              }}
+                              className="w-full rounded-md py-0.5 text-center text-[11px] font-semibold text-blue-600 hover:bg-blue-50"
+                            >
+                              {tr(`+${overflowCount} lịch khác`, `+${overflowCount} more`)}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : calendarMode === 'week' ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
               {weekDays.map((dayDate) => {
                 const iso = formatIsoDateLocal(dayDate);
-                const isToday = iso === formatIsoDateLocal(new Date());
+                const isToday = iso === todayIso;
+                const isPastDay = iso < todayIso;
                 const dayBookings = bookings.filter((b) => bookingTouchesDate(b, iso));
                 const weekdayLabel = WEEKDAY_SHORT[dayDate.getDay()];
 
@@ -552,7 +834,11 @@ export default function MeetingRoomsPage() {
                   <div
                     key={iso}
                     className={`flex min-h-[260px] flex-col rounded-xl border p-2.5 ${
-                      isToday ? 'border-blue-300 bg-blue-50/40' : 'border-slate-200 bg-slate-50/40'
+                      isToday
+                        ? 'border-blue-300 bg-blue-50/40'
+                        : isPastDay
+                          ? 'border-slate-200/80 bg-slate-50/70'
+                          : 'border-slate-200 bg-slate-50/40'
                     }`}
                   >
                     <div className="mb-2 flex items-center justify-between border-b border-slate-200 pb-2">
@@ -562,17 +848,21 @@ export default function MeetingRoomsPage() {
                         </div>
                         <div
                           className={`text-sm font-bold ${
-                            isToday ? 'text-blue-700' : 'text-slate-900'
+                            isToday
+                              ? 'text-blue-700'
+                              : isPastDay
+                                ? 'text-slate-400'
+                                : 'text-slate-900'
                           }`}
                         >
                           {formatDateVN(iso).slice(0, 5)}
                         </div>
                       </div>
-                      {canBookRooms && (
+                      {canBookRooms && !isPastDay && (
                         <button
                           type="button"
                           title={tr('Đặt phòng vào ngày này', 'Book a room on this day')}
-                          onClick={() => openNewBookingModal({ date: iso, startHour: '09:00' })}
+                          onClick={() => openNewBookingModal({ date: iso, startHour: isToday ? undefined : '09:00' })}
                           className="rounded-lg p-1 text-slate-500 hover:bg-blue-100 hover:text-blue-700"
                         >
                           <IconPlus size={15} />
@@ -586,24 +876,33 @@ export default function MeetingRoomsPage() {
                           {tr('Trống lịch', 'No bookings')}
                         </div>
                       ) : (
-                        dayBookings.map((bk) => (
-                          <button
-                            key={bk.id}
-                            type="button"
-                            onClick={() => openBookingDetailModal(bk)}
-                            className="w-full rounded-xl border border-blue-200 bg-white p-2 text-left shadow-xs transition hover:border-blue-400 hover:bg-blue-50/40"
-                          >
-                            <div className="text-[11px] font-semibold text-blue-700">
-                              {formatTimeHHMM(bk.startTime)} – {formatTimeHHMM(bk.endTime)}
-                            </div>
-                            <div className="mt-0.5 line-clamp-2 text-xs font-semibold text-slate-900" title={bk.title}>
-                              {bk.title}
-                            </div>
-                            <div className="mt-1 truncate text-[11px] text-slate-500" title={bk.roomName}>
-                              {bk.roomCode} • {bk.bookedByEmployeeName}
-                            </div>
-                          </button>
-                        ))
+                        dayBookings.map((bk) => {
+                          const meta = BOOKING_STATUS_META[bk.status];
+                          return (
+                            <button
+                              key={bk.id}
+                              type="button"
+                              onClick={() => openBookingDetailModal(bk)}
+                              className={`w-full rounded-xl border p-2 text-left shadow-xs transition ${meta.cardCls}`}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-1">
+                                <span className={`text-[11px] font-semibold tabular-nums ${meta.timeCls}`}>
+                                  {formatTimeHHMM(bk.startTime)} – {formatTimeHHMM(bk.endTime)}
+                                </span>
+                                {renderStatusBadge(bk.status, true)}
+                              </div>
+                              <div
+                                className={`mt-1 line-clamp-2 text-xs font-semibold ${meta.titleCls}`}
+                                title={bk.title}
+                              >
+                                {bk.title}
+                              </div>
+                              <div className="mt-1 truncate text-[11px] text-slate-500" title={bk.roomName}>
+                                {bk.roomCode} • {bk.bookedByEmployeeName}
+                              </div>
+                            </button>
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -626,7 +925,7 @@ export default function MeetingRoomsPage() {
                       {tr('Khung giờ', 'Time Slot')}
                     </th>
                     {activeRoomsForDayGrid.map((room) => (
-                      <th key={room.id} className="min-w-[200px] border border-slate-200 px-3 py-2">
+                      <th key={room.id} className="min-w-[220px] border border-slate-200 px-3 py-2">
                         <div className="font-bold text-slate-900">
                           [{room.code}] {room.name}
                         </div>
@@ -639,64 +938,85 @@ export default function MeetingRoomsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {DAY_HOURS.map((hour) => (
-                    <tr key={hour}>
-                      <td className="border border-slate-200 bg-slate-50/70 px-3 py-2.5 font-semibold text-slate-600">
-                        {hour}
-                      </td>
-                      {activeRoomsForDayGrid.map((room) => {
-                        const slotBookings = bookings.filter(
-                          (b) =>
-                            b.roomId === room.id &&
-                            bookingTouchesHourSlot(b, anchorDateIso, hour),
-                        );
+                  {DAY_HOURS.map((hour) => {
+                    const slotStartMs = new Date(`${anchorDateIso}T${hour}:00`).getTime();
+                    const isSlotInPast = slotStartMs < loadedAtMs;
 
-                        return (
-                          <td
-                            key={`${room.id}-${hour}`}
-                            className="border border-slate-200 p-1.5 align-top"
-                          >
-                            {slotBookings.length > 0 ? (
+                    return (
+                      <tr key={hour}>
+                        <td className="border border-slate-200 bg-slate-50/70 px-3 py-2.5 font-semibold text-slate-600">
+                          {hour}
+                        </td>
+                        {activeRoomsForDayGrid.map((room) => {
+                          const slotBookings = bookings.filter(
+                            (b) =>
+                              b.roomId === room.id &&
+                              bookingTouchesHourSlot(b, anchorDateIso, hour),
+                          );
+                          const hasBlockingBooking = slotBookings.some(
+                            (b) => b.status !== 'CANCELLED',
+                          );
+
+                          return (
+                            <td
+                              key={`${room.id}-${hour}`}
+                              className={`border border-slate-200 p-1.5 align-top ${
+                                isSlotInPast ? 'bg-slate-50/60' : ''
+                              }`}
+                            >
                               <div className="space-y-1">
-                                {slotBookings.map((bk) => (
+                                {slotBookings.map((bk) => {
+                                  const meta = BOOKING_STATUS_META[bk.status];
+                                  return (
+                                    <button
+                                      key={bk.id}
+                                      type="button"
+                                      onClick={() => openBookingDetailModal(bk)}
+                                      className={`w-full rounded-lg border px-2 py-1.5 text-left transition ${meta.cardCls}`}
+                                    >
+                                      <div className="flex flex-wrap items-center justify-between gap-1">
+                                        <span className={`font-semibold tabular-nums ${meta.timeCls}`}>
+                                          {formatTimeHHMM(bk.startTime)}–{formatTimeHHMM(bk.endTime)}
+                                        </span>
+                                        {renderStatusBadge(bk.status, true)}
+                                      </div>
+                                      <div className={`mt-0.5 truncate font-semibold ${meta.titleCls}`}>
+                                        {bk.title}
+                                      </div>
+                                      <div className="truncate text-[11px] text-slate-500">
+                                        {bk.bookedByEmployeeName} ({bk.attendeesCount}{' '}
+                                        {tr('người', 'attendees')})
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+
+                                {!hasBlockingBooking && !isSlotInPast && canBookRooms ? (
                                   <button
-                                    key={bk.id}
                                     type="button"
-                                    onClick={() => openBookingDetailModal(bk)}
-                                    className="w-full rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-left hover:bg-blue-100"
+                                    onClick={() =>
+                                      openNewBookingModal({
+                                        roomId: room.id,
+                                        date: anchorDateIso,
+                                        startHour: hour,
+                                      })
+                                    }
+                                    className="flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-transparent text-[11px] text-slate-400 transition hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-600"
                                   >
-                                    <div className="font-semibold text-blue-800">
-                                      {formatTimeHHMM(bk.startTime)}–{formatTimeHHMM(bk.endTime)} • {bk.title}
-                                    </div>
-                                    <div className="truncate text-[11px] text-blue-700/80">
-                                      {bk.bookedByEmployeeName} ({bk.attendeesCount}{' '}
-                                      {tr('người', 'attendees')})
-                                    </div>
+                                    {tr('+ Đặt giờ này', '+ Book this slot')}
                                   </button>
-                                ))}
+                                ) : slotBookings.length === 0 && isSlotInPast ? (
+                                  <div className="flex h-9 items-center justify-center text-[11px] text-slate-300">
+                                    {tr('Đã qua', 'Past')}
+                                  </div>
+                                ) : null}
                               </div>
-                            ) : canBookRooms ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openNewBookingModal({
-                                    roomId: room.id,
-                                    date: anchorDateIso,
-                                    startHour: hour,
-                                  })
-                                }
-                                className="flex h-10 w-full items-center justify-center rounded-lg border border-dashed border-transparent text-[11px] text-slate-400 transition hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-600"
-                              >
-                                {tr('+ Đặt giờ này', '+ Book this slot')}
-                              </button>
-                            ) : (
-                              <div className="h-10" />
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -807,7 +1127,7 @@ export default function MeetingRoomsPage() {
                         type="button"
                         onClick={() => setDeletingRoom(room)}
                         className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
-                        title={tr('Xóa mềm phòng', 'Delete Room')}
+                        title={tr('Lưu trữ (ẩn) phòng', 'Archive Room')}
                       >
                         <IconTrash size={16} />
                       </button>
@@ -826,14 +1146,14 @@ export default function MeetingRoomsPage() {
             </h2>
             <select
               value={mineStatusFilter}
-              onChange={(e) =>
-                setMineStatusFilter(e.target.value as 'ALL' | 'CONFIRMED' | 'CANCELLED')
-              }
+              onChange={(e) => setMineStatusFilter(e.target.value as BookingStatusFilter)}
               className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-blue-500"
             >
               <option value="ALL">{tr('Tất cả trạng thái', 'All Statuses')}</option>
-              <option value="CONFIRMED">{tr('Đã xác nhận', 'Confirmed')}</option>
-              <option value="CANCELLED">{tr('Đã hủy', 'Cancelled')}</option>
+              <option value="PENDING">{tr('Chờ diễn ra (Pending)', 'Pending')}</option>
+              <option value="IN_PROGRESS">{tr('Đang diễn ra (In-progress)', 'In-progress')}</option>
+              <option value="DONE">{tr('Hoàn thành (Done)', 'Done')}</option>
+              <option value="CANCELLED">{tr('Đã hủy (Cancelled)', 'Cancelled')}</option>
             </select>
           </div>
 
@@ -870,7 +1190,9 @@ export default function MeetingRoomsPage() {
                   {myBookings.map((bk) => (
                     <tr key={bk.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 font-medium text-slate-900">
-                        <div>{bk.title}</div>
+                        <div className={bk.status === 'CANCELLED' ? 'text-slate-500 line-through' : ''}>
+                          {bk.title}
+                        </div>
                         {bk.cancelReason && (
                           <div className="text-xs font-normal text-rose-600">
                             {tr('Lý do hủy:', 'Cancel reason:')} {bk.cancelReason}
@@ -880,34 +1202,21 @@ export default function MeetingRoomsPage() {
                       <td className="px-4 py-3 text-slate-700">
                         <span className="font-semibold">{bk.roomCode}</span> — {bk.roomName}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
+                      <td className="px-4 py-3 text-xs text-slate-600 tabular-nums">
                         {formatDateTimeVN(bk.startTime)} → {formatTimeHHMM(bk.endTime)}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {bk.attendeesCount} {tr('người', 'people')}
                       </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            bk.status === 'CONFIRMED'
-                              ? 'bg-emerald-50 text-emerald-700'
-                              : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {bk.status === 'CONFIRMED'
-                            ? tr('Đã xác nhận', 'Confirmed')
-                            : tr('Đã hủy', 'Cancelled')}
-                        </span>
-                      </td>
+                      <td className="px-4 py-3">{renderStatusBadge(bk.status)}</td>
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"
                           onClick={() => openBookingDetailModal(bk)}
-                          className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
                         >
-                          {bk.canEditOrCancel
-                            ? tr('Xem / Sửa / Hủy', 'View / Edit / Cancel')
-                            : tr('Xem chi tiết', 'View Details')}
+                          <IconEye size={14} />
+                          <span>{tr('Xem', 'View')}</span>
                         </button>
                       </td>
                     </tr>
@@ -941,8 +1250,9 @@ export default function MeetingRoomsPage() {
 
       {isBookingModalOpen && (
         <RoomBookingModal
-          key={activeBooking ? `bk-${activeBooking.id}` : `new-${bookingPreset.roomId ?? 'x'}-${bookingPreset.date ?? ''}-${bookingPreset.startHour ?? ''}`}
+          key={activeBooking ? `bk-${activeBooking.id}-${activeBooking.status}` : `new-${bookingPreset.roomId ?? 'x'}-${bookingPreset.date ?? ''}-${bookingPreset.startHour ?? ''}`}
           rooms={rooms}
+          branchId={selectedBranchId}
           initialBooking={activeBooking}
           defaultRoomId={bookingPreset.roomId}
           defaultDate={bookingPreset.date}
@@ -960,16 +1270,16 @@ export default function MeetingRoomsPage() {
 
       <ConfirmModal
         isOpen={Boolean(deletingRoom)}
-        title={tr('Xóa phòng họp?', 'Delete Meeting Room?')}
+        title={tr('Lưu trữ phòng họp?', 'Archive Meeting Room?')}
         description={
           deletingRoom
             ? tr(
-                `Bạn có chắc chắn muốn xóa mềm phòng họp "${deletingRoom.name}" (${deletingRoom.code})? Thao tác sẽ bị chặn nếu phòng đang có lịch đặt sắp tới.`,
-                `Are you sure you want to soft delete meeting room "${deletingRoom.name}" (${deletingRoom.code})? Deletion is blocked if the room has upcoming bookings.`,
+                `Phòng họp "${deletingRoom.name}" (${deletingRoom.code}) sẽ được lưu trữ (xóa mềm, không xóa dữ liệu khỏi DB). Thao tác sẽ bị chặn nếu phòng đang có lịch đặt sắp tới.`,
+                `Meeting room "${deletingRoom.name}" (${deletingRoom.code}) will be archived (soft-hidden, never deleted from DB). Blocked if upcoming bookings exist.`,
               )
             : ''
         }
-        confirmLabel={tr('Xác nhận xóa', 'Confirm Delete')}
+        confirmLabel={tr('Xác nhận lưu trữ', 'Confirm Archive')}
         cancelLabel={tr('Hủy', 'Cancel')}
         variant="danger"
         isProcessing={isDeletingRoom}

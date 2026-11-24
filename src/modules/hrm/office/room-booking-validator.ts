@@ -1,8 +1,8 @@
+import type { RoomBookingStatus } from '@/config/database';
 import { AppError } from '@/shared/api-response';
 
 export const MIN_BOOKING_DURATION_MINUTES = 15;
 export const MAX_BOOKING_DURATION_MINUTES = 720; // 12 hours
-export const PAST_GRACE_MINUTES = 5;
 
 export interface ValidatedBookingRange {
   start: Date;
@@ -96,17 +96,47 @@ export function validateBookingTimeRange(
 
   if (!options?.allowPast) {
     const now = options?.now ?? new Date();
-    const minAllowedEndMs = now.getTime() - PAST_GRACE_MINUTES * 60000;
-    if (end.getTime() <= minAllowedEndMs) {
+    if (start.getTime() < now.getTime()) {
       throw new AppError(
-        'INVALID_BOOKING_TIME',
-        'Không thể đặt phòng cho khung giờ đã kết thúc trong quá khứ.',
+        'BOOKING_IN_PAST',
+        'Không thể đặt phòng họp trong quá khứ. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.',
         400,
       );
     }
   }
 
   return { start, end, durationMinutes };
+}
+
+/**
+ * Xác định trạng thái vòng đời thực tế của 1 lịch đặt phòng họp theo thời gian hiện tại:
+ * - CANCELLED: Đã hủy (bất biến, không bao giờ tự đổi lại)
+ * - DONE: Đã kết thúc (now >= endTime)
+ * - IN_PROGRESS: Đang diễn ra (startTime <= now < endTime)
+ * - PENDING: Chờ diễn ra (now < startTime)
+ */
+export function resolveBookingLifecycleStatus(
+  storedStatus: RoomBookingStatus,
+  startInput: Date | string,
+  endInput: Date | string,
+  now: Date = new Date(),
+): RoomBookingStatus {
+  if (storedStatus === 'CANCELLED') {
+    return 'CANCELLED';
+  }
+  const start = parseBookingDateTime(startInput);
+  const end = parseBookingDateTime(endInput);
+  if (!start || !end) {
+    return storedStatus;
+  }
+  const nowMs = now.getTime();
+  if (nowMs >= end.getTime()) {
+    return 'DONE';
+  }
+  if (nowMs >= start.getTime()) {
+    return 'IN_PROGRESS';
+  }
+  return 'PENDING';
 }
 
 /**

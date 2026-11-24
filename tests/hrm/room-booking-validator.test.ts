@@ -4,6 +4,7 @@ import {
   formatMysqlDateTime,
   normalizeEquipmentList,
   parseBookingDateTime,
+  resolveBookingLifecycleStatus,
   validateBookingTimeRange,
   validateRoomCapacity,
 } from '@/modules/hrm/office/room-booking-validator';
@@ -41,8 +42,43 @@ describe('Room booking validator & announcement read rate helpers', () => {
       validateBookingTimeRange('2026-11-22T09:00', '2026-11-22T10:00', { now: fixedNow }),
     ).toThrow(AppError);
 
+    // Starts in past even if end is in future -> MUST reject (BOOKING_IN_PAST)
+    try {
+      validateBookingTimeRange('2026-11-23T07:30', '2026-11-23T09:00', { now: fixedNow });
+      expect.unreachable('Expected BOOKING_IN_PAST error');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+      expect((err as AppError).code).toBe('BOOKING_IN_PAST');
+      expect((err as AppError).statusCode).toBe(400);
+    }
+
     // Invalid calendar date
     expect(parseBookingDateTime('2026-02-31T09:00')).toBeNull();
+  });
+
+  it('resolves booking lifecycle statuses accurately (PENDING, IN_PROGRESS, DONE, CANCELLED)', () => {
+    const start = '2026-11-24T09:00';
+    const end = '2026-11-24T10:00';
+
+    expect(resolveBookingLifecycleStatus('PENDING', start, end, new Date(2026, 10, 24, 8, 59, 0))).toBe(
+      'PENDING',
+    );
+    expect(resolveBookingLifecycleStatus('PENDING', start, end, new Date(2026, 10, 24, 9, 0, 0))).toBe(
+      'IN_PROGRESS',
+    );
+    expect(resolveBookingLifecycleStatus('PENDING', start, end, new Date(2026, 10, 24, 9, 45, 0))).toBe(
+      'IN_PROGRESS',
+    );
+    expect(
+      resolveBookingLifecycleStatus('IN_PROGRESS', start, end, new Date(2026, 10, 24, 10, 0, 0)),
+    ).toBe('DONE');
+    // Cancelled is immutable regardless of current clock
+    expect(
+      resolveBookingLifecycleStatus('CANCELLED', start, end, new Date(2026, 10, 24, 9, 30, 0)),
+    ).toBe('CANCELLED');
+    expect(
+      resolveBookingLifecycleStatus('CANCELLED', start, end, new Date(2026, 10, 24, 12, 0, 0)),
+    ).toBe('CANCELLED');
   });
 
   it('detects overlapping intervals accurately while allowing back-to-back boundaries', () => {

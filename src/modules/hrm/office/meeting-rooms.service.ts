@@ -19,6 +19,7 @@ import {
   formatMysqlDateTime,
   normalizeEquipmentList,
   parseEquipmentJson,
+  resolveBookingLifecycleStatus,
   validateBookingTimeRange,
   validateRoomCapacity,
 } from '@/modules/hrm/office/room-booking-validator';
@@ -71,8 +72,36 @@ export interface RoomBookingItem {
   cancelledByName: string | null;
   cancelledAt: string | null;
   note: string | null;
+  canEdit: boolean;
+  canCancel: boolean;
   canEditOrCancel: boolean;
   createdAt: string;
+}
+
+/**
+ * Đồng bộ trạng thái vòng đời lịch đặt phòng theo thời gian thực (PENDING -> IN_PROGRESS -> DONE).
+ * Không bao giờ thay đổi bản ghi CANCELLED và không bao giờ xóa dữ liệu khỏi DB.
+ */
+async function syncRoomBookingStatuses(now: Date = new Date()): Promise<void> {
+  const db = getDb();
+  const nowSql = formatMysqlDateTime(now);
+  await Promise.all([
+    db
+      .updateTable('room_bookings')
+      .set({ status: 'DONE' })
+      .where('deleted_at', 'is', null)
+      .where('status', 'in', ['PENDING', 'IN_PROGRESS'])
+      .where('end_time', '<=', nowSql)
+      .execute(),
+    db
+      .updateTable('room_bookings')
+      .set({ status: 'IN_PROGRESS' })
+      .where('deleted_at', 'is', null)
+      .where('status', '=', 'PENDING')
+      .where('start_time', '<=', nowSql)
+      .where('end_time', '>', nowSql)
+      .execute(),
+  ]);
 }
 
 function assertBranchAllowed(auth: AuthContext, branchId: number): void {
@@ -181,6 +210,7 @@ export async function listMeetingRooms(
   }
 
   const now = new Date();
+  await syncRoomBookingStatuses(now);
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
@@ -192,7 +222,7 @@ export async function listMeetingRooms(
     .innerJoin('meeting_rooms', 'meeting_rooms.id', 'room_bookings.room_id')
     .where('room_bookings.deleted_at', 'is', null)
     .where('meeting_rooms.deleted_at', 'is', null)
-    .where('room_bookings.status', '=', 'CONFIRMED')
+    .where('room_bookings.status', '!=', 'CANCELLED')
     .where('room_bookings.start_time', '<=', formatMysqlDateTime(todayEnd))
     .where('room_bookings.end_time', '>=', formatMysqlDateTime(todayStart));
 
@@ -240,7 +270,7 @@ export async function listMeetingRooms(
       .selectFrom('room_bookings')
       .select(['room_id', (eb) => eb.fn.count<number>('id').as('cnt')])
       .where('room_id', 'in', roomIds)
-      .where('status', '=', 'CONFIRMED')
+      .where('status', 'in', ['PENDING', 'IN_PROGRESS'])
       .where('deleted_at', 'is', null)
       .where('end_time', '>', formatMysqlDateTime(now))
       .groupBy('room_id')
@@ -281,6 +311,116 @@ export async function listMeetingRooms(
   };
 }
 
+export async function listAvailableMeetingRooms(
+  auth: AuthContext,
+  query: {
+    startTime: string;
+    endTime: string;
+    branchId?: string | null;
+    excludeBookingId?: string | null;
+  },
+): Promise<{
+  availableRooms: MeetingRoomItem[];
+  totalActiveRooms: number;
+  busyRoomsCount: number;
+}> {
+  const { start, end } = validateBookingTimeRange(query.startTime, query.endTime);
+  const db = getDb();
+  const now = new Date();
+  await syncRoomBookingStatuses(now);
+
+  const requestedBranchId = query.branchId ? Number(query.branchId) : null;
+  if (requestedBranchId && Number.isInteger(requestedBranchId) && requestedBranchId > 0) {
+    assertBranchAllowed(auth, requestedBranchId);
+  }
+
+  const excludeId = query.excludeBookingId ? Number(query.excludeBookingId) : null;
+
+  let roomsQuery = db
+    .selectFrom('meeting_rooms')
+    .innerJoin('branches', 'branches.id', 'meeting_rooms.branch_id')
+    .where('meeting_rooms.deleted_at', 'is', null)
+    .where('meeting_rooms.is_active', '=', 1);
+
+  if (!auth.isSuperAdmin && !auth.hasAllBranches) {
+    if (auth.branchIds.length === 0) {
+      return { availableRooms: [], totalActiveRooms: 0, busyRoomsCount: 0 };
+    }
+    roomsQuery = roomsQuery.where('meeting_rooms.branch_id', 'in', auth.branchIds);
+  }
+
+  if (requestedBranchId && Number.isInteger(requestedBranchId) && requestedBranchId > 0) {
+    roomsQuery = roomsQuery.where('meeting_rooms.branch_id', '=', requestedBranchId);
+  }
+
+  const activeRooms = await roomsQuery
+    .select([
+      'meeting_rooms.id',
+      'meeting_rooms.branch_id',
+      'branches.code as branch_code',
+      'branches.name as branch_name',
+      'meeting_rooms.code',
+      'meeting_rooms.name',
+      'meeting_rooms.floor',
+      'meeting_rooms.capacity',
+      'meeting_rooms.equipment_json',
+      'meeting_rooms.description',
+      'meeting_rooms.is_active',
+      'meeting_rooms.created_at',
+    ])
+    .orderBy('meeting_rooms.code', 'asc')
+    .execute();
+
+  if (activeRooms.length === 0) {
+    return { availableRooms: [], totalActiveRooms: 0, busyRoomsCount: 0 };
+  }
+
+  const roomIds = activeRooms.map((r) => Number(r.id));
+  const startSql = formatMysqlDateTime(start);
+  const endSql = formatMysqlDateTime(end);
+
+  let conflictQuery = db
+    .selectFrom('room_bookings')
+    .select(['room_id'])
+    .distinct()
+    .where('room_id', 'in', roomIds)
+    .where('status', '!=', 'CANCELLED')
+    .where('deleted_at', 'is', null)
+    .where('start_time', '<', endSql)
+    .where('end_time', '>', startSql);
+
+  if (excludeId && Number.isInteger(excludeId) && excludeId > 0) {
+    conflictQuery = conflictQuery.where('id', '!=', excludeId);
+  }
+
+  const busyRows = await conflictQuery.execute();
+  const busyRoomIdSet = new Set(busyRows.map((b) => Number(b.room_id)));
+
+  const availableRooms: MeetingRoomItem[] = activeRooms
+    .filter((r) => !busyRoomIdSet.has(Number(r.id)))
+    .map((r) => ({
+      id: Number(r.id),
+      branchId: Number(r.branch_id),
+      branchCode: r.branch_code,
+      branchName: r.branch_name,
+      code: r.code,
+      name: r.name,
+      floor: r.floor,
+      capacity: Number(r.capacity),
+      equipment: parseEquipmentJson(r.equipment_json),
+      description: r.description,
+      isActive: true,
+      upcomingBookingsCount: 0,
+      createdAt: toIsoString(r.created_at) ?? new Date().toISOString(),
+    }));
+
+  return {
+    availableRooms,
+    totalActiveRooms: activeRooms.length,
+    busyRoomsCount: busyRoomIdSet.size,
+  };
+}
+
 export async function getMeetingRoomDetail(id: number, auth: AuthContext): Promise<MeetingRoomItem> {
   const db = getDb();
   const row = await db
@@ -310,13 +450,16 @@ export async function getMeetingRoomDetail(id: number, auth: AuthContext): Promi
 
   assertBranchAllowed(auth, Number(row.branch_id));
 
+  const now = new Date();
+  await syncRoomBookingStatuses(now);
+
   const upcomingRow = await db
     .selectFrom('room_bookings')
     .select((eb) => eb.fn.count<number>('id').as('total'))
     .where('room_id', '=', id)
-    .where('status', '=', 'CONFIRMED')
+    .where('status', 'in', ['PENDING', 'IN_PROGRESS'])
     .where('deleted_at', 'is', null)
-    .where('end_time', '>', formatMysqlDateTime(new Date()))
+    .where('end_time', '>', formatMysqlDateTime(now))
     .executeTakeFirst();
 
   return {
@@ -488,13 +631,16 @@ export async function deleteMeetingRoom(
   const existing = await getMeetingRoomDetail(id, auth);
   const db = getDb();
 
+  const now = new Date();
+  await syncRoomBookingStatuses(now);
+
   const upcoming = await db
     .selectFrom('room_bookings')
     .select((eb) => eb.fn.count<number>('id').as('total'))
     .where('room_id', '=', id)
-    .where('status', '=', 'CONFIRMED')
+    .where('status', 'in', ['PENDING', 'IN_PROGRESS'])
     .where('deleted_at', 'is', null)
-    .where('end_time', '>', formatMysqlDateTime(new Date()))
+    .where('end_time', '>', formatMysqlDateTime(now))
     .executeTakeFirst();
 
   const upcomingCount = Number(upcoming?.total ?? 0);
@@ -561,9 +707,12 @@ export async function listRoomBookings(
   },
 ): Promise<{ items: RoomBookingItem[]; meta: PaginationMeta }> {
   const db = getDb();
+  const now = new Date();
+  await syncRoomBookingStatuses(now);
+
   const pagination = parsePaginationParams(
     { page: query.page, limit: query.limit },
-    { defaultLimit: 100, maxLimit: 300 },
+    { defaultLimit: 100, maxLimit: 500 },
   );
 
   const requestedBranchId = query.branchId ? Number(query.branchId) : null;
@@ -610,8 +759,15 @@ export async function listRoomBookings(
     baseQuery = baseQuery.where('room_bookings.room_id', '=', roomIdNum);
   }
 
-  if (query.status === 'CONFIRMED' || query.status === 'CANCELLED') {
+  if (
+    query.status === 'PENDING' ||
+    query.status === 'IN_PROGRESS' ||
+    query.status === 'CANCELLED' ||
+    query.status === 'DONE'
+  ) {
     baseQuery = baseQuery.where('room_bookings.status', '=', query.status);
+  } else if (query.status === 'ACTIVE') {
+    baseQuery = baseQuery.where('room_bookings.status', '!=', 'CANCELLED');
   }
 
   if (query.dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(query.dateFrom.trim())) {
@@ -676,35 +832,53 @@ export async function listRoomBookings(
   ]);
 
   const selfEmpId = selfEmployee?.id ?? null;
-  const items: RoomBookingItem[] = rows.map((row) => ({
-    id: Number(row.id),
-    roomId: Number(row.room_id),
-    roomCode: row.room_code,
-    roomName: row.room_name,
-    roomFloor: row.room_floor,
-    roomCapacity: Number(row.room_capacity),
-    branchId: Number(row.branch_id),
-    branchCode: row.branch_code,
-    branchName: row.branch_name,
-    bookedByEmployeeId: Number(row.booked_by_employee_id),
-    bookedByEmployeeCode: row.booked_by_employee_code,
-    bookedByEmployeeName: row.booked_by_employee_name,
-    bookedByDepartmentName: row.booked_by_department_name,
-    bookedByUserId: row.booked_by_user_id !== null ? Number(row.booked_by_user_id) : null,
-    title: row.title,
-    startTime: toIsoString(row.start_time) ?? '',
-    endTime: toIsoString(row.end_time) ?? '',
-    attendeesCount: Number(row.attendees_count),
-    status: row.status,
-    cancelReason: row.cancel_reason,
-    cancelledByName: row.cancelled_by_name,
-    cancelledAt: toIsoString(row.cancelled_at),
-    note: row.note,
-    canEditOrCancel:
-      row.status === 'CONFIRMED' &&
-      canManageBooking(auth, selfEmpId, Number(row.booked_by_employee_id), Number(row.branch_id)),
-    createdAt: toIsoString(row.created_at) ?? new Date().toISOString(),
-  }));
+  const items: RoomBookingItem[] = rows.map((row) => {
+    const effectiveStatus = resolveBookingLifecycleStatus(
+      row.status,
+      row.start_time,
+      row.end_time,
+      now,
+    );
+    const hasManageRights = canManageBooking(
+      auth,
+      selfEmpId,
+      Number(row.booked_by_employee_id),
+      Number(row.branch_id),
+    );
+    const canEdit = effectiveStatus === 'PENDING' && hasManageRights;
+    const canCancel =
+      (effectiveStatus === 'PENDING' || effectiveStatus === 'IN_PROGRESS') && hasManageRights;
+
+    return {
+      id: Number(row.id),
+      roomId: Number(row.room_id),
+      roomCode: row.room_code,
+      roomName: row.room_name,
+      roomFloor: row.room_floor,
+      roomCapacity: Number(row.room_capacity),
+      branchId: Number(row.branch_id),
+      branchCode: row.branch_code,
+      branchName: row.branch_name,
+      bookedByEmployeeId: Number(row.booked_by_employee_id),
+      bookedByEmployeeCode: row.booked_by_employee_code,
+      bookedByEmployeeName: row.booked_by_employee_name,
+      bookedByDepartmentName: row.booked_by_department_name,
+      bookedByUserId: row.booked_by_user_id !== null ? Number(row.booked_by_user_id) : null,
+      title: row.title,
+      startTime: toIsoString(row.start_time) ?? '',
+      endTime: toIsoString(row.end_time) ?? '',
+      attendeesCount: Number(row.attendees_count),
+      status: effectiveStatus,
+      cancelReason: row.cancel_reason,
+      cancelledByName: row.cancelled_by_name,
+      cancelledAt: toIsoString(row.cancelled_at),
+      note: row.note,
+      canEdit,
+      canCancel,
+      canEditOrCancel: canEdit || canCancel,
+      createdAt: toIsoString(row.created_at) ?? new Date().toISOString(),
+    };
+  });
 
   return {
     items,
@@ -714,6 +888,9 @@ export async function listRoomBookings(
 
 export async function getRoomBookingDetail(id: number, auth: AuthContext): Promise<RoomBookingItem> {
   const db = getDb();
+  const now = new Date();
+  await syncRoomBookingStatuses(now);
+
   const [selfEmployee, row] = await Promise.all([
     resolveSelfEmployee(auth.userId),
     db
@@ -760,6 +937,22 @@ export async function getRoomBookingDetail(id: number, auth: AuthContext): Promi
 
   assertBranchAllowed(auth, Number(row.branch_id));
 
+  const effectiveStatus = resolveBookingLifecycleStatus(
+    row.status,
+    row.start_time,
+    row.end_time,
+    now,
+  );
+  const hasManageRights = canManageBooking(
+    auth,
+    selfEmployee?.id ?? null,
+    Number(row.booked_by_employee_id),
+    Number(row.branch_id),
+  );
+  const canEdit = effectiveStatus === 'PENDING' && hasManageRights;
+  const canCancel =
+    (effectiveStatus === 'PENDING' || effectiveStatus === 'IN_PROGRESS') && hasManageRights;
+
   return {
     id: Number(row.id),
     roomId: Number(row.room_id),
@@ -779,19 +972,14 @@ export async function getRoomBookingDetail(id: number, auth: AuthContext): Promi
     startTime: toIsoString(row.start_time) ?? '',
     endTime: toIsoString(row.end_time) ?? '',
     attendeesCount: Number(row.attendees_count),
-    status: row.status,
+    status: effectiveStatus,
     cancelReason: row.cancel_reason,
     cancelledByName: row.cancelled_by_name,
     cancelledAt: toIsoString(row.cancelled_at),
     note: row.note,
-    canEditOrCancel:
-      row.status === 'CONFIRMED' &&
-      canManageBooking(
-        auth,
-        selfEmployee?.id ?? null,
-        Number(row.booked_by_employee_id),
-        Number(row.branch_id),
-      ),
+    canEdit,
+    canCancel,
+    canEditOrCancel: canEdit || canCancel,
     createdAt: toIsoString(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -860,7 +1048,7 @@ export async function createRoomBooking(
       .selectFrom('room_bookings')
       .select(['id', 'title', 'start_time', 'end_time'])
       .where('room_id', '=', input.roomId)
-      .where('status', '=', 'CONFIRMED')
+      .where('status', '!=', 'CANCELLED')
       .where('deleted_at', 'is', null)
       .where('start_time', '<', endSql)
       .where('end_time', '>', startSql)
@@ -889,7 +1077,7 @@ export async function createRoomBooking(
         start_time: startSql,
         end_time: endSql,
         attendees_count: input.attendeesCount,
-        status: 'CONFIRMED',
+        status: 'PENDING',
         note: input.note?.trim() || null,
         created_by: auth.userId,
         updated_by: auth.userId,
@@ -924,7 +1112,17 @@ export async function updateRoomBooking(
   if (existing.status === 'CANCELLED') {
     throw new AppError('BOOKING_ALREADY_CANCELLED', 'Không thể chỉnh sửa lịch họp đã hủy.', 409);
   }
-  if (!existing.canEditOrCancel) {
+  if (existing.status === 'DONE') {
+    throw new AppError('BOOKING_ALREADY_DONE', 'Không thể chỉnh sửa lịch họp đã hoàn thành.', 409);
+  }
+  if (existing.status === 'IN_PROGRESS') {
+    throw new AppError(
+      'BOOKING_ALREADY_STARTED',
+      'Không thể chỉnh sửa lịch họp đang diễn ra. Nếu cần dừng cuộc họp, hãy sử dụng chức năng Hủy lịch.',
+      409,
+    );
+  }
+  if (!existing.canEdit) {
     throw new AppError(
       'FORBIDDEN_BOOKING_ACTION',
       'Bạn chỉ có thể chỉnh sửa lịch phòng họp do chính mình đặt.',
@@ -937,7 +1135,7 @@ export async function updateRoomBooking(
   const nextEndRaw = input.endTime ?? existing.endTime;
   const nextAttendees = input.attendeesCount ?? existing.attendeesCount;
 
-  const { start, end } = validateBookingTimeRange(nextStartRaw, nextEndRaw, { allowPast: true });
+  const { start, end } = validateBookingTimeRange(nextStartRaw, nextEndRaw);
   const startSql = formatMysqlDateTime(start);
   const endSql = formatMysqlDateTime(end);
   const db = getDb();
@@ -972,7 +1170,7 @@ export async function updateRoomBooking(
       .select(['id', 'title', 'start_time', 'end_time'])
       .where('room_id', '=', nextRoomId)
       .where('id', '!=', id)
-      .where('status', '=', 'CONFIRMED')
+      .where('status', '!=', 'CANCELLED')
       .where('deleted_at', 'is', null)
       .where('start_time', '<', endSql)
       .where('end_time', '>', startSql)
@@ -1034,7 +1232,10 @@ export async function cancelRoomBooking(
   if (existing.status === 'CANCELLED') {
     throw new AppError('BOOKING_ALREADY_CANCELLED', 'Lịch họp này đã được hủy trước đó.', 409);
   }
-  if (!existing.canEditOrCancel) {
+  if (existing.status === 'DONE') {
+    throw new AppError('BOOKING_ALREADY_DONE', 'Không thể hủy lịch họp đã hoàn thành.', 409);
+  }
+  if (!existing.canCancel) {
     throw new AppError(
       'FORBIDDEN_BOOKING_ACTION',
       'Bạn chỉ có thể hủy lịch phòng họp do chính mình đặt.',

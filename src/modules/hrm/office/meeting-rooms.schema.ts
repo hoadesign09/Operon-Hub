@@ -5,7 +5,7 @@ const equipmentListSchema = z
   .max(30, 'Danh sách thiết bị tối đa 30 mục')
   .optional();
 
-export const ROOM_BOOKING_STATUSES = ['CONFIRMED', 'CANCELLED'] as const;
+export const ROOM_BOOKING_STATUSES = ['PENDING', 'IN_PROGRESS', 'CANCELLED', 'DONE'] as const;
 
 export const createMeetingRoomSchema = z.object({
   branchId: z.coerce.number().int().positive('Vui lòng chọn chi nhánh'),

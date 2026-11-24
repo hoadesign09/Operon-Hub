@@ -469,7 +469,7 @@ export async function getHrmDashboardSummary(
         .select((eb) => eb.fn.count<number>('room_bookings.id').as('total'))
         .where('room_bookings.deleted_at', 'is', null)
         .where('meeting_rooms.deleted_at', 'is', null)
-        .where('room_bookings.status', '=', 'CONFIRMED')
+        .where('room_bookings.status', '!=', 'CANCELLED')
         .where('room_bookings.start_time', '<=', todayEnd)
         .where('room_bookings.end_time', '>=', todayStart);
 
@@ -500,7 +500,7 @@ export async function getHrmDashboardSummary(
         ])
         .where('room_bookings.deleted_at', 'is', null)
         .where('meeting_rooms.deleted_at', 'is', null)
-        .where('room_bookings.status', '=', 'CONFIRMED')
+        .where('room_bookings.status', 'in', ['PENDING', 'IN_PROGRESS'])
         .where('room_bookings.end_time', '>=', formatMysqlDateTime(now));
 
       if (branchFilter !== null) {

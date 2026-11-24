@@ -6,6 +6,7 @@ const verifyAccessTokenMock = vi.fn();
 const loadAuthContextMock = vi.fn();
 
 const listMeetingRoomsMock = vi.fn();
+const listAvailableMeetingRoomsMock = vi.fn();
 const createMeetingRoomMock = vi.fn();
 const getMeetingRoomDetailMock = vi.fn();
 const updateMeetingRoomMock = vi.fn();
@@ -34,6 +35,7 @@ vi.mock('@/modules/auth/auth.service', async (importOriginal) => {
 
 vi.mock('@/modules/hrm/office/meeting-rooms.service', () => ({
   listMeetingRooms: (...args: unknown[]) => listMeetingRoomsMock(...args),
+  listAvailableMeetingRooms: (...args: unknown[]) => listAvailableMeetingRoomsMock(...args),
   createMeetingRoom: (...args: unknown[]) => createMeetingRoomMock(...args),
   getMeetingRoomDetail: (...args: unknown[]) => getMeetingRoomDetailMock(...args),
   updateMeetingRoom: (...args: unknown[]) => updateMeetingRoomMock(...args),
@@ -46,6 +48,7 @@ vi.mock('@/modules/hrm/office/meeting-rooms.service', () => ({
 }));
 
 import { GET as roomsGET, POST as roomsPOST } from '@/app/api/v1/hrm/admin-ops/meeting-rooms/route';
+import { GET as availableRoomsGET } from '@/app/api/v1/hrm/admin-ops/meeting-rooms/available/route';
 import {
   DELETE as roomDELETE,
   GET as roomDetailGET,
@@ -53,6 +56,7 @@ import {
 } from '@/app/api/v1/hrm/admin-ops/meeting-rooms/[id]/route';
 import { GET as bookingsGET, POST as bookingsPOST } from '@/app/api/v1/hrm/admin-ops/room-bookings/route';
 import {
+  DELETE as bookingDELETE,
   GET as bookingDetailGET,
   PATCH as bookingPATCH,
 } from '@/app/api/v1/hrm/admin-ops/room-bookings/[id]/route';
@@ -178,7 +182,7 @@ describe('HRM Admin Ops — Meeting Rooms & Room Bookings APIs', () => {
     );
     expect(listRes.status).toBe(200);
 
-    createRoomBookingMock.mockResolvedValueOnce({ id: 10, title: 'Họp Sprint', status: 'CONFIRMED' });
+    createRoomBookingMock.mockResolvedValueOnce({ id: 10, title: 'Họp Sprint', status: 'PENDING' });
     const createdRes = await bookingsPOST(
       makeReq('http://localhost/api/v1/hrm/admin-ops/room-bookings', {
         method: 'POST',
@@ -253,5 +257,56 @@ describe('HRM Admin Ops — Meeting Rooms & Room Bookings APIs', () => {
       { params: Promise.resolve({ id: '10' }) },
     );
     expect(cancelRes.status).toBe(200);
+
+    // Direct hard delete of room booking MUST be rejected with 405
+    const hardDeleteRes = await bookingDELETE(
+      makeReq('http://localhost/api/v1/hrm/admin-ops/room-bookings/10', { method: 'DELETE' }),
+      { params: Promise.resolve({ id: '10' }) },
+    );
+    expect(hardDeleteRes.status).toBe(405);
+    const hardDeleteJson = await hardDeleteRes.json();
+    expect(hardDeleteJson.error.code).toBe('BOOKING_HARD_DELETE_FORBIDDEN');
+  });
+
+  it('validates and returns only available meeting rooms for a selected time slot', async () => {
+    loadAuthContextMock.mockResolvedValue(EMPLOYEE_AUTH);
+
+    // Missing query params -> 400
+    const missingParamsRes = await availableRoomsGET(
+      makeReq('http://localhost/api/v1/hrm/admin-ops/meeting-rooms/available'),
+      { params: Promise.resolve({}) },
+    );
+    expect(missingParamsRes.status).toBe(400);
+
+    // Valid slot -> returns only available rooms
+    listAvailableMeetingRoomsMock.mockResolvedValueOnce({
+      availableRooms: [{ id: 2, code: 'PH-02', name: 'Phòng Sáng tạo', capacity: 8 }],
+      totalActiveRooms: 3,
+      busyRoomsCount: 2,
+    });
+    const availRes = await availableRoomsGET(
+      makeReq(
+        'http://localhost/api/v1/hrm/admin-ops/meeting-rooms/available?startTime=2026-11-25T09:00&endTime=2026-11-25T10:00&excludeBookingId=10',
+      ),
+      { params: Promise.resolve({}) },
+    );
+    expect(availRes.status).toBe(200);
+    const availJson = await availRes.json();
+    expect(availJson.data.availableRooms).toHaveLength(1);
+    expect(availJson.data.busyRoomsCount).toBe(2);
+
+    // Past time slot -> 400 BOOKING_IN_PAST
+    listAvailableMeetingRoomsMock.mockRejectedValueOnce(
+      new AppError('BOOKING_IN_PAST', 'Không thể đặt phòng họp trong quá khứ.', 400),
+    );
+    const pastRes = await availableRoomsGET(
+      makeReq(
+        'http://localhost/api/v1/hrm/admin-ops/meeting-rooms/available?startTime=2025-01-01T09:00&endTime=2025-01-01T10:00',
+      ),
+      { params: Promise.resolve({}) },
+    );
+    expect(pastRes.status).toBe(400);
+    const pastJson = await pastRes.json();
+    expect(pastJson.error.code).toBe('BOOKING_IN_PAST');
   });
 });

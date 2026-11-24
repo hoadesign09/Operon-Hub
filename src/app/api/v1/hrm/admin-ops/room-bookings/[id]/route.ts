@@ -39,3 +39,14 @@ export const PATCH = withAuth(
   },
   { permission: 'hrm.rooms.book' },
 );
+
+export const DELETE = withAuth(
+  async () => {
+    throw new AppError(
+      'BOOKING_HARD_DELETE_FORBIDDEN',
+      'Không cho phép xóa trực tiếp lịch đặt phòng khỏi cơ sở dữ liệu. Vui lòng sử dụng chức năng Hủy lịch (Cancelled).',
+      405,
+    );
+  },
+  { permission: 'hrm.rooms.book' },
+);

@@ -1886,6 +1886,78 @@
       "status": "PASS",
       "last_task_id": "TASK-20261123-21",
       "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-HRM-048",
+      "module": "hrm",
+      "feature": "4 trạng thái booking phòng họp (PENDING, IN_PROGRESS, CANCELLED, DONE), migration 000014 & cấm xóa trực tiếp DB (405)",
+      "spec_ref": "DB-ROOM-02, FR-ROOM-05",
+      "target_files": [
+        "database/migrations/20261124_000014_update_room_booking_statuses.sql",
+        "src/config/database.ts",
+        "src/modules/hrm/office/room-booking-validator.ts",
+        "src/modules/hrm/office/meeting-rooms.service.ts",
+        "src/app/api/v1/hrm/admin-ops/room-bookings/[id]/route.ts",
+        "src/modules/hrm/dashboard/dashboard.service.ts"
+      ],
+      "type": "DB",
+      "preconditions": "Local MySQL chạy migration 000014 + Vitest",
+      "steps": [
+        "Chạy npm run db:migrate & SHOW COLUMNS FROM room_bookings kiểm tra enum 4 trạng thái",
+        "Kiểm tra resolveBookingLifecycleStatus cho 4 trạng thái và DELETE /room-bookings/[id] trả 405 BOOKING_HARD_DELETE_FORBIDDEN",
+        "Quét src/modules/hrm/office/*.ts xác nhận 0 câu lệnh hard-delete SQL"
+      ],
+      "expected_result": "Enum DB đúng 4 trạng thái, vòng đời đồng bộ chính xác, 405 khi gọi DELETE trực tiếp, 0 hard-delete SQL",
+      "actual_result": "PASS — Local MySQL enum(PENDING,IN_PROGRESS,CANCELLED,DONE) DEFAULT PENDING, DELETE trả 405, 0 hard-delete SQL",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-01",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-HRM-049",
+      "module": "hrm",
+      "feature": "Chặn đặt/sửa phòng họp trong quá khứ (BOOKING_IN_PAST) & API /meeting-rooms/available chỉ trả phòng còn trống",
+      "spec_ref": "API-ROOM-06, FR-ROOM-06",
+      "target_files": [
+        "src/modules/hrm/office/room-booking-validator.ts",
+        "src/modules/hrm/office/meeting-rooms.service.ts",
+        "src/app/api/v1/hrm/admin-ops/meeting-rooms/available/route.ts",
+        "tests/hrm/room-booking-validator.test.ts",
+        "tests/api/hrm-meeting-rooms.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Vitest unit & API suite",
+      "steps": [
+        "Gọi validateBookingTimeRange với giờ bắt đầu trong quá khứ (kể cả khi endTime ở tương lai)",
+        "Gọi GET /api/v1/hrm/admin-ops/meeting-rooms/available với thiếu tham số (400), khung giờ hợp lệ (200) và khung giờ quá khứ (400 BOOKING_IN_PAST)"
+      ],
+      "expected_result": "Chặn mọi booking quá khứ bằng 400 BOOKING_IN_PAST; /available chỉ trả phòng họp trống và hỗ trợ excludeBookingId",
+      "actual_result": "PASS — 4/4 room-booking-validator tests và 3/3 hrm-meeting-rooms API tests PASS",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-02",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-HRM-050",
+      "module": "hrm",
+      "feature": "UI Đặt phòng họp: View-first modal (Edit/Cancel), thứ tự form Tên->Thời gian->Phòng họp available, Lịch theo tháng & song ngữ VI/EN",
+      "spec_ref": "UI-ROOM-02, UI-I18N-02",
+      "target_files": [
+        "src/components/hrm/RoomBookingModal.tsx",
+        "src/app/(portal)/hrm/office/meeting-rooms/page.tsx",
+        "tests/unit/i18n.test.ts"
+      ],
+      "type": "UI",
+      "preconditions": "TypeScript AST i18n audit + ESLint + Next.js production build",
+      "steps": [
+        "Kiểm tra luồng View mặc định -> bấm Edit/Cancel, thứ tự 1.Tên -> 2.Thời gian -> 3.Phòng họp trống (debounce live validation), và chế độ xem lịch Tháng/Tuần/Ngày",
+        "Chạy AST audit VI/EN trên 59 file UI production, typecheck, eslint và next build 137 routes"
+      ],
+      "expected_result": "0 lỗi TS/ESLint, 0 chuỗi tiếng Việt lọt ở chế độ EN, 62/62 test suites (161 tests) & 137 routes build PASS",
+      "actual_result": "PASS — 62/62 suites (161/161 tests) PASS, AST audit 59/59 file UI = 0 lỗi, 137/137 routes build sạch",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-02",
+      "last_tested_at": "2026-11-24"
     }
   ],
   "runs": [
@@ -2167,6 +2239,19 @@
         "TC-CORE-027"
       ],
       "test_log_file": ".agents/logs/test/2026-11-23_TASK-20261123-21.test.log.md"
+    },
+    {
+      "run_date": "2026-11-24",
+      "task_id": "TASK-20261124-01-02",
+      "total_executed": 3,
+      "passed": 3,
+      "failed": 0,
+      "regression_matched": [
+        "TC-HRM-041",
+        "TC-HRM-042",
+        "TC-CORE-030"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-24_TASK-20261124-01-02.test.log.md"
     }
   ]
 }
