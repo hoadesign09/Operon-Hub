@@ -38,7 +38,12 @@ describe('Phase 1 System Regression & CRM Plug-in Readiness', () => {
   });
 
   it('keeps Portal Module Registry ready for CRM plug-in and filters nav items strictly by RBAC', () => {
-    expect(PORTAL_MODULES.map((m) => m.code)).toEqual(['core', 'hrm', 'crm']);
+    expect(PORTAL_MODULES.map((m) => m.code)).toEqual(['core', 'hrm', 'projects', 'crm']);
+
+    const projectsModule = getModuleByCode('projects');
+    expect(projectsModule).toBeDefined();
+    expect(projectsModule?.status).toBe('ACTIVE');
+    expect(projectsModule?.basePath).toBe('/projects');
 
     const crmModule = getModuleByCode('crm');
     expect(crmModule).toBeDefined();
@@ -115,5 +120,7 @@ describe('Phase 1 System Regression & CRM Plug-in Readiness', () => {
     expect(employeeBlock).not.toContain("'hrm.assets.manage'");
     expect(employeeBlock).not.toContain("'hrm.rooms.manage'");
     expect(employeeBlock).not.toContain("'hrm.announcements.manage'");
+    expect(employeeBlock).not.toContain("'pm.projects.manage'");
+    expect(employeeBlock).not.toContain("'pm.budget.manage'");
   });
 });

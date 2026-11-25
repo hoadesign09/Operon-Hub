@@ -10,6 +10,7 @@ interface BranchOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 interface AnnouncementFormModalProps {
@@ -45,7 +46,7 @@ export function AnnouncementFormModal({
   onClose,
   onSaved,
 }: AnnouncementFormModalProps) {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const isEdit = Boolean(initialData?.id);
   const [branchId, setBranchId] = useState<string>(
     initialData
@@ -195,7 +196,7 @@ export function AnnouncementFormModal({
                 )}
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.code})
+                    {ln(b.name, b.nameEn)} ({b.code})
                   </option>
                 ))}
               </select>

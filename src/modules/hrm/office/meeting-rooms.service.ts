@@ -30,8 +30,10 @@ export interface MeetingRoomItem {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn: string | null;
   code: string;
   name: string;
+  nameEn: string | null;
   floor: string | null;
   capacity: number;
   equipment: string[];
@@ -53,15 +55,18 @@ export interface RoomBookingItem {
   roomId: number;
   roomCode: string;
   roomName: string;
+  roomNameEn: string | null;
   roomFloor: string | null;
   roomCapacity: number;
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn: string | null;
   bookedByEmployeeId: number;
   bookedByEmployeeCode: string;
   bookedByEmployeeName: string;
   bookedByDepartmentName: string;
+  bookedByDepartmentNameEn: string | null;
   bookedByUserId: number | null;
   title: string;
   startTime: string;
@@ -243,8 +248,10 @@ export async function listMeetingRooms(
         'meeting_rooms.branch_id',
         'branches.code as branch_code',
         'branches.name as branch_name',
+        'branches.name_en as branch_name_en',
         'meeting_rooms.code',
         'meeting_rooms.name',
+        'meeting_rooms.name_en',
         'meeting_rooms.floor',
         'meeting_rooms.capacity',
         'meeting_rooms.equipment_json',
@@ -288,8 +295,10 @@ export async function listMeetingRooms(
     branchId: Number(r.branch_id),
     branchCode: r.branch_code,
     branchName: r.branch_name,
+    branchNameEn: r.branch_name_en ?? null,
     code: r.code,
     name: r.name,
+    nameEn: r.name_en ?? null,
     floor: r.floor,
     capacity: Number(r.capacity),
     equipment: parseEquipmentJson(r.equipment_json),
@@ -359,8 +368,10 @@ export async function listAvailableMeetingRooms(
       'meeting_rooms.branch_id',
       'branches.code as branch_code',
       'branches.name as branch_name',
+      'branches.name_en as branch_name_en',
       'meeting_rooms.code',
       'meeting_rooms.name',
+      'meeting_rooms.name_en',
       'meeting_rooms.floor',
       'meeting_rooms.capacity',
       'meeting_rooms.equipment_json',
@@ -403,8 +414,10 @@ export async function listAvailableMeetingRooms(
       branchId: Number(r.branch_id),
       branchCode: r.branch_code,
       branchName: r.branch_name,
+      branchNameEn: r.branch_name_en ?? null,
       code: r.code,
       name: r.name,
+      nameEn: r.name_en ?? null,
       floor: r.floor,
       capacity: Number(r.capacity),
       equipment: parseEquipmentJson(r.equipment_json),
@@ -431,8 +444,10 @@ export async function getMeetingRoomDetail(id: number, auth: AuthContext): Promi
       'meeting_rooms.branch_id',
       'branches.code as branch_code',
       'branches.name as branch_name',
+      'branches.name_en as branch_name_en',
       'meeting_rooms.code',
       'meeting_rooms.name',
+      'meeting_rooms.name_en',
       'meeting_rooms.floor',
       'meeting_rooms.capacity',
       'meeting_rooms.equipment_json',
@@ -467,8 +482,10 @@ export async function getMeetingRoomDetail(id: number, auth: AuthContext): Promi
     branchId: Number(row.branch_id),
     branchCode: row.branch_code,
     branchName: row.branch_name,
+    branchNameEn: row.branch_name_en ?? null,
     code: row.code,
     name: row.name,
+    nameEn: row.name_en ?? null,
     floor: row.floor,
     capacity: Number(row.capacity),
     equipment: parseEquipmentJson(row.equipment_json),
@@ -518,6 +535,7 @@ export async function createMeetingRoom(
       branch_id: input.branchId,
       code: normalizedCode,
       name: input.name.trim(),
+      name_en: input.nameEn?.trim() || null,
       floor: input.floor?.trim() || null,
       capacity: input.capacity,
       equipment_json: JSON.stringify(equipment),
@@ -592,6 +610,7 @@ export async function updateMeetingRoom(
       branch_id: input.branchId ?? existing.branchId,
       code: normalizedCode,
       name: input.name !== undefined ? input.name.trim() : existing.name,
+      name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : existing.nameEn,
       floor: input.floor !== undefined ? input.floor?.trim() || null : existing.floor,
       capacity: input.capacity ?? existing.capacity,
       equipment_json:
@@ -803,16 +822,19 @@ export async function listRoomBookings(
         'room_bookings.room_id',
         'meeting_rooms.code as room_code',
         'meeting_rooms.name as room_name',
+        'meeting_rooms.name_en as room_name_en',
         'meeting_rooms.floor as room_floor',
         'meeting_rooms.capacity as room_capacity',
         'meeting_rooms.branch_id',
         'branches.code as branch_code',
         'branches.name as branch_name',
+        'branches.name_en as branch_name_en',
         'room_bookings.booked_by_employee_id',
         'employees.employee_code as booked_by_employee_code',
         'employees.full_name as booked_by_employee_name',
         'employees.user_id as booked_by_user_id',
         'departments.name as booked_by_department_name',
+        'departments.name_en as booked_by_department_name_en',
         'room_bookings.title',
         'room_bookings.start_time',
         'room_bookings.end_time',
@@ -854,15 +876,18 @@ export async function listRoomBookings(
       roomId: Number(row.room_id),
       roomCode: row.room_code,
       roomName: row.room_name,
+      roomNameEn: row.room_name_en ?? null,
       roomFloor: row.room_floor,
       roomCapacity: Number(row.room_capacity),
       branchId: Number(row.branch_id),
       branchCode: row.branch_code,
       branchName: row.branch_name,
+      branchNameEn: row.branch_name_en ?? null,
       bookedByEmployeeId: Number(row.booked_by_employee_id),
       bookedByEmployeeCode: row.booked_by_employee_code,
       bookedByEmployeeName: row.booked_by_employee_name,
       bookedByDepartmentName: row.booked_by_department_name,
+      bookedByDepartmentNameEn: row.booked_by_department_name_en ?? null,
       bookedByUserId: row.booked_by_user_id !== null ? Number(row.booked_by_user_id) : null,
       title: row.title,
       startTime: toIsoString(row.start_time) ?? '',
@@ -905,16 +930,19 @@ export async function getRoomBookingDetail(id: number, auth: AuthContext): Promi
         'room_bookings.room_id',
         'meeting_rooms.code as room_code',
         'meeting_rooms.name as room_name',
+        'meeting_rooms.name_en as room_name_en',
         'meeting_rooms.floor as room_floor',
         'meeting_rooms.capacity as room_capacity',
         'meeting_rooms.branch_id',
         'branches.code as branch_code',
         'branches.name as branch_name',
+        'branches.name_en as branch_name_en',
         'room_bookings.booked_by_employee_id',
         'employees.employee_code as booked_by_employee_code',
         'employees.full_name as booked_by_employee_name',
         'employees.user_id as booked_by_user_id',
         'departments.name as booked_by_department_name',
+        'departments.name_en as booked_by_department_name_en',
         'room_bookings.title',
         'room_bookings.start_time',
         'room_bookings.end_time',
@@ -958,15 +986,18 @@ export async function getRoomBookingDetail(id: number, auth: AuthContext): Promi
     roomId: Number(row.room_id),
     roomCode: row.room_code,
     roomName: row.room_name,
+    roomNameEn: row.room_name_en ?? null,
     roomFloor: row.room_floor,
     roomCapacity: Number(row.room_capacity),
     branchId: Number(row.branch_id),
     branchCode: row.branch_code,
     branchName: row.branch_name,
+    branchNameEn: row.branch_name_en ?? null,
     bookedByEmployeeId: Number(row.booked_by_employee_id),
     bookedByEmployeeCode: row.booked_by_employee_code,
     bookedByEmployeeName: row.booked_by_employee_name,
     bookedByDepartmentName: row.booked_by_department_name,
+    bookedByDepartmentNameEn: row.booked_by_department_name_en ?? null,
     bookedByUserId: row.booked_by_user_id !== null ? Number(row.booked_by_user_id) : null,
     title: row.title,
     startTime: toIsoString(row.start_time) ?? '',

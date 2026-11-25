@@ -31,6 +31,7 @@ export interface AnnouncementItem {
   branchId: number | null;
   branchCode: string | null;
   branchName: string | null;
+  branchNameEn?: string | null;
   title: string;
   content: string;
   category: AnnouncementCategory;
@@ -283,6 +284,7 @@ export async function listAnnouncements(
       'announcements.branch_id',
       'branches.code as branch_code',
       'branches.name as branch_name',
+      'branches.name_en as branch_name_en',
       'announcements.title',
       'announcements.content',
       'announcements.category',
@@ -349,6 +351,7 @@ export async function listAnnouncements(
       branchId,
       branchCode: row.branch_code,
       branchName: row.branch_name,
+      branchNameEn: row.branch_name_en ?? null,
       title: row.title,
       content: row.content,
       category: row.category,
@@ -403,6 +406,7 @@ export async function getAnnouncementDetail(id: number, auth: AuthContext): Prom
       'announcements.branch_id',
       'branches.code as branch_code',
       'branches.name as branch_name',
+      'branches.name_en as branch_name_en',
       'announcements.title',
       'announcements.content',
       'announcements.category',
@@ -464,6 +468,7 @@ export async function getAnnouncementDetail(id: number, auth: AuthContext): Prom
     branchId,
     branchCode: row.branch_code,
     branchName: row.branch_name,
+    branchNameEn: row.branch_name_en,
     title: row.title,
     content: row.content,
     category: row.category,

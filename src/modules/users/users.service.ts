@@ -13,8 +13,10 @@ export interface UserRoleAssignmentView {
   roleId: number;
   roleCode: string;
   roleName: string;
+  roleNameEn: string | null;
   branchId: number | null;
   branchName: string | null;
+  branchNameEn: string | null;
 }
 
 export interface UserItem {
@@ -45,8 +47,10 @@ async function fetchAssignmentsByUserIds(
       'roles.id as role_id',
       'roles.code as role_code',
       'roles.name as role_name',
+      'roles.name_en as role_name_en',
       'user_roles.branch_id',
       'branches.name as branch_name',
+      'branches.name_en as branch_name_en',
     ])
     .where('user_roles.user_id', 'in', userIds)
     .where('roles.deleted_at', 'is', null)
@@ -59,8 +63,10 @@ async function fetchAssignmentsByUserIds(
       roleId: Number(row.role_id),
       roleCode: row.role_code,
       roleName: row.role_name,
+      roleNameEn: row.role_name_en ?? null,
       branchId: row.branch_id !== null ? Number(row.branch_id) : null,
       branchName: row.branch_name ?? null,
+      branchNameEn: row.branch_name_en ?? null,
     });
     map.set(uid, list);
   }

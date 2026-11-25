@@ -9,7 +9,10 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { TranslationParams } from '@/lib/portable/i18n-engine';
+import {
+  pickLocalizedText,
+  type TranslationParams,
+} from '@/lib/portable/i18n-engine';
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE_MAX_AGE_SECONDS,
@@ -26,6 +29,7 @@ interface I18nContextValue {
   toggleLocale: () => void;
   t: (key: TranslationKey, params?: TranslationParams) => string;
   tr: (vi: string, en: string) => string;
+  ln: (primary: string | null | undefined, en?: string | null) => string;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -99,6 +103,12 @@ export function I18nProvider({
     [locale],
   );
 
+  const ln = useCallback(
+    (primary: string | null | undefined, en?: string | null) =>
+      pickLocalizedText(locale, primary, en),
+    [locale],
+  );
+
   const value = useMemo<I18nContextValue>(
     () => ({
       locale,
@@ -106,8 +116,9 @@ export function I18nProvider({
       toggleLocale,
       t,
       tr,
+      ln,
     }),
-    [locale, setLocale, toggleLocale, t, tr],
+    [locale, setLocale, toggleLocale, t, tr, ln],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

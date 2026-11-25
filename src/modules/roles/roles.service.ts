@@ -8,6 +8,7 @@ export interface RoleItem {
   id: number;
   code: string;
   name: string;
+  nameEn: string | null;
   dataScope: DataScope;
   description: string | null;
   isSystem: boolean;
@@ -20,6 +21,7 @@ export interface PermissionItem {
   moduleCode: string;
   code: string;
   name: string;
+  nameEn: string | null;
   description: string | null;
 }
 
@@ -28,7 +30,7 @@ export async function listRoles(): Promise<RoleItem[]> {
 
   const roles = await db
     .selectFrom('roles')
-    .select(['id', 'code', 'name', 'data_scope', 'description', 'is_system'])
+    .select(['id', 'code', 'name', 'name_en', 'data_scope', 'description', 'is_system'])
     .where('deleted_at', 'is', null)
     .orderBy('id', 'asc')
     .execute();
@@ -72,6 +74,7 @@ export async function listRoles(): Promise<RoleItem[]> {
       id,
       code: r.code,
       name: r.name,
+      nameEn: r.name_en ?? null,
       dataScope: r.data_scope,
       description: r.description,
       isSystem: Boolean(r.is_system),
@@ -88,7 +91,7 @@ export async function listPermissions(): Promise<{
   const db = getDb();
   const rows = await db
     .selectFrom('permissions')
-    .select(['id', 'module_code', 'code', 'name', 'description'])
+    .select(['id', 'module_code', 'code', 'name', 'name_en', 'description'])
     .orderBy('module_code', 'asc')
     .orderBy('code', 'asc')
     .execute();
@@ -98,6 +101,7 @@ export async function listPermissions(): Promise<{
     moduleCode: row.module_code,
     code: row.code,
     name: row.name,
+    nameEn: row.name_en ?? null,
     description: row.description,
   }));
 

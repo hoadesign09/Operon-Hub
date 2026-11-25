@@ -10,6 +10,7 @@ interface BranchOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 interface AssetFormModalProps {
@@ -29,7 +30,7 @@ export function AssetFormModal({
   onClose,
   onSuccess,
 }: AssetFormModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const initialBranch =
     asset?.branchId ?? defaultBranchId ?? branches[0]?.id ?? 0;
 
@@ -165,7 +166,7 @@ export function AssetFormModal({
                 <option value="">{tr('-- Chọn chi nhánh --', '-- Select branch --')}</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.code})
+                    {ln(b.name, b.nameEn)} ({b.code})
                   </option>
                 ))}
               </select>

@@ -20,6 +20,7 @@ export interface AuthBranchSummary {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   isHeadquarters: boolean;
 }
 
@@ -27,6 +28,7 @@ export interface AuthRoleSummary {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   dataScope: DataScope;
   branchId: number | null;
 }
@@ -94,6 +96,7 @@ export async function loadAuthContext(userId: number): Promise<AuthContext | nul
       'roles.id as role_id',
       'roles.code as role_code',
       'roles.name as role_name',
+      'roles.name_en as role_name_en',
       'roles.data_scope as data_scope',
       'user_roles.branch_id as branch_id',
     ])
@@ -105,6 +108,7 @@ export async function loadAuthContext(userId: number): Promise<AuthContext | nul
     id: Number(r.role_id),
     code: r.role_code,
     name: r.role_name,
+    nameEn: r.role_name_en ?? null,
     dataScope: r.data_scope,
     branchId: r.branch_id !== null ? Number(r.branch_id) : null,
   }));
@@ -141,7 +145,7 @@ export async function loadAuthContext(userId: number): Promise<AuthContext | nul
 
   let branchQuery = db
     .selectFrom('branches')
-    .select(['id', 'code', 'name', 'is_headquarters'])
+    .select(['id', 'code', 'name', 'name_en', 'is_headquarters'])
     .where('deleted_at', 'is', null)
     .where('is_active', '=', 1)
     .orderBy('is_headquarters', 'desc')
@@ -172,6 +176,7 @@ export async function loadAuthContext(userId: number): Promise<AuthContext | nul
     id: Number(b.id),
     code: b.code,
     name: b.name,
+    nameEn: b.name_en ?? null,
     isHeadquarters: Boolean(b.is_headquarters),
   }));
 

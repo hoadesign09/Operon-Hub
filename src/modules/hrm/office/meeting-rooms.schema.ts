@@ -20,6 +20,7 @@ export const createMeetingRoomSchema = z.object({
     .trim()
     .min(2, 'Tên phòng họp tối thiểu 2 ký tự')
     .max(150, 'Tên phòng họp tối đa 150 ký tự'),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   floor: z.string().trim().max(50, 'Vị trí tầng tối đa 50 ký tự').nullable().optional(),
   capacity: z.coerce
     .number()
@@ -41,6 +42,7 @@ export const updateMeetingRoomSchema = z.object({
     .regex(/^[A-Za-z0-9_-]+$/)
     .optional(),
   name: z.string().trim().min(2).max(150).optional(),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   floor: z.string().trim().max(50).nullable().optional(),
   capacity: z.coerce.number().int().min(1).max(500).optional(),
   equipment: equipmentListSchema,

@@ -44,6 +44,7 @@ export interface PayrollPeriodItem {
   branchId: number | null;
   branchCode: string | null;
   branchName: string;
+  branchNameEn?: string | null;
   year: number;
   month: number;
   code: string;
@@ -77,9 +78,12 @@ export interface PayslipRowItem {
   employeeName: string;
   branchId: number;
   branchName: string;
+  branchNameEn?: string | null;
   departmentId: number;
   departmentName: string;
+  departmentNameEn?: string | null;
   positionName: string;
+  positionNameEn?: string | null;
   taxCode: string | null;
   socialInsuranceNo: string | null;
   standardWorkDays: number;
@@ -186,6 +190,7 @@ function mapPeriodRow(row: {
   branch_id: number | bigint | null;
   branch_code: string | null;
   branch_name: string | null;
+  branch_name_en?: string | null;
   year: number;
   month: number;
   code: string;
@@ -210,6 +215,7 @@ function mapPeriodRow(row: {
     branchId: row.branch_id !== null ? Number(row.branch_id) : null,
     branchCode: row.branch_code ? String(row.branch_code) : null,
     branchName: row.branch_name ? String(row.branch_name) : 'Toàn công ty',
+    branchNameEn: row.branch_name_en ? String(row.branch_name_en) : row.branch_id === null ? 'Company-wide' : null,
     year: Number(row.year),
     month: Number(row.month),
     code: String(row.code),
@@ -244,9 +250,12 @@ function mapPayslipRow(row: {
   employee_name: string;
   branch_id: number | bigint;
   branch_name: string;
+  branch_name_en?: string | null;
   department_id: number | bigint;
   department_name: string;
+  department_name_en?: string | null;
   position_name: string;
+  position_name_en?: string | null;
   tax_code: string | null;
   social_insurance_no: string | null;
   standard_work_days: string | number;
@@ -292,9 +301,12 @@ function mapPayslipRow(row: {
     employeeName: String(row.employee_name),
     branchId: Number(row.branch_id),
     branchName: String(row.branch_name),
+    branchNameEn: row.branch_name_en ? String(row.branch_name_en) : null,
     departmentId: Number(row.department_id),
     departmentName: String(row.department_name),
+    departmentNameEn: row.department_name_en ? String(row.department_name_en) : null,
     positionName: String(row.position_name),
+    positionNameEn: row.position_name_en ? String(row.position_name_en) : null,
     taxCode: row.tax_code ? String(row.tax_code) : null,
     socialInsuranceNo: row.social_insurance_no ? String(row.social_insurance_no) : null,
     standardWorkDays: Number(row.standard_work_days),
@@ -338,6 +350,7 @@ async function getPeriodByIdRaw(periodId: number) {
       'pp.branch_id',
       'b.code as branch_code',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'pp.year',
       'pp.month',
       'pp.code',
@@ -451,6 +464,7 @@ export async function listPayrollPeriods(
         'pp.branch_id',
         'b.code as branch_code',
         'b.name as branch_name',
+        'b.name_en as branch_name_en',
         'pp.year',
         'pp.month',
         'pp.code',
@@ -651,9 +665,12 @@ export async function getPayrollPeriodDetail(
         'e.full_name as employee_name',
         'ps.branch_id',
         'b.name as branch_name',
+        'b.name_en as branch_name_en',
         'ps.department_id',
         'd.name as department_name',
+        'd.name_en as department_name_en',
         'pos.name as position_name',
+        'pos.name_en as position_name_en',
         'e.tax_code',
         'e.social_insurance_no',
         'ps.standard_work_days',
@@ -1139,9 +1156,12 @@ export async function getPayslipDetail(
       'e.user_id as employee_user_id',
       'ps.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'ps.department_id',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'pos.name as position_name',
+      'pos.name_en as position_name_en',
       'e.tax_code',
       'e.social_insurance_no',
       'ps.standard_work_days',
@@ -1774,9 +1794,12 @@ export async function listMyPayslips(
       'e.full_name as employee_name',
       'ps.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'ps.department_id',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'pos.name as position_name',
+      'pos.name_en as position_name_en',
       'e.tax_code',
       'e.social_insurance_no',
       'ps.standard_work_days',

@@ -53,7 +53,7 @@ export function AnnouncementDetailModal({
   onClose,
   onMarkedRead,
 }: AnnouncementDetailModalProps) {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -221,7 +221,9 @@ export function AnnouncementDetailModal({
                 {badge.label[locale]}
               </span>
               <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                {announcement.branchName ?? tr('Toàn công ty', 'Company-wide')}
+                {announcement.branchName
+                  ? ln(announcement.branchName, announcement.branchNameEn)
+                  : tr('Toàn công ty', 'Company-wide')}
               </span>
             </div>
             <h2 className="text-lg font-bold text-slate-900">{announcement.title}</h2>

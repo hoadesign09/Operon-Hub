@@ -18,10 +18,13 @@ export interface DepartmentItem {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn: string | null;
   parentId: number | null;
   parentName: string | null;
+  parentNameEn: string | null;
   code: string;
   name: string;
+  nameEn: string | null;
   description: string | null;
   managerEmployeeId: number | null;
   sortOrder: number;
@@ -33,6 +36,7 @@ export interface BranchOrgTree {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn: string | null;
   isHeadquarters: boolean;
   departments: TreeNode<DepartmentItem>[];
 }
@@ -91,7 +95,7 @@ export async function listDepartments(
   if (query.search && query.search.trim().length > 0) {
     const keyword = `%${query.search.trim()}%`;
     baseQuery = baseQuery.where((eb) =>
-      eb.or([eb('d.code', 'like', keyword), eb('d.name', 'like', keyword)]),
+      eb.or([eb('d.code', 'like', keyword), eb('d.name', 'like', keyword), eb('d.name_en', 'like', keyword)]),
     );
   }
 
@@ -112,10 +116,13 @@ export async function listDepartments(
       'd.branch_id',
       'b.code as branch_code',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.parent_id',
       'p.name as parent_name',
+      'p.name_en as parent_name_en',
       'd.code',
       'd.name',
+      'd.name_en',
       'd.description',
       'd.manager_employee_id',
       'd.sort_order',
@@ -134,10 +141,13 @@ export async function listDepartments(
     branchId: Number(row.branch_id),
     branchCode: row.branch_code,
     branchName: row.branch_name,
+    branchNameEn: row.branch_name_en ?? null,
     parentId: row.parent_id !== null ? Number(row.parent_id) : null,
     parentName: row.parent_name ?? null,
+    parentNameEn: row.parent_name_en ?? null,
     code: row.code,
     name: row.name,
+    nameEn: row.name_en ?? null,
     description: row.description,
     managerEmployeeId: row.manager_employee_id !== null ? Number(row.manager_employee_id) : null,
     sortOrder: Number(row.sort_order),
@@ -159,7 +169,7 @@ export async function getOrganizationTree(
 
   let branchQuery = db
     .selectFrom('branches')
-    .select(['id', 'code', 'name', 'is_headquarters'])
+    .select(['id', 'code', 'name', 'name_en', 'is_headquarters'])
     .where('deleted_at', 'is', null)
     .where('is_active', '=', 1)
     .orderBy('is_headquarters', 'desc')
@@ -195,10 +205,13 @@ export async function getOrganizationTree(
       'd.branch_id',
       'b.code as branch_code',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.parent_id',
       'p.name as parent_name',
+      'p.name_en as parent_name_en',
       'd.code',
       'd.name',
+      'd.name_en',
       'd.description',
       'd.manager_employee_id',
       'd.sort_order',
@@ -225,10 +238,13 @@ export async function getOrganizationTree(
       branchId: bid,
       branchCode: row.branch_code,
       branchName: row.branch_name,
+      branchNameEn: row.branch_name_en ?? null,
       parentId: row.parent_id !== null ? Number(row.parent_id) : null,
       parentName: row.parent_name ?? null,
+      parentNameEn: row.parent_name_en ?? null,
       code: row.code,
       name: row.name,
+      nameEn: row.name_en ?? null,
       description: row.description,
       managerEmployeeId: row.manager_employee_id !== null ? Number(row.manager_employee_id) : null,
       sortOrder: Number(row.sort_order),
@@ -244,6 +260,7 @@ export async function getOrganizationTree(
       branchId: bid,
       branchCode: branch.code,
       branchName: branch.name,
+      branchNameEn: branch.name_en ?? null,
       isHeadquarters: Boolean(branch.is_headquarters),
       departments: buildTree(byBranch.get(bid) ?? []),
     };
@@ -345,6 +362,7 @@ export async function createDepartment(
       parent_id: input.parentId ?? null,
       code: input.code,
       name: input.name,
+      name_en: input.nameEn?.trim() || null,
       description: input.description ?? null,
       sort_order: input.sortOrder,
       is_active: input.isActive ? 1 : 0,
@@ -388,6 +406,7 @@ export async function updateDepartment(
       'parent_id',
       'code',
       'name',
+      'name_en',
       'description',
       'sort_order',
       'is_active',
@@ -436,6 +455,7 @@ export async function updateDepartment(
       parent_id: nextParentId,
       code: input.code ?? existing.code,
       name: input.name ?? existing.name,
+      name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : existing.name_en,
       description: input.description !== undefined ? input.description : existing.description,
       sort_order: input.sortOrder ?? Number(existing.sort_order),
       is_active:

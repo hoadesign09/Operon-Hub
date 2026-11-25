@@ -45,7 +45,7 @@ const STATUS_BADGES: Record<
 };
 
 export default function HrmAssetsPage() {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -440,7 +440,9 @@ export default function HrmAssetsPage() {
                           S/N: {asset.serialNumber ?? '—'}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-700">{asset.branchName}</td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {ln(asset.branchName, asset.branchNameEn)}
+                      </td>
                       <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">
                         {formatVND(asset.purchaseValue)}
                       </td>

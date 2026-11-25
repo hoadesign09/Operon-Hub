@@ -72,6 +72,7 @@ export interface DashboardSummaryData {
       departmentId: number;
       departmentCode: string;
       departmentName: string;
+      departmentNameEn: string | null;
       count: number;
     }>;
     headcountByStatus: HeadcountStatusDatum[];
@@ -100,6 +101,7 @@ export interface DashboardSummaryData {
       title: string;
       roomCode: string;
       roomName: string;
+      roomNameEn: string | null;
       startTime: string;
       endTime: string;
       bookedByEmployeeName: string;
@@ -110,6 +112,7 @@ export interface DashboardSummaryData {
       category: AnnouncementCategory;
       isPinned: boolean;
       branchName: string | null;
+      branchNameEn: string | null;
       publishedAt: string | null;
       isReadByMe: boolean;
     }>;
@@ -119,7 +122,9 @@ export interface DashboardSummaryData {
     employeeCode: string;
     fullName: string;
     departmentName: string;
+    departmentNameEn: string | null;
     positionName: string;
+    positionNameEn: string | null;
     annualLeaveRemainingDays: number;
     todayAttendanceStatus: 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'CHECKED_OUT';
     todayCheckInAt: string | null;
@@ -220,6 +225,7 @@ export async function getHrmDashboardSummary(
       'employees.department_id',
       'departments.code as department_code',
       'departments.name as department_name',
+      'departments.name_en as department_name_en',
       'employees.employment_status',
       'employees.hire_date',
     ])
@@ -250,7 +256,7 @@ export async function getHrmDashboardSummary(
 
   // Workforce KPI & Charts
   const statusCounts: Partial<Record<EmploymentStatus, number>> = {};
-  const deptCounts = new Map<number, { code: string; name: string; count: number }>();
+  const deptCounts = new Map<number, { code: string; name: string; nameEn: string | null; count: number }>();
   let activeEmployees = 0;
   let probationCount = 0;
   let newHiresThisMonth = 0;
@@ -267,6 +273,7 @@ export async function getHrmDashboardSummary(
         deptCounts.set(deptId, {
           code: emp.department_code,
           name: emp.department_name,
+          nameEn: emp.department_name_en ?? null,
           count: 1,
         });
       }
@@ -286,6 +293,7 @@ export async function getHrmDashboardSummary(
           departmentId,
           departmentCode: info.code,
           departmentName: info.name,
+          departmentNameEn: info.nameEn,
           count: info.count,
         }))
         .sort((a, b) => b.count - a.count)
@@ -494,6 +502,7 @@ export async function getHrmDashboardSummary(
           'room_bookings.title',
           'meeting_rooms.code as room_code',
           'meeting_rooms.name as room_name',
+          'meeting_rooms.name_en as room_name_en',
           'room_bookings.start_time',
           'room_bookings.end_time',
           'employees.full_name as booked_by_employee_name',
@@ -524,6 +533,7 @@ export async function getHrmDashboardSummary(
           'announcements.category',
           'announcements.is_pinned',
           'branches.name as branch_name',
+          'branches.name_en as branch_name_en',
           'announcements.published_at',
         ])
         .where('announcements.deleted_at', 'is', null)
@@ -558,7 +568,9 @@ export async function getHrmDashboardSummary(
         'employees.employee_code',
         'employees.full_name',
         'departments.name as department_name',
+        'departments.name_en as department_name_en',
         'positions.name as position_name',
+        'positions.name_en as position_name_en',
       ])
       .where('employees.user_id', '=', auth.userId)
       .where('employees.deleted_at', 'is', null)
@@ -692,6 +704,7 @@ export async function getHrmDashboardSummary(
     category: a.category,
     isPinned: Number(a.is_pinned) === 1,
     branchName: a.branch_name,
+    branchNameEn: a.branch_name_en ?? null,
     publishedAt: toIsoString(a.published_at),
     isReadByMe: myReadSet.has(Number(a.id)),
   }));
@@ -763,6 +776,7 @@ export async function getHrmDashboardSummary(
         title: m.title,
         roomCode: m.room_code,
         roomName: m.room_name,
+        roomNameEn: m.room_name_en ?? null,
         startTime: toIsoString(m.start_time) ?? '',
         endTime: toIsoString(m.end_time) ?? '',
         bookedByEmployeeName: m.booked_by_employee_name,
@@ -775,7 +789,9 @@ export async function getHrmDashboardSummary(
           employeeCode: selfEmployeeRow.employee_code,
           fullName: selfEmployeeRow.full_name,
           departmentName: selfEmployeeRow.department_name,
+          departmentNameEn: selfEmployeeRow.department_name_en ?? null,
           positionName: selfEmployeeRow.position_name,
+          positionNameEn: selfEmployeeRow.position_name_en ?? null,
           annualLeaveRemainingDays,
           todayAttendanceStatus,
           todayCheckInAt: toIsoString(essTodayLog?.check_in_at),

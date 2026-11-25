@@ -30,6 +30,11 @@ export const PORTAL_MODULES: readonly PortalModuleDefinition[] = [
         href: '/my/profile',
       },
       {
+        label: 'Công việc của tôi',
+        href: '/my/tasks',
+        requiredPermission: 'pm.tasks.read',
+      },
+      {
         label: 'Đơn từ của tôi',
         href: '/my/requests',
       },
@@ -128,12 +133,47 @@ export const PORTAL_MODULES: readonly PortalModuleDefinition[] = [
     ],
   },
   {
+    code: 'projects',
+    name: 'Quản lý Dự án & Công việc',
+    description: 'Danh mục dự án, Kanban kéo-thả, Agile Sprint, Gantt CPM, Timesheet, Workload & RAID.',
+    basePath: '/projects',
+    status: 'ACTIVE',
+    order: 3,
+    navItems: [
+      {
+        label: 'Tổng quan Dự án',
+        href: '/projects/dashboard',
+        requiredPermission: 'pm.dashboard.read',
+      },
+      {
+        label: 'Danh mục Dự án',
+        href: '/projects',
+        requiredPermission: 'pm.projects.read',
+      },
+      {
+        label: 'Phân bổ Nguồn lực',
+        href: '/projects/workload',
+        requiredPermission: 'pm.workload.read',
+      },
+      {
+        label: 'Bảng chấm giờ (Timesheets)',
+        href: '/projects/timesheets',
+        requiredPermission: 'pm.timelogs.log',
+      },
+      {
+        label: 'Thư viện Mẫu Dự án',
+        href: '/projects/templates',
+        requiredPermission: 'pm.projects.read',
+      },
+    ],
+  },
+  {
     code: 'crm',
     name: 'Quan hệ Khách hàng (CRM)',
     description: 'Quản lý khách hàng, cơ hội bán hàng, báo giá và hợp đồng kinh doanh (Giai đoạn 2).',
     basePath: '/crm',
     status: 'COMING_SOON',
-    order: 3,
+    order: 4,
     navItems: [],
   },
 ] as const;

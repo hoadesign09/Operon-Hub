@@ -44,6 +44,7 @@ interface MyLeaveBalance extends LeaveBalanceOption {
   id: number;
   leaveTypeCode: string;
   leaveTypeName: string;
+  leaveTypeNameEn?: string | null;
   isPaid: boolean;
 }
 
@@ -53,6 +54,7 @@ interface MyLeaveRequest {
   leaveTypeId: number;
   leaveTypeCode: string;
   leaveTypeName: string;
+  leaveTypeNameEn?: string | null;
   isPaid: boolean;
   startDate: string;
   endDate: string;
@@ -125,7 +127,7 @@ const STATUS_BADGE: Record<RequestStatus, { vi: string; en: string; className: s
 };
 
 export default function MyRequestsPage() {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -463,7 +465,7 @@ export default function MyRequestsPage() {
                           {bal.leaveTypeCode}
                         </span>
                         <h3 className="mt-1.5 text-sm font-bold text-slate-900">
-                          {bal.leaveTypeName}
+                          {ln(bal.leaveTypeName, bal.leaveTypeNameEn)}
                         </h3>
                       </div>
                       <div className="text-right">
@@ -653,7 +655,9 @@ export default function MyRequestsPage() {
                           {item.requestCode}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="font-medium text-slate-900">{item.leaveTypeName}</div>
+                          <div className="font-medium text-slate-900">
+                            {ln(item.leaveTypeName, item.leaveTypeNameEn)}
+                          </div>
                           <div className="text-[11px] text-slate-500">
                             {item.isPaid ? tr('Hưởng lương', 'Paid') : tr('Không lương', 'Unpaid')}
                           </div>

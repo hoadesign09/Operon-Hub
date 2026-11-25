@@ -1958,6 +1958,377 @@
       "status": "PASS",
       "last_task_id": "TASK-20261124-02",
       "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PM-001",
+      "module": "projects",
+      "feature": "Migration #15-#17: Khởi tạo 15 bảng Phase 2 Projects/Tasks/Collaboration + Role PMO_MANAGER + 17 quyền pm.* + Workflow PM_PROJECT_CHARTER",
+      "spec_ref": "P2-TASK-01, DB-01",
+      "target_files": [
+        "database/migrations/20261124_000015_init_pm_projects_members_columns.sql",
+        "database/migrations/20261124_000016_init_pm_sprints_milestones_tasks.sql",
+        "database/migrations/20261124_000017_init_pm_collaboration_activities.sql"
+      ],
+      "type": "DB",
+      "preconditions": "Local MySQL đang chạy tại localhost, migrations #01-#14 đã áp dụng",
+      "steps": [
+        "Chạy npm run db:migrate && npm run db:status",
+        "Đối chiếu INFORMATION_SCHEMA.TABLES, roles, permissions, approval_workflows"
+      ],
+      "expected_result": "17/17 migration [APPLIED], đủ 15 bảng pm, 17 quyền pm.*, role PMO_MANAGER và workflow PM_PROJECT_CHARTER",
+      "actual_result": "PASS — 15/15 bảng live, 17 quyền pm.*, PMO_MANAGER & workflow PM_PROJECT_CHARTER active",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-07",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PM-002",
+      "module": "projects",
+      "feature": "Phân quyền 2 tầng (System RBAC x Project Role/Visibility) & Vòng đời Dự án + Trình duyệt Charter",
+      "spec_ref": "P2-TASK-01, FR-01, FR-03",
+      "target_files": [
+        "src/modules/projects/projects.access.ts",
+        "src/modules/projects/project-charter-approval-hook.ts",
+        "tests/projects/projects-domain.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Chạy Vitest suite projects-domain.test.ts",
+      "steps": [
+        "Kiểm tra outsider bị chặn trên PRIVATE_INVITE, member được sửa task nhưng không xem budget, archived khóa sửa, kiểm tra ma trận chuyển trạng thái"
+      ],
+      "expected_result": "4/4 unit tests pass 100%, ma trận vòng đời và phân quyền 2 tầng chính xác",
+      "actual_result": "PASS — tests/projects/projects-domain.test.ts (4/4 tests PASS)",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-07",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PM-003",
+      "module": "projects",
+      "feature": "Cấm xóa cứng (No Hard-Delete) cho Dự án & Công việc + REST CRUD / Move API",
+      "spec_ref": "P2-TASK-01, P2-TASK-02, P2-TASK-03, API-01..05",
+      "target_files": [
+        "src/app/api/v1/projects/[id]/route.ts",
+        "src/app/api/v1/tasks/[id]/route.ts",
+        "src/app/api/v1/tasks/[id]/move/route.ts",
+        "tests/api/projects-and-tasks.test.ts"
+      ],
+      "type": "API",
+      "preconditions": "Chạy Vitest suite projects-and-tasks.test.ts",
+      "steps": [
+        "Gọi DELETE /api/v1/projects/1 và DELETE /api/v1/tasks/10",
+        "Gọi POST /api/v1/projects, POST /api/v1/tasks và PATCH /api/v1/tasks/101/move"
+      ],
+      "expected_result": "DELETE trả 405 PROJECT_HARD_DELETE_FORBIDDEN / TASK_HARD_DELETE_FORBIDDEN; POST/PATCH trả 201/200 chuẩn format",
+      "actual_result": "PASS — tests/api/projects-and-tasks.test.ts (4/4 tests PASS)",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-07",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PM-004",
+      "module": "projects",
+      "feature": "Portable Fractional Indexing (LexoRank) sắp xếp kéo-thả O(1) không xung đột",
+      "spec_ref": "P2-TASK-02, P2-TASK-03",
+      "target_files": [
+        "src/lib/portable/fractional-rank.ts",
+        "tests/unit/fractional-rank.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Chạy Vitest fractional-rank.test.ts & kiểm tra Zero Business Coupling",
+      "steps": [
+        "Sinh 20 rank khởi tạo, chèn 40 lần liên tiếp giữa 2 biên, kiểm tra rankBefore và chặn biên ngược",
+        "Chạy system-regression-crm-readiness.test.ts kiểm tra Zero Coupling"
+      ],
+      "expected_result": "3/3 test fractional-rank PASS và Zero Business Coupling PASS",
+      "actual_result": "PASS — 3/3 tests PASS, Zero Business Coupling verified across all portable modules",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-07",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PM-005",
+      "module": "projects",
+      "feature": "Phân cấp Subtask tối đa 3 cấp, DAG Cycle Detection cho Dependencies & Validate tệp đính kèm 10MB",
+      "spec_ref": "P2-TASK-02, P2-TASK-05",
+      "target_files": [
+        "src/modules/projects/tasks.service.ts",
+        "src/modules/projects/collaboration.service.ts",
+        "tests/projects/projects-domain.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Chạy Vitest projects-domain.test.ts",
+      "steps": [
+        "Kiểm tra wouldCreateDependencyCycle (1->2->3->1 bị chặn)",
+        "Kiểm tra computeTaskDepth (cấp 4 vượt giới hạn 3)",
+        "Kiểm tra validateTaskAttachmentFile chặn .exe và file > 10MB"
+      ],
+      "expected_result": "Chặn chính xác mọi chu trình DAG, vượt cấp Subtask và tệp không hợp lệ",
+      "actual_result": "PASS — toàn bộ assertions pass 100%",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-07",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PM-006",
+      "module": "projects",
+      "feature": "Điều hướng Dual-Rail 6 nhóm (thêm Rail Dự án & /my/tasks), Module Registry & Health API",
+      "spec_ref": "P2-TASK-01, P2-TASK-04, UI-01",
+      "target_files": [
+        "src/modules/registry.ts",
+        "src/layouts/portal-navigation.ts",
+        "src/layouts/PortalShell.tsx",
+        "tests/unit/portal-shell-navigation.test.ts",
+        "tests/api/health.test.ts"
+      ],
+      "type": "UNIT",
+      "preconditions": "Chạy portal-shell-navigation.test.ts, system-regression-crm-readiness.test.ts, health.test.ts",
+      "steps": [
+        "Kiểm tra 6 rail groups VI/EN, ánh xạ /projects, /projects/ERP-2026, /my/tasks và danh sách modules [core, hrm, projects, crm]"
+      ],
+      "expected_result": "100% test navigation, registry & health PASS ở cả VI và EN",
+      "actual_result": "PASS — 6/6 navigation, 4/4 regression, 2/2 health PASS",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-07",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PM-007",
+      "module": "projects",
+      "feature": "UI Phase 2 (Portfolio, Kanban @dnd-kit, List Tree, Calendar + DayTasksModal, TaskDetailDrawer, My Tasks) — 100% VI/EN AST Audit & Production Build",
+      "spec_ref": "P2-TASK-01..05, UI-02, UI-03",
+      "target_files": [
+        "src/app/(portal)/projects/page.tsx",
+        "src/app/(portal)/projects/[code]/page.tsx",
+        "src/app/(portal)/my/tasks/page.tsx",
+        "src/components/projects/ProjectKanbanBoard.tsx",
+        "src/components/projects/TaskDetailDrawer.tsx",
+        "tests/unit/i18n.test.ts"
+      ],
+      "type": "UI",
+      "preconditions": "Đã thêm src/components/projects vào AST scan của tests/unit/i18n.test.ts",
+      "steps": [
+        "Chạy npm run typecheck, npm run lint, npm run test (65 files / 172 tests) và npm run build"
+      ],
+      "expected_result": "0 lỗi TS, 0 lỗi/cảnh báo ESLint, 0 chuỗi tiếng Việt lọt ở EN, 65/65 suites PASS, build production sạch",
+      "actual_result": "PASS — tsc 0 errors, eslint 0 warnings, 65/65 suites (172/172 tests) PASS, next build PASS",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-07",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PM-008",
+      "module": "projects",
+      "feature": "Kiểm định MIT-Only License Policy sau khi cài @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities",
+      "spec_ref": "P2-TASK-03, package-policy.md",
+      "target_files": [
+        "package.json"
+      ],
+      "type": "SECURITY",
+      "preconditions": "Đã cài @dnd-kit/* từ npm",
+      "steps": [
+        "Chạy node .agents/scripts/check-license.js --audit"
+      ],
+      "expected_result": "100% packages là MIT (chỉ giữ duy nhất ngoại lệ typescript devDep đã được người dùng duyệt Gate 4)",
+      "actual_result": "PASS (theo ngoại lệ đã duyệt) — toàn bộ 28/28 packages là MIT + typescript: Apache-2.0 devDep",
+      "status": "PASS",
+      "last_task_id": "TASK-20261124-07",
+      "last_tested_at": "2026-11-24"
+    },
+    {
+      "id": "TC-PM-009",
+      "module": "projects",
+      "title": "Agile Sprint Lifecycle, Atomic Carryover & Burndown/Velocity Metrics",
+      "type": "FUNCTIONAL",
+      "priority": "HIGH",
+      "target_files": [
+        "src/lib/portable/agile-metrics.ts",
+        "src/modules/projects/sprints.service.ts"
+      ],
+      "expected": "Single active sprint guard, atomic sprint completion carryover, accurate Burndown & Velocity",
+      "status": "PASS",
+      "last_run_at": "2026-11-24"
+    },
+    {
+      "id": "TC-PM-010",
+      "module": "projects",
+      "title": "Milestones Sign-off Hook, Interactive Gantt CPM & Auto-Shift (FS/SS/FF/SF)",
+      "type": "FUNCTIONAL",
+      "priority": "HIGH",
+      "target_files": [
+        "src/lib/portable/gantt-scheduler.ts",
+        "src/modules/projects/milestones.service.ts"
+      ],
+      "expected": "CPM Slack=0 identification, Baseline capture, Auto-Shift propagation & PM_MILESTONE_SIGNOFF hook",
+      "status": "PASS",
+      "last_run_at": "2026-11-24"
+    },
+    {
+      "id": "TC-PM-011",
+      "module": "projects",
+      "title": "Server-side Live Timer, Manual Time Logs & Weekly Timesheet Approval",
+      "type": "FUNCTIONAL",
+      "priority": "HIGH",
+      "target_files": [
+        "src/modules/projects/timelogs.service.ts",
+        "src/components/projects/QuickTimerWidget.tsx"
+      ],
+      "expected": "Start/Stop timer persists DB, auto-rollups actual_hours, submits & approves weekly logs syncing labor cost",
+      "status": "PASS",
+      "last_run_at": "2026-11-24"
+    },
+    {
+      "id": "TC-PM-012",
+      "module": "projects",
+      "title": "HRM-Integrated Workload Heatmap (Holidays + Approved Leaves Read-Only)",
+      "type": "INTEGRATION",
+      "priority": "HIGH",
+      "target_files": [
+        "src/lib/portable/workload-calculator.ts",
+        "src/modules/projects/workload.service.ts"
+      ],
+      "expected": "Excludes weekends, HRM holidays and approved full/half-day leaves; flags >100% overload cleanly",
+      "status": "PASS",
+      "last_run_at": "2026-11-24"
+    },
+    {
+      "id": "TC-PM-013",
+      "module": "projects",
+      "title": "Project Budget DECIMAL(18,2), PM_BUDGET_CHANGE Hook & RAID 5x5 Convert-to-Task",
+      "type": "FUNCTIONAL",
+      "priority": "HIGH",
+      "target_files": [
+        "src/modules/projects/budget-risks.service.ts",
+        "src/modules/projects/pm-approval-hooks.ts"
+      ],
+      "expected": "Exact currency math, approval hook updates project budget, RAID 5x5 matrix & 1-click action task link",
+      "status": "PASS",
+      "last_run_at": "2026-11-24"
+    },
+    {
+      "id": "TC-PM-014",
+      "module": "projects",
+      "title": "Project Templates (T+N Shift), Recurring Tasks Runner & Automation Depth Guard",
+      "type": "FUNCTIONAL",
+      "priority": "MEDIUM",
+      "target_files": [
+        "src/modules/projects/templates-automation.service.ts"
+      ],
+      "expected": "Save/Apply template shifts dates T+N, recurrence generates due tasks, automation enforces max depth=1",
+      "status": "PASS",
+      "last_run_at": "2026-11-24"
+    },
+    {
+      "id": "TC-PM-015",
+      "module": "projects",
+      "title": "Executive Portfolio Dashboard, Excel/PDF A4 Exports & Full VI/EN AST Audit",
+      "type": "REGRESSION",
+      "priority": "HIGH",
+      "target_files": [
+        "src/modules/projects/reports.service.ts",
+        "src/app/(portal)/projects/dashboard/page.tsx"
+      ],
+      "expected": "Portfolio KPIs, valid Excel/PDF Vietnamese buffers, 69/69 test suites PASS, 0 i18n leaks",
+      "status": "PASS",
+      "last_run_at": "2026-11-24"
+    },
+    {
+      "tc_id": "TC-PROP-001",
+      "module": "proposals",
+      "task_id": "TASK-20261125-01",
+      "title": "Migration 6 tables & bilingual proposal_categories seed (name_en)",
+      "target_files": [
+        "database/migrations/20261125_000021_init_proposals_module.sql",
+        "database/seed-core.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-PROP-002",
+      "module": "proposals",
+      "task_id": "TASK-20261125-01",
+      "title": "Create draft proposal with itemized budget auto-calculation (DECIMAL 18,2)",
+      "target_files": [
+        "src/lib/portable/proposal-calculator.ts",
+        "src/modules/proposals/proposals.service.ts",
+        "src/app/api/v1/proposals/route.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-PROP-003",
+      "module": "proposals",
+      "task_id": "TASK-20261125-01",
+      "title": "High-value proposal (>= 20M VND) routes to 3-step Core Approval workflow",
+      "target_files": [
+        "src/modules/proposals/proposals.service.ts",
+        "src/modules/approvals/approvals.service.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-PROP-004",
+      "module": "proposals",
+      "task_id": "TASK-20261125-01",
+      "title": "Request revision (NEEDS_REVISION) cancels active approval & logs revision comment",
+      "target_files": [
+        "src/modules/proposals/proposals.service.ts",
+        "src/app/api/v1/proposals/[id]/status/route.ts"
+      ],
+      "status": "PASS",
+      "priority": "P1"
+    },
+    {
+      "tc_id": "TC-PROP-005",
+      "module": "proposals",
+      "task_id": "TASK-20261125-01",
+      "title": "Edit budget < 20M VND & resubmit routes to 2-step Standard workflow",
+      "target_files": [
+        "src/modules/proposals/proposals.service.ts",
+        "src/app/api/v1/proposals/[id]/submit/route.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-PROP-006",
+      "module": "proposals",
+      "task_id": "TASK-20261125-01",
+      "title": "Core Approval Hook auto-transitions proposal to APPROVED & locks approved_budget",
+      "target_files": [
+        "src/modules/proposals/proposal-approval-hook.ts",
+        "src/modules/approvals/register-module-hooks.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-PROP-007",
+      "module": "proposals",
+      "task_id": "TASK-20261125-01",
+      "title": "Execution lifecycle (START_EXECUTION -> COMPLETE) & collaboration comments/attachments",
+      "target_files": [
+        "src/modules/proposals/proposals.service.ts",
+        "src/modules/proposals/proposals-collab.service.ts"
+      ],
+      "status": "PASS",
+      "priority": "P1"
+    },
+    {
+      "tc_id": "TC-PROP-008",
+      "module": "proposals",
+      "task_id": "TASK-20261125-01",
+      "title": "Export proposals Excel (.xlsx), Proposal Form PDF (.pdf) & VI/EN zero-leak UI audit",
+      "target_files": [
+        "src/modules/proposals/proposals-reports.service.ts",
+        "src/app/(portal)/services/proposals/page.tsx",
+        "src/app/(portal)/services/proposals/[id]/page.tsx"
+      ],
+      "status": "PASS",
+      "priority": "P1"
     }
   ],
   "runs": [
@@ -2252,6 +2623,46 @@
         "TC-CORE-030"
       ],
       "test_log_file": ".agents/logs/test/2026-11-24_TASK-20261124-01-02.test.log.md"
+    },
+    {
+      "run_date": "2026-11-24",
+      "task_id": "TASK-20261124-07 (P2-TASK-01..05)",
+      "total_executed": 8,
+      "passed": 8,
+      "failed": 0,
+      "regression_matched": [
+        "TC-CORE-009",
+        "TC-CORE-013",
+        "TC-CORE-017",
+        "TC-CORE-026",
+        "TC-CORE-027",
+        "TC-CORE-028",
+        "TC-CORE-029",
+        "TC-CORE-030",
+        "TC-HRM-047"
+      ],
+      "test_log_file": ".agents/logs/test/2026-11-24_TASK-20261124-07-11.test.log.md"
+    },
+    {
+      "run_id": "RUN-20261124-21",
+      "task_id": "TASK-20261124-08",
+      "executed_at": "2026-11-24T05:22:43.306Z",
+      "total_cases": 95,
+      "passed": 95,
+      "failed": 0,
+      "notes": "Phase 2 Batch 2 (P2-TASK-06..12) complete: 21/21 PM tables, 19/19 migrations, 69/69 Vitest files (182/182 tests), Next.js build & AST i18n PASS."
+    },
+    {
+      "run_id": "RUN-20261125-01",
+      "task_id": "TASK-20261125-01",
+      "module": "proposals",
+      "executed_at": "2026-11-25T22:25:00+07:00",
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "regression_passed": 6,
+      "status": "PASS",
+      "notes": "Full pipeline Proposals module: 70/70 Vitest files (194/194 tests), Live DB E2E PASS, next build PASS"
     }
   ]
 }

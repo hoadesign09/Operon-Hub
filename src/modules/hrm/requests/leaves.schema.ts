@@ -12,6 +12,7 @@ export const createLeaveTypeSchema = z.object({
     .toUpperCase()
     .regex(LEAVE_TYPE_CODE_REGEX, 'Mã loại phép gồm 2–32 ký tự chữ HOA, số hoặc gạch dưới'),
   name: z.string().trim().min(2, 'Tên loại phép tối thiểu 2 ký tự').max(120),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   isPaid: z.boolean().default(true),
   defaultDaysPerYear: z.coerce.number().min(0, 'Số ngày/năm không được âm').max(365),
   allowCarryOver: z.boolean().default(false),
@@ -23,6 +24,7 @@ export const createLeaveTypeSchema = z.object({
 
 export const updateLeaveTypeSchema = z.object({
   name: z.string().trim().min(2, 'Tên loại phép tối thiểu 2 ký tự').max(120).optional(),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   isPaid: z.boolean().optional(),
   defaultDaysPerYear: z.coerce.number().min(0).max(365).optional(),
   allowCarryOver: z.boolean().optional(),

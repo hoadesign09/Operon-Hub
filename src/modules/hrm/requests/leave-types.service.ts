@@ -11,6 +11,7 @@ export interface LeaveTypeItem {
   id: number;
   code: string;
   name: string;
+  nameEn: string | null;
   isPaid: boolean;
   defaultDaysPerYear: number;
   allowCarryOver: boolean;
@@ -25,6 +26,7 @@ function mapLeaveTypeRow(row: {
   id: number;
   code: string;
   name: string;
+  name_en: string | null;
   is_paid: number;
   default_days_per_year: string | number;
   allow_carry_over: number;
@@ -38,6 +40,7 @@ function mapLeaveTypeRow(row: {
     id: Number(row.id),
     code: row.code,
     name: row.name,
+    nameEn: row.name_en ?? null,
     isPaid: Number(row.is_paid) === 1,
     defaultDaysPerYear: defaultDays,
     allowCarryOver: Number(row.allow_carry_over) === 1,
@@ -59,6 +62,7 @@ export async function listLeaveTypes(options: {
       'id',
       'code',
       'name',
+      'name_en',
       'is_paid',
       'default_days_per_year',
       'allow_carry_over',
@@ -106,6 +110,7 @@ export async function createLeaveType(
     .values({
       code: normalizedCode,
       name: input.name.trim(),
+      name_en: input.nameEn?.trim() || null,
       is_paid: input.isPaid ? 1 : 0,
       default_days_per_year: input.defaultDaysPerYear,
       allow_carry_over: input.allowCarryOver ? 1 : 0,
@@ -125,6 +130,7 @@ export async function createLeaveType(
       'id',
       'code',
       'name',
+      'name_en',
       'is_paid',
       'default_days_per_year',
       'allow_carry_over',
@@ -164,6 +170,7 @@ export async function updateLeaveType(
       'id',
       'code',
       'name',
+      'name_en',
       'is_paid',
       'default_days_per_year',
       'allow_carry_over',
@@ -192,6 +199,7 @@ export async function updateLeaveType(
     .updateTable('leave_types')
     .set({
       name: input.name !== undefined ? input.name.trim() : existing.name,
+      name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : existing.name_en,
       is_paid: input.isPaid !== undefined ? (input.isPaid ? 1 : 0) : existing.is_paid,
       default_days_per_year:
         input.defaultDaysPerYear !== undefined
@@ -221,6 +229,7 @@ export async function updateLeaveType(
       'id',
       'code',
       'name',
+      'name_en',
       'is_paid',
       'default_days_per_year',
       'allow_carry_over',

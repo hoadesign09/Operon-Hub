@@ -2,7 +2,11 @@ import type { PortalModuleDefinition, PortalNavItem } from '@/modules/registry';
 import { DEFAULT_LOCALE, type AppLocale } from '@/shared/i18n/config';
 import { translateApp, type TranslationKey } from '@/shared/i18n/translator';
 
-export type PortalRailKey = 'workspace' | 'hrm' | 'admin' | 'crm';
+export type PortalRailKey = 'workspace' | 'services' | 'projects' | 'hrm' | 'admin' | 'crm';
+
+export interface PortalRailNavItem extends PortalNavItem {
+  isComingSoon?: boolean;
+}
 
 export interface PortalRailGroup {
   key: PortalRailKey;
@@ -10,17 +14,32 @@ export interface PortalRailGroup {
   title: string;
   subtitle: string;
   isComingSoon?: boolean;
-  items: PortalNavItem[];
+  items: PortalRailNavItem[];
 }
 
 const WORKSPACE_PREFIXES = ['/dashboard', '/my/', '/approvals'] as const;
+const SERVICES_PREFIXES = ['/services', '/hrm/office/meeting-rooms'] as const;
+const PROJECTS_PREFIXES = ['/projects'] as const;
 const ADMIN_PREFIXES = ['/settings/'] as const;
 const HRM_PREFIXES = ['/hrm/'] as const;
 const CRM_PREFIXES = ['/crm'] as const;
 
+const SERVICE_MOVED_HRM_HREFS = new Set<string>(['/hrm/office/meeting-rooms']);
+
 const NAV_HREF_TRANSLATION_KEYS: Record<string, TranslationKey> = {
   '/dashboard': 'nav.item.dashboard',
+  '/services': 'nav.item.servicesHub',
+  '/services/it-requests': 'nav.item.servicesItRequests',
+  '/services/proposals': 'nav.item.servicesProposals',
+  '/services/payments': 'nav.item.servicesPayments',
+  '/services/car-booking': 'nav.item.servicesCarBooking',
+  '/projects/dashboard': 'nav.item.projectsDashboard',
+  '/projects': 'nav.item.projectsList',
+  '/projects/workload': 'nav.item.projectsWorkload',
+  '/projects/timesheets': 'nav.item.projectsTimesheets',
+  '/projects/templates': 'nav.item.projectsTemplates',
   '/my/profile': 'nav.item.myProfile',
+  '/my/tasks': 'nav.item.myTasks',
   '/my/requests': 'nav.item.myRequests',
   '/my/attendance': 'nav.item.myAttendance',
   '/my/payslips': 'nav.item.myPayslips',
@@ -42,9 +61,9 @@ const NAV_HREF_TRANSLATION_KEYS: Record<string, TranslationKey> = {
 };
 
 function localizeNavItems(
-  items: readonly PortalNavItem[],
+  items: readonly PortalRailNavItem[],
   locale: AppLocale,
-): PortalNavItem[] {
+): PortalRailNavItem[] {
   return items.map((item) => {
     const key = NAV_HREF_TRANSLATION_KEYS[item.href];
     return {
@@ -55,6 +74,20 @@ function localizeNavItems(
 }
 
 export function resolveActiveRailKey(pathname: string): PortalRailKey {
+  if (
+    SERVICES_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  ) {
+    return 'services';
+  }
+  if (
+    PROJECTS_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  ) {
+    return 'projects';
+  }
   if (HRM_PREFIXES.some((prefix) => pathname === '/hrm' || pathname.startsWith(prefix))) {
     return 'hrm';
   }
@@ -75,11 +108,12 @@ export function buildDualRailGroups(
   locale: AppLocale = DEFAULT_LOCALE,
 ): PortalRailGroup[] {
   const coreModule = modules.find((m) => m.code === 'core');
+  const projectsModule = modules.find((m) => m.code === 'projects');
   const hrmModule = modules.find((m) => m.code === 'hrm');
   const crmModule = modules.find((m) => m.code === 'crm');
 
   const coreItems = coreModule?.navItems ?? [];
-  const personalAndApprovalItems: PortalNavItem[] = localizeNavItems(
+  const personalAndApprovalItems: PortalRailNavItem[] = localizeNavItems(
     [
       { label: translateApp(locale, 'nav.item.dashboard'), href: '/dashboard' },
       ...coreItems.filter(
@@ -93,7 +127,41 @@ export function buildDualRailGroups(
     coreItems.filter((item) => item.href.startsWith('/settings/')),
     locale,
   );
-  const hrmItems = localizeNavItems(hrmModule?.navItems ?? [], locale);
+
+  const allHrmItems = hrmModule?.navItems ?? [];
+  const meetingRoomsItem = allHrmItems.find((item) => SERVICE_MOVED_HRM_HREFS.has(item.href));
+  const hrmItems = localizeNavItems(
+    allHrmItems.filter((item) => !SERVICE_MOVED_HRM_HREFS.has(item.href)),
+    locale,
+  );
+
+  const serviceItems: PortalRailNavItem[] = localizeNavItems(
+    [
+      { label: translateApp(locale, 'nav.item.servicesHub'), href: '/services' },
+      ...(meetingRoomsItem ? [meetingRoomsItem] : []),
+      {
+        label: translateApp(locale, 'nav.item.servicesItRequests'),
+        href: '/services/it-requests',
+        isComingSoon: true,
+      },
+      {
+        label: translateApp(locale, 'nav.item.servicesProposals'),
+        href: '/services/proposals',
+        requiredPermission: 'proposals.read',
+      },
+      {
+        label: translateApp(locale, 'nav.item.servicesPayments'),
+        href: '/services/payments',
+        isComingSoon: true,
+      },
+      {
+        label: translateApp(locale, 'nav.item.servicesCarBooking'),
+        href: '/services/car-booking',
+        isComingSoon: true,
+      },
+    ],
+    locale,
+  );
 
   const groups: PortalRailGroup[] = [
     {
@@ -103,7 +171,25 @@ export function buildDualRailGroups(
       subtitle: translateApp(locale, 'nav.rail.workspace.subtitle'),
       items: personalAndApprovalItems,
     },
+    {
+      key: 'services',
+      shortLabel: translateApp(locale, 'nav.rail.services.short'),
+      title: translateApp(locale, 'nav.rail.services.title'),
+      subtitle: translateApp(locale, 'nav.rail.services.subtitle'),
+      items: serviceItems,
+    },
   ];
+
+  const projectItems = localizeNavItems(projectsModule?.navItems ?? [], locale);
+  if (projectItems.length > 0) {
+    groups.push({
+      key: 'projects',
+      shortLabel: translateApp(locale, 'nav.rail.projects.short'),
+      title: translateApp(locale, 'nav.rail.projects.title'),
+      subtitle: translateApp(locale, 'nav.rail.projects.subtitle'),
+      items: projectItems,
+    });
+  }
 
   if (hrmItems.length > 0) {
     groups.push({
@@ -157,9 +243,17 @@ export function resolvePageContextLabel(
 ): { groupTitle: string; itemLabel: string } {
   for (const group of groups) {
     for (const item of group.items) {
+      if (pathname === item.href) {
+        return { groupTitle: group.title, itemLabel: item.label };
+      }
+    }
+  }
+  for (const group of groups) {
+    for (const item of group.items) {
       if (
-        pathname === item.href ||
-        (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`))
+        item.href !== '/dashboard' &&
+        item.href !== '/services' &&
+        pathname.startsWith(`${item.href}/`)
       ) {
         return { groupTitle: group.title, itemLabel: item.label };
       }

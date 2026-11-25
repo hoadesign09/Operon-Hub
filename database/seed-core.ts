@@ -3,6 +3,13 @@ import { fileURLToPath } from 'node:url';
 import mysql, { type Connection } from 'mysql2/promise';
 import { parseServerEnv } from '@/config/env';
 import { hashPassword } from '@/lib/portable/password-hasher';
+import {
+  DEFAULT_PROPOSAL_CATEGORIES,
+  PROPOSAL_DEFAULT_REQUEST_TYPE,
+  PROPOSAL_ENTITY_TYPE,
+  PROPOSAL_HIGH_VALUE_THRESHOLD_VND,
+  PROPOSAL_MODULE_CODE,
+} from '@/modules/proposals/proposals.constants';
 import { assertLocalDevEnvironment } from './migrator';
 
 const DEFAULT_ADMIN_EMAIL = 'admin@operonhub.local';
@@ -10,64 +17,86 @@ const DEFAULT_ADMIN_PASSWORD = 'Admin@123456';
 const DEFAULT_ADMIN_NAME = 'Quản trị Hệ thống';
 
 const SYSTEM_ROLES = [
-  { code: 'SUPER_ADMIN', name: 'Quản trị Hệ thống', dataScope: 'ALL', description: 'Toàn quyền quản trị hệ thống Operon Hub' },
-  { code: 'EXECUTIVE', name: 'Ban Giám đốc', dataScope: 'ALL', description: 'Xem báo cáo tổng quan và duyệt cấp cao' },
-  { code: 'HR_MANAGER', name: 'Trưởng phòng Nhân sự', dataScope: 'ALL', description: 'Quản trị toàn diện phân hệ HRM' },
-  { code: 'HR_STAFF', name: 'Chuyên viên Nhân sự', dataScope: 'BRANCH', description: 'Vận hành hồ sơ nhân sự và chấm công tại chi nhánh' },
-  { code: 'PAYROLL_ACCOUNTANT', name: 'Kế toán Lương (C&B)', dataScope: 'ALL', description: 'Quản lý bảng công và tính lương toàn công ty' },
-  { code: 'ADMIN_OPS', name: 'Hành chính Văn phòng', dataScope: 'BRANCH', description: 'Quản lý tài sản, phòng họp và thông báo nội bộ' },
-  { code: 'DEPT_MANAGER', name: 'Trưởng Bộ phận', dataScope: 'DEPARTMENT', description: 'Quản lý nhân sự và phê duyệt đơn từ trong phòng ban' },
-  { code: 'EMPLOYEE', name: 'Nhân viên', dataScope: 'OWN', description: 'Cổng nhân viên tự phục vụ (ESS)' },
+  { code: 'SUPER_ADMIN', name: 'Quản trị Hệ thống', nameEn: 'System Administrator', dataScope: 'ALL', description: 'Toàn quyền quản trị hệ thống Operon Hub' },
+  { code: 'EXECUTIVE', name: 'Ban Giám đốc', nameEn: 'Executive Board', dataScope: 'ALL', description: 'Xem báo cáo tổng quan và duyệt cấp cao' },
+  { code: 'HR_MANAGER', name: 'Trưởng phòng Nhân sự', nameEn: 'HR Manager', dataScope: 'ALL', description: 'Quản trị toàn diện phân hệ HRM' },
+  { code: 'HR_STAFF', name: 'Chuyên viên Nhân sự', nameEn: 'HR Specialist', dataScope: 'BRANCH', description: 'Vận hành hồ sơ nhân sự và chấm công tại chi nhánh' },
+  { code: 'PAYROLL_ACCOUNTANT', name: 'Kế toán Lương (C&B)', nameEn: 'Payroll Accountant (C&B)', dataScope: 'ALL', description: 'Quản lý bảng công và tính lương toàn công ty' },
+  { code: 'ADMIN_OPS', name: 'Hành chính Văn phòng', nameEn: 'Office Operations', dataScope: 'BRANCH', description: 'Quản lý tài sản, phòng họp và thông báo nội bộ' },
+  { code: 'DEPT_MANAGER', name: 'Trưởng Bộ phận', nameEn: 'Department Manager', dataScope: 'DEPARTMENT', description: 'Quản lý nhân sự và phê duyệt đơn từ trong phòng ban' },
+  { code: 'EMPLOYEE', name: 'Nhân viên', nameEn: 'Employee', dataScope: 'OWN', description: 'Cổng nhân viên tự phục vụ (ESS)' },
+  { code: 'PMO_MANAGER', name: 'Trưởng ban Quản lý Dự án (PMO)', nameEn: 'PMO Manager', dataScope: 'ALL', description: 'Quản trị toàn diện danh mục dự án, nguồn lực, ngân sách và báo cáo Phase 2' },
 ] as const;
 
 const BASELINE_PERMISSIONS = [
-  { moduleCode: 'core', code: 'core.branches.read', name: 'Xem danh sách chi nhánh' },
-  { moduleCode: 'core', code: 'core.branches.create', name: 'Tạo chi nhánh mới' },
-  { moduleCode: 'core', code: 'core.branches.update', name: 'Cập nhật chi nhánh' },
-  { moduleCode: 'core', code: 'core.branches.delete', name: 'Xóa mềm chi nhánh' },
-  { moduleCode: 'core', code: 'core.users.read', name: 'Xem danh sách tài khoản' },
-  { moduleCode: 'core', code: 'core.users.create', name: 'Tạo tài khoản người dùng' },
-  { moduleCode: 'core', code: 'core.users.update', name: 'Cập nhật tài khoản & gán vai trò' },
-  { moduleCode: 'core', code: 'core.roles.read', name: 'Xem vai trò & ma trận phân quyền' },
-  { moduleCode: 'core', code: 'core.roles.update', name: 'Cập nhật phân quyền cho vai trò' },
-  { moduleCode: 'core', code: 'core.audit_logs.read', name: 'Xem nhật ký kiểm toán hệ thống' },
-  { moduleCode: 'core', code: 'core.settings.read', name: 'Xem cấu hình hệ thống' },
-  { moduleCode: 'core', code: 'core.settings.update', name: 'Cập nhật cấu hình hệ thống' },
-  { moduleCode: 'core', code: 'core.approvals.read', name: 'Xem hộp thư phê duyệt & luồng duyệt' },
-  { moduleCode: 'core', code: 'core.approvals.act', name: 'Phê duyệt hoặc từ chối đơn yêu cầu' },
-  { moduleCode: 'core', code: 'core.approvals.workflow_manage', name: 'Cấu hình quy trình duyệt đa cấp' },
-  { moduleCode: 'hrm', code: 'hrm.dashboard.read', name: 'Xem tổng quan Hành chính Nhân sự' },
-  { moduleCode: 'hrm', code: 'hrm.org.read', name: 'Xem cơ cấu tổ chức, phòng ban & chức danh' },
-  { moduleCode: 'hrm', code: 'hrm.org.manage', name: 'Quản trị phòng ban & danh mục chức danh' },
-  { moduleCode: 'hrm', code: 'hrm.employees.read', name: 'Xem hồ sơ nhân viên (theo Data Scope)' },
-  { moduleCode: 'hrm', code: 'hrm.employees.create', name: 'Thêm mới hồ sơ nhân viên' },
-  { moduleCode: 'hrm', code: 'hrm.employees.update', name: 'Cập nhật hồ sơ nhân viên & tài liệu' },
-  { moduleCode: 'hrm', code: 'hrm.employees.delete', name: 'Xóa mềm hồ sơ nhân viên' },
-  { moduleCode: 'hrm', code: 'hrm.employees.export', name: 'Xuất danh sách nhân viên ra Excel' },
-  { moduleCode: 'hrm', code: 'hrm.contracts.read', name: 'Xem hợp đồng lao động & quá trình công tác' },
-  { moduleCode: 'hrm', code: 'hrm.contracts.manage', name: 'Quản trị hợp đồng lao động & quyết định công tác' },
-  { moduleCode: 'hrm', code: 'hrm.contracts.export', name: 'Xuất danh sách hợp đồng lao động ra Excel' },
-  { moduleCode: 'hrm', code: 'hrm.requests.read', name: 'Xem đơn từ nghỉ phép & quỹ phép (theo Data Scope)' },
-  { moduleCode: 'hrm', code: 'hrm.requests.create', name: 'Tạo & gửi đơn nghỉ phép/đơn từ cá nhân (ESS)' },
-  { moduleCode: 'hrm', code: 'hrm.requests.manage', name: 'Quản trị loại phép, khởi tạo & điều chỉnh quỹ phép năm' },
-  { moduleCode: 'hrm', code: 'hrm.requests.export', name: 'Xuất danh sách đơn từ nghỉ phép ra Excel' },
-  { moduleCode: 'hrm', code: 'hrm.attendance.read', name: 'Xem ca làm việc, ngày lễ & bảng chấm công theo Data Scope' },
-  { moduleCode: 'hrm', code: 'hrm.attendance.manage', name: 'Quản trị ca làm việc, phân ca, ngày lễ & chỉnh sửa chấm công' },
-  { moduleCode: 'hrm', code: 'hrm.attendance.import', name: 'Import dữ liệu chấm công từ file Excel' },
-  { moduleCode: 'hrm', code: 'hrm.attendance.lock', name: 'Chốt & mở khóa bảng công tháng' },
-  { moduleCode: 'hrm', code: 'hrm.attendance.export', name: 'Xuất dữ liệu chấm công ra Excel' },
-  { moduleCode: 'hrm', code: 'hrm.payroll.read', name: 'Xem kỳ lương, bảng tính lương và cấu hình thuế/bảo hiểm' },
-  { moduleCode: 'hrm', code: 'hrm.payroll.manage', name: 'Tạo kỳ lương, chạy tính lương, chỉnh thưởng/khấu trừ & cấu hình lương' },
-  { moduleCode: 'hrm', code: 'hrm.payroll.approve', name: 'Phê duyệt, mở lại & xác nhận chi trả kỳ lương' },
-  { moduleCode: 'hrm', code: 'hrm.payroll.export', name: 'Xuất bảng lương tổng Excel & phiếu lương PDF' },
-  { moduleCode: 'hrm', code: 'hrm.assets.read', name: 'Xem kho tài sản & lịch sử cấp phát theo Data Scope' },
-  { moduleCode: 'hrm', code: 'hrm.assets.manage', name: 'Quản trị danh mục tài sản, cấp phát, thu hồi & bảo trì' },
-  { moduleCode: 'hrm', code: 'hrm.assets.export', name: 'Xuất danh sách tài sản Excel & biên bản bàn giao PDF' },
-  { moduleCode: 'hrm', code: 'hrm.rooms.read', name: 'Xem danh sách phòng họp & lịch đặt phòng' },
-  { moduleCode: 'hrm', code: 'hrm.rooms.book', name: 'Đặt lịch phòng họp & quản lý lịch họp cá nhân' },
-  { moduleCode: 'hrm', code: 'hrm.rooms.manage', name: 'Quản trị phòng họp & điều phối toàn bộ lịch đặt phòng' },
-  { moduleCode: 'hrm', code: 'hrm.announcements.read', name: 'Đọc bản tin & thông báo nội bộ' },
-  { moduleCode: 'hrm', code: 'hrm.announcements.manage', name: 'Soạn thảo, xuất bản, ghim & thống kê thông báo nội bộ' },
+  { moduleCode: 'core', code: 'core.branches.read', name: 'Xem danh sách chi nhánh', nameEn: 'View branch directory' },
+  { moduleCode: 'core', code: 'core.branches.create', name: 'Tạo chi nhánh mới', nameEn: 'Create branch' },
+  { moduleCode: 'core', code: 'core.branches.update', name: 'Cập nhật chi nhánh', nameEn: 'Update branch' },
+  { moduleCode: 'core', code: 'core.branches.delete', name: 'Xóa mềm chi nhánh', nameEn: 'Archive branch' },
+  { moduleCode: 'core', code: 'core.users.read', name: 'Xem danh sách tài khoản', nameEn: 'View user accounts' },
+  { moduleCode: 'core', code: 'core.users.create', name: 'Tạo tài khoản người dùng', nameEn: 'Create user account' },
+  { moduleCode: 'core', code: 'core.users.update', name: 'Cập nhật tài khoản & gán vai trò', nameEn: 'Update user account & assign roles' },
+  { moduleCode: 'core', code: 'core.roles.read', name: 'Xem vai trò & ma trận phân quyền', nameEn: 'View roles & permission matrix' },
+  { moduleCode: 'core', code: 'core.roles.update', name: 'Cập nhật phân quyền cho vai trò', nameEn: 'Update role permissions' },
+  { moduleCode: 'core', code: 'core.audit_logs.read', name: 'Xem nhật ký kiểm toán hệ thống', nameEn: 'View system audit logs' },
+  { moduleCode: 'core', code: 'core.settings.read', name: 'Xem cấu hình hệ thống', nameEn: 'View system settings' },
+  { moduleCode: 'core', code: 'core.settings.update', name: 'Cập nhật cấu hình hệ thống', nameEn: 'Update system settings' },
+  { moduleCode: 'core', code: 'core.approvals.read', name: 'Xem hộp thư phê duyệt & luồng duyệt', nameEn: 'View approval inbox & workflows' },
+  { moduleCode: 'core', code: 'core.approvals.act', name: 'Phê duyệt hoặc từ chối đơn yêu cầu', nameEn: 'Approve or reject requests' },
+  { moduleCode: 'core', code: 'core.approvals.workflow_manage', name: 'Cấu hình quy trình duyệt đa cấp', nameEn: 'Configure multi-step approval workflows' },
+  { moduleCode: 'hrm', code: 'hrm.dashboard.read', name: 'Xem tổng quan Hành chính Nhân sự', nameEn: 'View HRM overview dashboard' },
+  { moduleCode: 'hrm', code: 'hrm.org.read', name: 'Xem cơ cấu tổ chức, phòng ban & chức danh', nameEn: 'View organization chart, departments & positions' },
+  { moduleCode: 'hrm', code: 'hrm.org.manage', name: 'Quản trị phòng ban & danh mục chức danh', nameEn: 'Manage departments & job positions' },
+  { moduleCode: 'hrm', code: 'hrm.employees.read', name: 'Xem hồ sơ nhân viên (theo Data Scope)', nameEn: 'View employee profiles (by Data Scope)' },
+  { moduleCode: 'hrm', code: 'hrm.employees.create', name: 'Thêm mới hồ sơ nhân viên', nameEn: 'Create employee profile' },
+  { moduleCode: 'hrm', code: 'hrm.employees.update', name: 'Cập nhật hồ sơ nhân viên & tài liệu', nameEn: 'Update employee profile & documents' },
+  { moduleCode: 'hrm', code: 'hrm.employees.delete', name: 'Xóa mềm hồ sơ nhân viên', nameEn: 'Archive employee profile' },
+  { moduleCode: 'hrm', code: 'hrm.employees.export', name: 'Xuất danh sách nhân viên ra Excel', nameEn: 'Export employee directory to Excel' },
+  { moduleCode: 'hrm', code: 'hrm.contracts.read', name: 'Xem hợp đồng lao động & quá trình công tác', nameEn: 'View labor contracts & work history' },
+  { moduleCode: 'hrm', code: 'hrm.contracts.manage', name: 'Quản trị hợp đồng lao động & quyết định công tác', nameEn: 'Manage labor contracts & career decisions' },
+  { moduleCode: 'hrm', code: 'hrm.contracts.export', name: 'Xuất danh sách hợp đồng lao động ra Excel', nameEn: 'Export labor contracts to Excel' },
+  { moduleCode: 'hrm', code: 'hrm.requests.read', name: 'Xem đơn từ nghỉ phép & quỹ phép (theo Data Scope)', nameEn: 'View leave requests & balances (by Data Scope)' },
+  { moduleCode: 'hrm', code: 'hrm.requests.create', name: 'Tạo & gửi đơn nghỉ phép/đơn từ cá nhân (ESS)', nameEn: 'Create & submit personal requests (ESS)' },
+  { moduleCode: 'hrm', code: 'hrm.requests.manage', name: 'Quản trị loại phép, khởi tạo & điều chỉnh quỹ phép năm', nameEn: 'Manage leave types & annual leave balances' },
+  { moduleCode: 'hrm', code: 'hrm.requests.export', name: 'Xuất danh sách đơn từ nghỉ phép ra Excel', nameEn: 'Export leave requests to Excel' },
+  { moduleCode: 'hrm', code: 'hrm.attendance.read', name: 'Xem ca làm việc, ngày lễ & bảng chấm công theo Data Scope', nameEn: 'View work shifts, holidays & attendance logs' },
+  { moduleCode: 'hrm', code: 'hrm.attendance.manage', name: 'Quản trị ca làm việc, phân ca, ngày lễ & chỉnh sửa chấm công', nameEn: 'Manage work shifts, assignments, holidays & attendance' },
+  { moduleCode: 'hrm', code: 'hrm.attendance.import', name: 'Import dữ liệu chấm công từ file Excel', nameEn: 'Import attendance logs from Excel' },
+  { moduleCode: 'hrm', code: 'hrm.attendance.lock', name: 'Chốt & mở khóa bảng công tháng', nameEn: 'Lock & unlock monthly timesheets' },
+  { moduleCode: 'hrm', code: 'hrm.attendance.export', name: 'Xuất dữ liệu chấm công ra Excel', nameEn: 'Export attendance data to Excel' },
+  { moduleCode: 'hrm', code: 'hrm.payroll.read', name: 'Xem kỳ lương, bảng tính lương và cấu hình thuế/bảo hiểm', nameEn: 'View payroll periods, payslips & tax/SI config' },
+  { moduleCode: 'hrm', code: 'hrm.payroll.manage', name: 'Tạo kỳ lương, chạy tính lương, chỉnh thưởng/khấu trừ & cấu hình lương', nameEn: 'Run payroll, adjust bonuses/deductions & config' },
+  { moduleCode: 'hrm', code: 'hrm.payroll.approve', name: 'Phê duyệt, mở lại & xác nhận chi trả kỳ lương', nameEn: 'Approve, reopen & confirm payroll payout' },
+  { moduleCode: 'hrm', code: 'hrm.payroll.export', name: 'Xuất bảng lương tổng Excel & phiếu lương PDF', nameEn: 'Export payroll Excel & payslip PDF' },
+  { moduleCode: 'hrm', code: 'hrm.assets.read', name: 'Xem kho tài sản & lịch sử cấp phát theo Data Scope', nameEn: 'View asset inventory & assignment history' },
+  { moduleCode: 'hrm', code: 'hrm.assets.manage', name: 'Quản trị danh mục tài sản, cấp phát, thu hồi & bảo trì', nameEn: 'Manage assets, handovers, returns & maintenance' },
+  { moduleCode: 'hrm', code: 'hrm.assets.export', name: 'Xuất danh sách tài sản Excel & biên bản bàn giao PDF', nameEn: 'Export asset Excel & handover PDF' },
+  { moduleCode: 'hrm', code: 'hrm.rooms.read', name: 'Xem danh sách phòng họp & lịch đặt phòng', nameEn: 'View meeting rooms & booking schedule' },
+  { moduleCode: 'hrm', code: 'hrm.rooms.book', name: 'Đặt lịch phòng họp & quản lý lịch họp cá nhân', nameEn: 'Book meeting rooms & manage own bookings' },
+  { moduleCode: 'hrm', code: 'hrm.rooms.manage', name: 'Quản trị phòng họp & điều phối toàn bộ lịch đặt phòng', nameEn: 'Manage meeting rooms & coordinate all bookings' },
+  { moduleCode: 'hrm', code: 'hrm.announcements.read', name: 'Đọc bản tin & thông báo nội bộ', nameEn: 'Read company announcements & news' },
+  { moduleCode: 'hrm', code: 'hrm.announcements.manage', name: 'Soạn thảo, xuất bản, ghim & thống kê thông báo nội bộ', nameEn: 'Draft, publish, pin & track company announcements' },
+  { moduleCode: 'projects', code: 'pm.dashboard.read', name: 'Xem tổng quan Danh mục Dự án', nameEn: 'View Project Portfolio dashboard' },
+  { moduleCode: 'projects', code: 'pm.projects.read', name: 'Xem danh sách và chi tiết dự án trong phạm vi', nameEn: 'View project list and details within scope' },
+  { moduleCode: 'projects', code: 'pm.projects.create', name: 'Khởi tạo dự án mới và gửi duyệt Charter', nameEn: 'Create projects and submit Charter for approval' },
+  { moduleCode: 'projects', code: 'pm.projects.manage', name: 'Quản trị toàn diện danh mục dự án, lưu trữ và chuyển PM', nameEn: 'Manage project portfolio, archiving & PM handover' },
+  { moduleCode: 'projects', code: 'pm.tasks.read', name: 'Xem công việc trong dự án và Công việc của tôi', nameEn: 'View project tasks and My Tasks' },
+  { moduleCode: 'projects', code: 'pm.tasks.create', name: 'Tạo Task, Subtask, Checklist và Dependency', nameEn: 'Create tasks, subtasks, checklists & dependencies' },
+  { moduleCode: 'projects', code: 'pm.tasks.update', name: 'Cập nhật trạng thái, tiến độ, bình luận và đính kèm Task', nameEn: 'Update task status, progress, comments & files' },
+  { moduleCode: 'projects', code: 'pm.tasks.delete', name: 'Xóa mềm hoặc lưu trữ Task', nameEn: 'Archive or soft-delete tasks' },
+  { moduleCode: 'projects', code: 'pm.sprints.manage', name: 'Quản trị Sprint và sắp xếp Backlog', nameEn: 'Manage Sprints and Backlog prioritization' },
+  { moduleCode: 'projects', code: 'pm.timelogs.log', name: 'Ghi nhận giờ công trên công việc', nameEn: 'Log work hours on project tasks' },
+  { moduleCode: 'projects', code: 'pm.timelogs.approve', name: 'Xem và phê duyệt Timesheet nhóm/dự án', nameEn: 'Review and approve team/project timesheets' },
+  { moduleCode: 'projects', code: 'pm.workload.read', name: 'Xem bản đồ phân bổ nguồn lực (Workload Heatmap)', nameEn: 'View Resource Workload Heatmap' },
+  { moduleCode: 'projects', code: 'pm.budget.read', name: 'Xem ngân sách và chi phí dự án', nameEn: 'View project budget and cost tracking' },
+  { moduleCode: 'projects', code: 'pm.budget.manage', name: 'Quản trị ngân sách, chi phí và đề xuất điều chỉnh', nameEn: 'Manage project budget, expenses & change requests' },
+  { moduleCode: 'projects', code: 'pm.risks.manage', name: 'Quản trị Rủi ro và Vấn đề dự án (RAID)', nameEn: 'Manage Project Risks & Issues (RAID)' },
+  { moduleCode: 'projects', code: 'pm.templates.manage', name: 'Quản trị Mẫu Dự án và Luật tự động hóa', nameEn: 'Manage Project Templates & Automation Rules' },
+  { moduleCode: 'projects', code: 'pm.reports.export', name: 'Xuất báo cáo Dự án ra Excel và PDF', nameEn: 'Export Project reports to Excel and PDF' },
+  { moduleCode: 'proposals', code: 'proposals.read', name: 'Xem đề xuất nội bộ trong phạm vi', nameEn: 'View internal proposals within scope' },
+  { moduleCode: 'proposals', code: 'proposals.create', name: 'Tạo, sửa nháp và gửi duyệt đề xuất nội bộ', nameEn: 'Create, edit draft & submit internal proposals' },
+  { moduleCode: 'proposals', code: 'proposals.manage', name: 'Quản trị toàn bộ đề xuất, thực thi và danh mục', nameEn: 'Manage all proposals, execution tracking & categories' },
+  { moduleCode: 'proposals', code: 'proposals.export', name: 'Xuất danh sách đề xuất Excel và tờ trình PDF', nameEn: 'Export proposal lists to Excel and forms to PDF' },
 ] as const;
 
 const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
@@ -94,6 +123,10 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'hrm.rooms.book',
     'hrm.announcements.read',
     'hrm.announcements.manage',
+    'proposals.read',
+    'proposals.create',
+    'proposals.manage',
+    'proposals.export',
   ],
   HR_MANAGER: [
     'core.branches.read',
@@ -128,6 +161,10 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'hrm.rooms.manage',
     'hrm.announcements.read',
     'hrm.announcements.manage',
+    'proposals.read',
+    'proposals.create',
+    'proposals.manage',
+    'proposals.export',
   ],
   HR_STAFF: [
     'core.branches.read',
@@ -153,6 +190,9 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'hrm.rooms.book',
     'hrm.announcements.read',
     'hrm.announcements.manage',
+    'proposals.read',
+    'proposals.create',
+    'proposals.export',
   ],
   PAYROLL_ACCOUNTANT: [
     'core.branches.read',
@@ -175,10 +215,14 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'hrm.rooms.read',
     'hrm.rooms.book',
     'hrm.announcements.read',
+    'proposals.read',
+    'proposals.create',
+    'proposals.export',
   ],
   ADMIN_OPS: [
     'core.branches.read',
     'core.approvals.read',
+    'core.approvals.act',
     'hrm.dashboard.read',
     'hrm.org.read',
     'hrm.employees.read',
@@ -193,6 +237,10 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'hrm.rooms.manage',
     'hrm.announcements.read',
     'hrm.announcements.manage',
+    'proposals.read',
+    'proposals.create',
+    'proposals.manage',
+    'proposals.export',
   ],
   DEPT_MANAGER: [
     'core.approvals.read',
@@ -207,6 +255,9 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'hrm.rooms.read',
     'hrm.rooms.book',
     'hrm.announcements.read',
+    'proposals.read',
+    'proposals.create',
+    'proposals.export',
   ],
   EMPLOYEE: [
     'core.approvals.read',
@@ -221,34 +272,53 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'hrm.rooms.read',
     'hrm.rooms.book',
     'hrm.announcements.read',
+    'pm.dashboard.read',
+    'pm.projects.read',
+    'pm.tasks.read',
+    'pm.tasks.create',
+    'pm.tasks.update',
+    'pm.timelogs.log',
+    'proposals.read',
+    'proposals.create',
+    'proposals.export',
   ],
+  PMO_MANAGER: BASELINE_PERMISSIONS.filter(
+    (p) =>
+      p.moduleCode === 'projects' ||
+      p.moduleCode === 'proposals' ||
+      p.code === 'core.approvals.read' ||
+      p.code === 'core.approvals.act' ||
+      p.code === 'core.branches.read' ||
+      p.code === 'hrm.org.read' ||
+      p.code === 'hrm.employees.read',
+  ).map((p) => p.code),
 };
 
 async function seedDefaultBranch(conn: Connection): Promise<void> {
   await conn.execute(
-    `INSERT INTO branches (code, name, address, is_headquarters, is_active)
-     VALUES (?, ?, ?, 1, 1)
-     ON DUPLICATE KEY UPDATE name = VALUES(name)`,
-    ['HQ', 'Trụ sở chính', 'Văn phòng trung tâm Operon Hub'],
+    `INSERT INTO branches (code, name, name_en, address, is_headquarters, is_active)
+     VALUES (?, ?, ?, ?, 1, 1)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), name_en = VALUES(name_en)`,
+    ['HQ', 'Trụ sở chính', 'Headquarters', 'Văn phòng trung tâm Operon Hub'],
   );
 }
 
 async function seedRolesAndPermissions(conn: Connection): Promise<Map<string, number>> {
   for (const role of SYSTEM_ROLES) {
     await conn.execute(
-      `INSERT INTO roles (code, name, data_scope, description, is_system)
-       VALUES (?, ?, ?, ?, 1)
-       ON DUPLICATE KEY UPDATE name = VALUES(name), data_scope = VALUES(data_scope), description = VALUES(description)`,
-      [role.code, role.name, role.dataScope, role.description],
+      `INSERT INTO roles (code, name, name_en, data_scope, description, is_system)
+       VALUES (?, ?, ?, ?, ?, 1)
+       ON DUPLICATE KEY UPDATE name = VALUES(name), name_en = VALUES(name_en), data_scope = VALUES(data_scope), description = VALUES(description)`,
+      [role.code, role.name, role.nameEn, role.dataScope, role.description],
     );
   }
 
   for (const perm of BASELINE_PERMISSIONS) {
     await conn.execute(
-      `INSERT INTO permissions (module_code, code, name)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE module_code = VALUES(module_code), name = VALUES(name)`,
-      [perm.moduleCode, perm.code, perm.name],
+      `INSERT INTO permissions (module_code, code, name, name_en)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE module_code = VALUES(module_code), name = VALUES(name), name_en = VALUES(name_en)`,
+      [perm.moduleCode, perm.code, perm.name, perm.nameEn],
     );
   }
 
@@ -332,6 +402,7 @@ async function seedDefaultApprovalWorkflows(
       moduleCode: 'hrm',
       requestType: 'LEAVE',
       name: 'Quy trình duyệt Nghỉ phép chuẩn (2 cấp)',
+      nameEn: 'Standard Leave Approval Workflow (2 Steps)',
       description: 'Cấp 1: Trưởng bộ phận duyệt -> Cấp 2: Trưởng phòng Nhân sự phê duyệt cuối',
       steps: [
         { stepOrder: 1, approverType: 'ROLE', approverRoleId: deptManagerRoleId },
@@ -342,6 +413,7 @@ async function seedDefaultApprovalWorkflows(
       moduleCode: 'hrm',
       requestType: 'OVERTIME',
       name: 'Quy trình duyệt Tăng ca OT (1 cấp)',
+      nameEn: 'Overtime (OT) Approval Workflow (1 Step)',
       description: 'Trưởng bộ phận xác nhận kế hoạch làm thêm giờ',
       steps: [{ stepOrder: 1, approverType: 'ROLE', approverRoleId: deptManagerRoleId }],
     },
@@ -349,6 +421,7 @@ async function seedDefaultApprovalWorkflows(
       moduleCode: 'hrm',
       requestType: 'BUSINESS_TRIP',
       name: 'Quy trình duyệt Đơn Công tác (2 cấp)',
+      nameEn: 'Business Trip Approval Workflow (2 Steps)',
       description: 'Cấp 1: Trưởng bộ phận duyệt -> Cấp 2: Trưởng phòng Nhân sự xác nhận công tác',
       steps: [
         { stepOrder: 1, approverType: 'ROLE', approverRoleId: deptManagerRoleId },
@@ -365,13 +438,17 @@ async function seedDefaultApprovalWorkflows(
       [tpl.moduleCode, tpl.requestType, tpl.name],
     );
     if (existing.length > 0) {
+      await conn.execute(
+        'UPDATE approval_workflows SET name_en = ? WHERE id = ? AND (name_en IS NULL OR name_en = "")',
+        [tpl.nameEn, Number(existing[0].id)],
+      );
       continue;
     }
 
     const [inserted] = await conn.execute<mysql.ResultSetHeader>(
-      `INSERT INTO approval_workflows (module_code, request_type, branch_id, name, description, is_active)
-       VALUES (?, ?, NULL, ?, ?, 1)`,
-      [tpl.moduleCode, tpl.requestType, tpl.name, tpl.description],
+      `INSERT INTO approval_workflows (module_code, request_type, branch_id, name, name_en, description, is_active)
+       VALUES (?, ?, NULL, ?, ?, ?, 1)`,
+      [tpl.moduleCode, tpl.requestType, tpl.name, tpl.nameEn, tpl.description],
     );
     const workflowId = Number(inserted.insertId);
 
@@ -399,9 +476,9 @@ async function seedDefaultHrmOrganization(conn: Connection): Promise<void> {
     const hqId = Number(hqRows[0].id);
 
     await conn.execute(
-      `INSERT INTO departments (branch_id, parent_id, code, name, description, sort_order, is_active)
-       VALUES (?, NULL, 'BOD', 'Ban Giám đốc', 'Điều hành chiến lược toàn doanh nghiệp', 1, 1)
-       ON DUPLICATE KEY UPDATE name = VALUES(name)`,
+      `INSERT INTO departments (branch_id, parent_id, code, name, name_en, description, sort_order, is_active)
+       VALUES (?, NULL, 'BOD', 'Ban Giám đốc', 'Board of Directors', 'Điều hành chiến lược toàn doanh nghiệp', 1, 1)
+       ON DUPLICATE KEY UPDATE name = VALUES(name), name_en = VALUES(name_en)`,
       [hqId],
     );
 
@@ -411,36 +488,36 @@ async function seedDefaultHrmOrganization(conn: Connection): Promise<void> {
     const bodId = bodRows.length > 0 ? Number(bodRows[0].id) : null;
 
     const childDepts = [
-      { code: 'HR', name: 'Phòng Hành chính Nhân sự', desc: 'Quản trị nhân sự, tuyển dụng, C&B và hành chính', order: 2 },
-      { code: 'FIN', name: 'Phòng Kế toán Tài chính', desc: 'Kế toán tổng hợp, tài chính và chi trả lương', order: 3 },
-      { code: 'TECH', name: 'Phòng Công nghệ Thông tin', desc: 'Phát triển sản phẩm và vận hành hạ tầng IT', order: 4 },
+      { code: 'HR', name: 'Phòng Hành chính Nhân sự', nameEn: 'Human Resources & Administration', desc: 'Quản trị nhân sự, tuyển dụng, C&B và hành chính', order: 2 },
+      { code: 'FIN', name: 'Phòng Kế toán Tài chính', nameEn: 'Finance & Accounting', desc: 'Kế toán tổng hợp, tài chính và chi trả lương', order: 3 },
+      { code: 'TECH', name: 'Phòng Công nghệ Thông tin', nameEn: 'Information Technology', desc: 'Phát triển sản phẩm và vận hành hạ tầng IT', order: 4 },
     ];
 
     for (const dept of childDepts) {
       await conn.execute(
-        `INSERT INTO departments (branch_id, parent_id, code, name, description, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, 1)
-         ON DUPLICATE KEY UPDATE name = VALUES(name), parent_id = VALUES(parent_id)`,
-        [hqId, bodId, dept.code, dept.name, dept.desc, dept.order],
+        `INSERT INTO departments (branch_id, parent_id, code, name, name_en, description, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+         ON DUPLICATE KEY UPDATE name = VALUES(name), name_en = VALUES(name_en), parent_id = VALUES(parent_id)`,
+        [hqId, bodId, dept.code, dept.name, dept.nameEn, dept.desc, dept.order],
       );
     }
   }
 
   const positions = [
-    { code: 'CEO', name: 'Giám đốc Điều hành (CEO)', level: 5, desc: 'Lãnh đạo cao nhất doanh nghiệp' },
-    { code: 'DEPT_HEAD', name: 'Trưởng phòng / Trưởng bộ phận', level: 4, desc: 'Quản lý trực tiếp phòng ban' },
-    { code: 'TEAM_LEAD', name: 'Trưởng nhóm (Team Lead)', level: 3, desc: 'Điều phối nhóm chuyên môn' },
-    { code: 'SENIOR', name: 'Chuyên viên Cao cấp (Senior)', level: 2, desc: 'Nhân sự chuyên môn giàu kinh nghiệm' },
-    { code: 'STAFF', name: 'Nhân viên / Chuyên viên', level: 1, desc: 'Nhân sự vận hành chính thức' },
-    { code: 'INTERN', name: 'Thực tập sinh', level: 1, desc: 'Nhân sự thực tập và đào tạo' },
+    { code: 'CEO', name: 'Giám đốc Điều hành (CEO)', nameEn: 'Chief Executive Officer (CEO)', level: 5, desc: 'Lãnh đạo cao nhất doanh nghiệp' },
+    { code: 'DEPT_HEAD', name: 'Trưởng phòng / Trưởng bộ phận', nameEn: 'Department Head', level: 4, desc: 'Quản lý trực tiếp phòng ban' },
+    { code: 'TEAM_LEAD', name: 'Trưởng nhóm (Team Lead)', nameEn: 'Team Lead', level: 3, desc: 'Điều phối nhóm chuyên môn' },
+    { code: 'SENIOR', name: 'Chuyên viên Cao cấp (Senior)', nameEn: 'Senior Specialist', level: 2, desc: 'Nhân sự chuyên môn giàu kinh nghiệm' },
+    { code: 'STAFF', name: 'Nhân viên / Chuyên viên', nameEn: 'Staff / Specialist', level: 1, desc: 'Nhân sự vận hành chính thức' },
+    { code: 'INTERN', name: 'Thực tập sinh', nameEn: 'Intern', level: 1, desc: 'Nhân sự thực tập và đào tạo' },
   ];
 
   for (const pos of positions) {
     await conn.execute(
-      `INSERT INTO positions (code, name, level, description, is_active)
-       VALUES (?, ?, ?, ?, 1)
-       ON DUPLICATE KEY UPDATE name = VALUES(name), level = VALUES(level)`,
-      [pos.code, pos.name, pos.level, pos.desc],
+      `INSERT INTO positions (code, name, name_en, level, description, is_active)
+       VALUES (?, ?, ?, ?, ?, 1)
+       ON DUPLICATE KEY UPDATE name = VALUES(name), name_en = VALUES(name_en), level = VALUES(level)`,
+      [pos.code, pos.name, pos.nameEn, pos.level, pos.desc],
     );
   }
 }
@@ -724,6 +801,7 @@ async function seedDefaultHrmLeaves(conn: Connection): Promise<void> {
     {
       code: 'ANNUAL',
       name: 'Nghỉ phép năm',
+      nameEn: 'Annual Leave',
       isPaid: 1,
       defaultDays: 12.0,
       allowCarryOver: 1,
@@ -734,6 +812,7 @@ async function seedDefaultHrmLeaves(conn: Connection): Promise<void> {
     {
       code: 'SICK',
       name: 'Nghỉ ốm (BHXH)',
+      nameEn: 'Sick Leave (Social Insurance)',
       isPaid: 0,
       defaultDays: 0.0,
       allowCarryOver: 0,
@@ -744,6 +823,7 @@ async function seedDefaultHrmLeaves(conn: Connection): Promise<void> {
     {
       code: 'UNPAID',
       name: 'Nghỉ không lương',
+      nameEn: 'Unpaid Leave',
       isPaid: 0,
       defaultDays: 0.0,
       allowCarryOver: 0,
@@ -754,6 +834,7 @@ async function seedDefaultHrmLeaves(conn: Connection): Promise<void> {
     {
       code: 'MARRIAGE',
       name: 'Nghỉ kết hôn',
+      nameEn: 'Marriage Leave',
       isPaid: 1,
       defaultDays: 3.0,
       allowCarryOver: 0,
@@ -764,6 +845,7 @@ async function seedDefaultHrmLeaves(conn: Connection): Promise<void> {
     {
       code: 'BEREAVEMENT',
       name: 'Nghỉ việc hiếu',
+      nameEn: 'Bereavement Leave',
       isPaid: 1,
       defaultDays: 3.0,
       allowCarryOver: 0,
@@ -776,15 +858,17 @@ async function seedDefaultHrmLeaves(conn: Connection): Promise<void> {
   for (const lt of leaveTypes) {
     await conn.execute(
       `INSERT INTO leave_types (
-        code, name, is_paid, default_days_per_year, allow_carry_over,
+        code, name, name_en, is_paid, default_days_per_year, allow_carry_over,
         max_carry_over_days, requires_attachment, description, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
+        name_en = VALUES(name_en),
         description = VALUES(description)`,
       [
         lt.code,
         lt.name,
+        lt.nameEn,
         lt.isPaid,
         lt.defaultDays,
         lt.allowCarryOver,
@@ -835,6 +919,7 @@ async function seedDefaultHrmAttendance(conn: Connection): Promise<void> {
     {
       code: 'HC',
       name: 'Ca Hành chính chuẩn',
+      nameEn: 'Standard Office Shift',
       startTime: '08:00',
       endTime: '17:30',
       breakStart: '12:00',
@@ -848,6 +933,7 @@ async function seedDefaultHrmAttendance(conn: Connection): Promise<void> {
     {
       code: 'CA_SANG',
       name: 'Ca Sáng linh hoạt',
+      nameEn: 'Flexible Morning Shift',
       startTime: '07:30',
       endTime: '16:30',
       breakStart: '11:30',
@@ -863,15 +949,17 @@ async function seedDefaultHrmAttendance(conn: Connection): Promise<void> {
   for (const shift of defaultShifts) {
     await conn.execute(
       `INSERT INTO work_shifts (
-        branch_id, code, name, start_time, end_time, break_start_time, break_end_time,
+        branch_id, code, name, name_en, start_time, end_time, break_start_time, break_end_time,
         late_grace_minutes, early_leave_grace_minutes, working_hours, is_default, is_active, description
-      ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+      ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
+        name_en = VALUES(name_en),
         description = VALUES(description)`,
       [
         shift.code,
         shift.name,
+        shift.nameEn,
         shift.startTime,
         shift.endTime,
         shift.breakStart,
@@ -911,11 +999,11 @@ async function seedDefaultHrmAttendance(conn: Connection): Promise<void> {
   }
 
   const vnHolidays2026 = [
-    { date: '2026-01-01', name: 'Tết Dương lịch 2026', note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
-    { date: '2026-04-26', name: 'Giỗ Tổ Hùng Vương (10/3 ÂL)', note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
-    { date: '2026-04-30', name: 'Ngày Giải phóng miền Nam 30/4', note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
-    { date: '2026-05-01', name: 'Ngày Quốc tế Lao động 1/5', note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
-    { date: '2026-09-02', name: 'Ngày Quốc khánh nước CHXHCN Việt Nam 2/9', note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
+    { date: '2026-01-01', name: 'Tết Dương lịch 2026', nameEn: "New Year's Day 2026", note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
+    { date: '2026-04-26', name: 'Giỗ Tổ Hùng Vương (10/3 ÂL)', nameEn: "Hung Kings' Commemoration Day (10/3 Lunar)", note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
+    { date: '2026-04-30', name: 'Ngày Giải phóng miền Nam 30/4', nameEn: 'Reunification Day (Apr 30)', note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
+    { date: '2026-05-01', name: 'Ngày Quốc tế Lao động 1/5', nameEn: 'International Labor Day (May 1)', note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
+    { date: '2026-09-02', name: 'Ngày Quốc khánh nước CHXHCN Việt Nam 2/9', nameEn: 'Vietnam National Day (Sep 2)', note: 'Nghỉ lễ toàn quốc hưởng nguyên lương' },
   ];
 
   for (const h of vnHolidays2026) {
@@ -925,9 +1013,9 @@ async function seedDefaultHrmAttendance(conn: Connection): Promise<void> {
     );
     if (existingHoliday.length === 0) {
       await conn.execute(
-        `INSERT INTO holidays (branch_id, holiday_date, name, is_paid, note)
-         VALUES (NULL, ?, ?, 1, ?)`,
-        [h.date, h.name, h.note],
+        `INSERT INTO holidays (branch_id, holiday_date, name, name_en, is_paid, note)
+         VALUES (NULL, ?, ?, ?, 1, ?)`,
+        [h.date, h.name, h.nameEn, h.note],
       );
     }
   }
@@ -1127,6 +1215,7 @@ async function seedDefaultHrmRoomsAndAnnouncements(conn: Connection): Promise<vo
     {
       code: 'PH-01',
       name: 'Phòng họp Lớn (Boardroom)',
+      nameEn: 'Main Boardroom',
       floor: 'Tầng 5',
       capacity: 16,
       equipment: ['TV 75 inch 4K', 'Hệ thống hội nghị truyền hình', 'Bảng kính trắng', 'Micro không dây'],
@@ -1135,6 +1224,7 @@ async function seedDefaultHrmRoomsAndAnnouncements(conn: Connection): Promise<vo
     {
       code: 'PH-02',
       name: 'Phòng họp Nhỏ A (Focus Room)',
+      nameEn: 'Focus Room A',
       floor: 'Tầng 4',
       capacity: 6,
       equipment: ['Màn hình 55 inch', 'Bảng trắng', 'Cáp HDMI / USB-C'],
@@ -1143,6 +1233,7 @@ async function seedDefaultHrmRoomsAndAnnouncements(conn: Connection): Promise<vo
     {
       code: 'PH-03',
       name: 'Phòng Đào tạo & Hội thảo',
+      nameEn: 'Training & Conference Hall',
       floor: 'Tầng 6',
       capacity: 30,
       equipment: ['Máy chiếu Laser', 'Hệ thống âm thanh hội trường', 'Bảng Flipchart', 'Bục phát biểu'],
@@ -1153,10 +1244,11 @@ async function seedDefaultHrmRoomsAndAnnouncements(conn: Connection): Promise<vo
   for (const room of sampleRooms) {
     await conn.execute(
       `INSERT INTO meeting_rooms (
-        branch_id, code, name, floor, capacity, equipment_json, description, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        branch_id, code, name, name_en, floor, capacity, equipment_json, description, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
+        name_en = VALUES(name_en),
         floor = VALUES(floor),
         capacity = VALUES(capacity),
         equipment_json = VALUES(equipment_json),
@@ -1165,6 +1257,7 @@ async function seedDefaultHrmRoomsAndAnnouncements(conn: Connection): Promise<vo
         hqId,
         room.code,
         room.name,
+        room.nameEn,
         room.floor,
         room.capacity,
         JSON.stringify(room.equipment),
@@ -1216,6 +1309,385 @@ async function seedDefaultHrmRoomsAndAnnouncements(conn: Connection): Promise<vo
   }
 }
 
+async function seedDefaultProposalsModule(
+  conn: Connection,
+  roleMap: Map<string, number>,
+): Promise<void> {
+  const [catTables] = await conn.execute<mysql.RowDataPacket[]>(
+    "SHOW TABLES LIKE 'proposal_categories'",
+  );
+  if (catTables.length === 0) {
+    return;
+  }
+
+  for (const cat of DEFAULT_PROPOSAL_CATEGORIES) {
+    await conn.execute(
+      `INSERT INTO proposal_categories (
+        code, name, name_en, description, default_request_type,
+        requires_budget, budget_threshold_high, icon_name, color_hex, sort_order, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      ON DUPLICATE KEY UPDATE
+        name = VALUES(name),
+        name_en = VALUES(name_en),
+        description = VALUES(description),
+        budget_threshold_high = VALUES(budget_threshold_high),
+        color_hex = VALUES(color_hex),
+        sort_order = VALUES(sort_order)`,
+      [
+        cat.code,
+        cat.name,
+        cat.nameEn,
+        cat.description,
+        cat.defaultRequestType,
+        cat.requiresBudget ? 1 : 0,
+        cat.budgetThresholdHigh,
+        cat.iconName,
+        cat.colorHex,
+        cat.sortOrder,
+      ],
+    );
+  }
+
+  const deptManagerRoleId = roleMap.get('DEPT_MANAGER') ?? null;
+  const adminOpsRoleId = roleMap.get('ADMIN_OPS') ?? null;
+  const executiveRoleId = roleMap.get('EXECUTIVE') ?? null;
+
+  let highValueWorkflowId: number | null = null;
+  let standardWorkflowId: number | null = null;
+
+  if (deptManagerRoleId && adminOpsRoleId && executiveRoleId) {
+    const proposalWorkflows = [
+      {
+        key: 'high',
+        name: 'Quy trình duyệt Đề xuất Giá trị lớn (≥ 20 triệu — 3 cấp)',
+        nameEn: 'High-Value Proposal Approval (≥ 20M VND — 3 Steps)',
+        description:
+          'Áp dụng cho đề xuất có ngân sách từ 20.000.000 VNĐ: Quản lý trực tiếp -> Hành chính -> Ban Giám đốc',
+        conditionsJson: JSON.stringify({ minAmount: PROPOSAL_HIGH_VALUE_THRESHOLD_VND }),
+        steps: [
+          { stepOrder: 1, approverType: 'DIRECT_MANAGER', approverRoleId: deptManagerRoleId },
+          { stepOrder: 2, approverType: 'ROLE', approverRoleId: adminOpsRoleId },
+          { stepOrder: 3, approverType: 'ROLE', approverRoleId: executiveRoleId },
+        ],
+      },
+      {
+        key: 'standard',
+        name: 'Quy trình duyệt Đề xuất Tiêu chuẩn (2 cấp)',
+        nameEn: 'Standard Internal Proposal Approval (2 Steps)',
+        description:
+          'Áp dụng cho đề xuất thường (< 20 triệu hoặc không phát sinh ngân sách): Quản lý trực tiếp -> Hành chính',
+        conditionsJson: null as string | null,
+        steps: [
+          { stepOrder: 1, approverType: 'DIRECT_MANAGER', approverRoleId: deptManagerRoleId },
+          { stepOrder: 2, approverType: 'ROLE', approverRoleId: adminOpsRoleId },
+        ],
+      },
+    ];
+
+    for (const wf of proposalWorkflows) {
+      const [existingWf] = await conn.execute<mysql.RowDataPacket[]>(
+        `SELECT id FROM approval_workflows
+         WHERE module_code = ? AND request_type = ? AND name = ? AND deleted_at IS NULL
+         LIMIT 1`,
+        [PROPOSAL_MODULE_CODE, PROPOSAL_DEFAULT_REQUEST_TYPE, wf.name],
+      );
+      let wfId: number;
+      if (existingWf.length > 0) {
+        wfId = Number(existingWf[0].id);
+      } else {
+        const [inserted] = await conn.execute<mysql.ResultSetHeader>(
+          `INSERT INTO approval_workflows (
+            module_code, request_type, branch_id, name, name_en, description, conditions_json, is_active
+          ) VALUES (?, ?, NULL, ?, ?, ?, ?, 1)`,
+          [
+            PROPOSAL_MODULE_CODE,
+            PROPOSAL_DEFAULT_REQUEST_TYPE,
+            wf.name,
+            wf.nameEn,
+            wf.description,
+            wf.conditionsJson,
+          ],
+        );
+        wfId = Number(inserted.insertId);
+        for (const step of wf.steps) {
+          await conn.execute(
+            `INSERT INTO approval_workflow_steps (workflow_id, step_order, approver_type, approver_role_id, approver_user_id)
+             VALUES (?, ?, ?, ?, NULL)`,
+            [wfId, step.stepOrder, step.approverType, step.approverRoleId],
+          );
+        }
+      }
+      if (wf.key === 'high') {
+        highValueWorkflowId = wfId;
+      } else {
+        standardWorkflowId = wfId;
+      }
+    }
+  }
+
+  const [hqRows] = await conn.execute<mysql.RowDataPacket[]>(
+    "SELECT id FROM branches WHERE code = 'HQ' AND deleted_at IS NULL LIMIT 1",
+  );
+  const [adminRows] = await conn.execute<mysql.RowDataPacket[]>(
+    'SELECT id FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1',
+    [DEFAULT_ADMIN_EMAIL],
+  );
+  if (hqRows.length === 0 || adminRows.length === 0) {
+    return;
+  }
+
+  const hqId = Number(hqRows[0].id);
+  const adminUserId = Number(adminRows[0].id);
+
+  const [empRows] = await conn.execute<mysql.RowDataPacket[]>(
+    'SELECT id, department_id FROM employees WHERE user_id = ? AND deleted_at IS NULL LIMIT 1',
+    [adminUserId],
+  );
+  const [deptRows] = await conn.execute<mysql.RowDataPacket[]>(
+    'SELECT id, code FROM departments WHERE deleted_at IS NULL',
+  );
+  const [catRows] = await conn.execute<mysql.RowDataPacket[]>(
+    'SELECT id, code FROM proposal_categories WHERE deleted_at IS NULL',
+  );
+
+  const deptMap = new Map<string, number>(deptRows.map((d) => [String(d.code), Number(d.id)]));
+  const catMap = new Map<string, number>(catRows.map((c) => [String(c.code), Number(c.id)]));
+  const adminEmpId = empRows.length > 0 ? Number(empRows[0].id) : null;
+
+  const sampleProposals = [
+    {
+      code: 'PROP-202611-0001',
+      categoryCode: 'EQUIPMENT',
+      deptCode: 'TECH',
+      title: 'Đề xuất nâng cấp màn hình 4K & docking station cho đội Kỹ thuật',
+      summary: 'Trang bị 6 màn hình 27 inch 4K và 6 hub USB-C nhằm tăng hiệu suất lập trình và review UI.',
+      content:
+        'Hiện tại đội Kỹ thuật đã mở rộng thêm 6 nhân sự mới cho Phase 2 Operon Hub nhưng thiết bị màn hình rời đang thiếu. Đề xuất mua sắm 6 bộ màn hình 27 inch 4K chuẩn màu sRGB 99% kèm docking station USB-C để chuẩn hóa góc làm việc và bảo vệ thị lực cho nhân viên.',
+      expectedOutcome: 'Tăng 20% tốc độ xử lý đa nhiệm, giảm tình trạng mỏi mắt khi làm việc kéo dài.',
+      priority: 'HIGH',
+      status: 'PENDING_APPROVAL',
+      vendorName: 'Công ty TNHH Máy tính Minh Anh',
+      neededByDate: '2026-12-10',
+      items: [
+        { name: 'Màn hình Dell UltraSharp 27" 4K USB-C', spec: 'U2723QE, bảo hành 36 tháng', unit: 'Chiếc', qty: 6, price: 11500000 },
+        { name: 'Docking Station USB-C 10-in-1', spec: 'Hỗ trợ sạc PD 100W, HDMI 4K', unit: 'Bộ', qty: 6, price: 1450000 },
+      ],
+      needsApproval: true,
+    },
+    {
+      code: 'PROP-202611-0002',
+      categoryCode: 'EVENT',
+      deptCode: 'HR',
+      title: 'Tờ trình tổ chức Tiệc Tất niên & Vinh danh cuối năm 2026',
+      summary: 'Kế hoạch tổ chức Year-End Party cho 85 CBNV Trụ sở chính kèm quà vinh danh cá nhân xuất sắc.',
+      content:
+        'Nhằm tổng kết thành tựu năm 2026 và gắn kết đội ngũ trước thềm năm mới 2027, Phòng Hành chính Nhân sự đề xuất tổ chức chương trình Year-End Party tại khách sạn trung tâm với các hạng mục: hội trường âm thanh ánh sáng, tiệc tối buffet, kỷ niệm chương vinh danh và quà bốc thăm may mắn.',
+      expectedOutcome: 'Nâng cao mức độ gắn kết nội bộ (eNPS >= 85%) và tạo động lực bứt phá quý I/2027.',
+      priority: 'MEDIUM',
+      status: 'APPROVED',
+      vendorName: 'Trung tâm Hội nghị Grand Palace',
+      neededByDate: '2026-12-20',
+      items: [
+        { name: 'Gói tiệc tối & hội trường 85 khách', spec: 'Bao gồm LED screen + âm thanh ánh sáng', unit: 'Suất', qty: 85, price: 650000 },
+        { name: 'Kỷ niệm chương pha lê & khung bằng khen', spec: 'Khắc laser logo Operon Hub', unit: 'Bộ', qty: 15, price: 450000 },
+      ],
+      needsApproval: false,
+    },
+    {
+      code: 'PROP-202611-0003',
+      categoryCode: 'HR_TRAINING',
+      deptCode: 'TECH',
+      title: 'Đề xuất tài trợ chứng chỉ Cloud & Bảo mật ứng dụng cho nhóm Backend',
+      summary: 'Đăng ký khóa ôn luyện và lệ phí thi chứng chỉ bảo mật & tối ưu cơ sở dữ liệu cho 4 kỹ sư.',
+      content:
+        'Đáp ứng yêu cầu nâng chuẩn bảo mật và tối ưu hiệu năng truy vấn MySQL trên các hệ thống doanh nghiệp, đề xuất công ty tài trợ 100% học phí và lệ phí thi chứng chỉ cho 4 kỹ sư chủ chốt kèm cam kết chia sẻ seminar nội bộ sau khóa học.',
+      expectedOutcome: 'Đội ngũ tự chủ kiểm định bảo mật và giảm 40% thời gian phản hồi API trọng yếu.',
+      priority: 'MEDIUM',
+      status: 'IN_EXECUTION',
+      vendorName: 'Học viện Công nghệ CloudVN',
+      neededByDate: '2026-12-15',
+      items: [
+        { name: 'Khóa đào tạo Database Performance & Security', spec: 'Online + thực hành 8 tuần', unit: 'Học viên', qty: 4, price: 3200000 },
+        { name: 'Lệ phí thi chứng chỉ quốc tế', spec: 'Voucher thi chính thức', unit: 'Voucher', qty: 4, price: 1500000 },
+      ],
+      needsApproval: false,
+    },
+    {
+      code: 'PROP-202611-0004',
+      categoryCode: 'PROCESS_IMPROVEMENT',
+      deptCode: 'BOD',
+      title: 'Đề xuất áp dụng quy trình Số hóa Tờ trình & Ký duyệt không giấy tờ',
+      summary: 'Chuyển toàn bộ tờ trình mua sắm, sự kiện và hành chính sang vận hành trực tuyến trên Operon Hub.',
+      content:
+        'Hiện tại các đề xuất nội bộ vẫn phải in giấy, trình ký thủ công qua nhiều tầng gây chậm trễ 3–5 ngày và khó tra cứu lịch sử. Đề xuất áp dụng chính thức phân hệ Đề xuất Nội bộ trên Operon Hub từ ngày 01/12/2026 với 2 mức phê duyệt tự động theo giá trị ngân sách.',
+      expectedOutcome: 'Rút ngắn thời gian phê duyệt trung bình xuống dưới 24 giờ và tiết kiệm 80% chi phí in ấn.',
+      priority: 'HIGH',
+      status: 'COMPLETED',
+      vendorName: null,
+      neededByDate: '2026-11-30',
+      items: [],
+      needsApproval: false,
+    },
+    {
+      code: 'PROP-202611-0005',
+      categoryCode: 'PROCUREMENT',
+      deptCode: 'HR',
+      title: 'Đề xuất bổ sung văn phòng phẩm & máy pha cà phê khu vực Pantry',
+      summary: 'Mua sắm định kỳ văn phòng phẩm tháng 12 và thay mới máy pha cà phê tự động tầng 5.',
+      content:
+        'Máy pha cà phê khu vực Pantry tầng 5 đã hết bảo hành và thường xuyên lỗi áp suất. Đồng thời cần bổ sung giấy in A4, bút viết bảng và phụ kiện phòng họp cho tháng 12.',
+      expectedOutcome: 'Đảm bảo tiện nghi văn phòng và trải nghiệm làm việc tốt nhất cho CBNV.',
+      priority: 'LOW',
+      status: 'NEEDS_REVISION',
+      vendorName: 'Siêu thị Văn phòng Thiên Long Pro',
+      neededByDate: '2026-12-05',
+      items: [
+        { name: 'Máy pha cà phê tự động hạt nguyên chất', spec: 'Công suất 80 ly/ngày, BH 24 tháng', unit: 'Máy', qty: 1, price: 14500000 },
+        { name: 'Combo giấy A4 Double A & VPP tháng 12', spec: '20 ram giấy + bút bảng + bìa hồ sơ', unit: 'Gói', qty: 1, price: 2800000 },
+      ],
+      needsApproval: false,
+    },
+  ];
+
+  for (const sample of sampleProposals) {
+    const [existing] = await conn.execute<mysql.RowDataPacket[]>(
+      'SELECT id FROM proposals WHERE proposal_code = ? LIMIT 1',
+      [sample.code],
+    );
+    if (existing.length > 0) {
+      continue;
+    }
+
+    const categoryId = catMap.get(sample.categoryCode) ?? Array.from(catMap.values())[0];
+    if (!categoryId) {
+      continue;
+    }
+    const departmentId = deptMap.get(sample.deptCode) ?? null;
+    const estimatedBudget = sample.items.reduce((sum, it) => sum + it.qty * it.price, 0);
+
+    const [inserted] = await conn.execute<mysql.ResultSetHeader>(
+      `INSERT INTO proposals (
+        proposal_code, category_id, branch_id, department_id,
+        requester_employee_id, requester_user_id, title, summary, content, expected_outcome,
+        priority, status, estimated_budget, approved_budget, currency, needed_by_date, vendor_name,
+        submitted_at, approved_at, completed_at, rejection_reason, execution_notes, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'VND', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        sample.code,
+        categoryId,
+        hqId,
+        departmentId,
+        adminEmpId,
+        adminUserId,
+        sample.title,
+        sample.summary,
+        sample.content,
+        sample.expectedOutcome,
+        sample.priority,
+        sample.status,
+        estimatedBudget,
+        ['APPROVED', 'IN_EXECUTION', 'COMPLETED'].includes(sample.status) ? estimatedBudget : null,
+        sample.neededByDate,
+        sample.vendorName,
+        sample.status !== 'DRAFT' ? new Date() : null,
+        ['APPROVED', 'IN_EXECUTION', 'COMPLETED'].includes(sample.status) ? new Date() : null,
+        sample.status === 'COMPLETED' ? new Date() : null,
+        sample.status === 'NEEDS_REVISION'
+          ? 'Vui lòng đính kèm thêm tối thiểu 02 báo giá so sánh cho máy pha cà phê trước khi gửi duyệt lại.'
+          : null,
+        sample.status === 'COMPLETED'
+          ? 'Đã ban hành hướng dẫn sử dụng toàn công ty và vận hành ổn định.'
+          : sample.status === 'IN_EXECUTION'
+            ? 'Đã đăng ký lịch khai giảng khóa đầu tiên cho 4 kỹ sư Backend.'
+            : null,
+        adminUserId,
+        adminUserId,
+      ],
+    );
+
+    const proposalId = Number(inserted.insertId);
+    for (let i = 0; i < sample.items.length; i += 1) {
+      const it = sample.items[i];
+      await conn.execute(
+        `INSERT INTO proposal_items (
+          proposal_id, line_no, item_name, specification, unit, quantity, unit_price, line_total, created_by, updated_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          proposalId,
+          i + 1,
+          it.name,
+          it.spec,
+          it.unit,
+          it.qty,
+          it.price,
+          it.qty * it.price,
+          adminUserId,
+          adminUserId,
+        ],
+      );
+    }
+
+    if (sample.needsApproval && (highValueWorkflowId || standardWorkflowId)) {
+      const wfId =
+        estimatedBudget >= PROPOSAL_HIGH_VALUE_THRESHOLD_VND && highValueWorkflowId
+          ? highValueWorkflowId
+          : (standardWorkflowId ?? highValueWorkflowId!);
+      const totalSteps =
+        estimatedBudget >= PROPOSAL_HIGH_VALUE_THRESHOLD_VND && highValueWorkflowId ? 3 : 2;
+      const [arInserted] = await conn.execute<mysql.ResultSetHeader>(
+        `INSERT INTO approval_requests (
+          workflow_id, module_code, request_type, entity_type, entity_id,
+          branch_id, requester_id, title, summary, current_step, total_steps,
+          current_approver_user_id, current_approver_role_id, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NULL, ?, 'PENDING')`,
+        [
+          wfId,
+          PROPOSAL_MODULE_CODE,
+          PROPOSAL_DEFAULT_REQUEST_TYPE,
+          PROPOSAL_ENTITY_TYPE,
+          proposalId,
+          hqId,
+          adminUserId,
+          `[${sample.code}] ${sample.title}`,
+          `Dự toán: ${estimatedBudget.toLocaleString('vi-VN')} ₫`,
+          totalSteps,
+          deptManagerRoleId,
+        ],
+      );
+      const arId = Number(arInserted.insertId);
+      await conn.execute(
+        `INSERT INTO approval_histories (approval_request_id, step_order, actor_id, action, comment)
+         VALUES (?, 1, ?, 'SUBMIT', 'Gửi đề xuất phê duyệt tự động')`,
+        [arId, adminUserId],
+      );
+      await conn.execute('UPDATE proposals SET approval_request_id = ? WHERE id = ?', [
+        arId,
+        proposalId,
+      ]);
+    }
+
+    if (sample.status === 'NEEDS_REVISION') {
+      await conn.execute(
+        `INSERT INTO proposal_comments (proposal_id, author_user_id, comment_type, content, created_by, updated_by)
+         VALUES (?, ?, 'REVISION_REQUEST', ?, ?, ?)`,
+        [
+          proposalId,
+          adminUserId,
+          'Vui lòng đính kèm thêm tối thiểu 02 báo giá so sánh cho máy pha cà phê trước khi gửi duyệt lại.',
+          adminUserId,
+          adminUserId,
+        ],
+      );
+    }
+
+    await conn.execute(
+      `INSERT INTO proposal_activities (proposal_id, actor_user_id, action_type, detail_json)
+       VALUES (?, ?, 'CREATED', ?)`,
+      [proposalId, adminUserId, JSON.stringify({ proposalCode: sample.code, estimatedBudget })],
+    );
+  }
+}
+
 export async function runCoreSeed(): Promise<void> {
   assertLocalDevEnvironment(process.env);
   const env = parseServerEnv(process.env);
@@ -1246,8 +1718,9 @@ export async function runCoreSeed(): Promise<void> {
     await seedDefaultHrmPayrollConfig(conn);
     await seedDefaultHrmAssets(conn);
     await seedDefaultHrmRoomsAndAnnouncements(conn);
+    await seedDefaultProposalsModule(conn, roleMap);
     console.log(
-      '[SEED CORE OK] Đã khởi tạo chi nhánh HQ, 8 roles, permissions, Super Admin, quy trình duyệt, cơ cấu tổ chức, hồ sơ NV, hợp đồng, quỹ phép, chấm công, cấu hình lương, kho tài sản, phòng họp & thông báo mẫu.',
+      '[SEED CORE OK] Đã khởi tạo chi nhánh HQ, 9 roles, permissions, Super Admin, quy trình duyệt, cơ cấu tổ chức, hồ sơ NV, hợp đồng, quỹ phép, chấm công, cấu hình lương, kho tài sản, phòng họp, thông báo & module Đề xuất mẫu.',
     );
   } finally {
     await conn.end();

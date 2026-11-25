@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   IconCheck,
   IconChecklist,
@@ -20,12 +21,15 @@ interface ApprovalRow {
   id: number;
   moduleCode: string;
   requestType: string;
+  entityType: string;
+  entityId: number;
   title: string;
   summary: string | null;
   requesterName: string | null;
   currentStep: number;
   totalSteps: number;
   currentApproverRoleName: string | null;
+  currentApproverRoleNameEn?: string | null;
   status: ApprovalStatus;
   submittedAt: string;
 }
@@ -64,7 +68,7 @@ const ACTION_LABELS: Record<ApprovalHistoryRow['action'], { vi: string; en: stri
 };
 
 export default function ApprovalsInboxPage() {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const [scope, setScope] = useState<'pending_my_action' | 'sent_by_me'>('pending_my_action');
   const [statusFilter, setStatusFilter] = useState('');
   const [viewState, setViewState] = useState<'loading' | 'success' | 'error'>('loading');
@@ -356,7 +360,9 @@ export default function ApprovalsInboxPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
                         {tr('Bước', 'Step')} {item.currentStep}/{item.totalSteps}
-                        {item.currentApproverRoleName ? ` (${item.currentApproverRoleName})` : ''}
+                        {item.currentApproverRoleName
+                          ? ` (${ln(item.currentApproverRoleName, item.currentApproverRoleNameEn)})`
+                          : ''}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
                         {formatDateTimeVN(item.submittedAt)}
@@ -449,6 +455,18 @@ export default function ApprovalsInboxPage() {
             {detail.request.summary && (
               <div className="mt-4 rounded-xl bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-700">
                 {detail.request.summary}
+              </div>
+            )}
+
+            {detail.request.entityType === 'proposals' && detail.request.entityId > 0 && (
+              <div className="mt-3">
+                <Link
+                  href={`/services/proposals/${detail.request.entityId}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  <IconEye size={14} />
+                  <span>{tr('Mở hồ sơ Đề xuất chi tiết', 'Open Full Proposal Dossier')}</span>
+                </Link>
               </div>
             )}
 

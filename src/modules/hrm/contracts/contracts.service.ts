@@ -45,9 +45,12 @@ export interface ContractItem {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn?: string | null;
   departmentId: number;
   departmentName: string;
+  departmentNameEn?: string | null;
   positionName: string;
+  positionNameEn?: string | null;
   contractNo: string;
   contractType: ContractType;
   startDate: string;
@@ -332,9 +335,12 @@ async function queryContractsWithScope(
       'e.branch_id',
       'b.code as branch_code',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'e.department_id',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'p.name as position_name',
+      'p.name_en as position_name_en',
       'c.contract_no',
       'c.contract_type',
       'c.start_date',
@@ -369,9 +375,12 @@ async function queryContractsWithScope(
       branchId: Number(row.branch_id),
       branchCode: row.branch_code,
       branchName: row.branch_name,
+      branchNameEn: row.branch_name_en ?? null,
       departmentId: Number(row.department_id),
       departmentName: row.department_name,
+      departmentNameEn: row.department_name_en ?? null,
       positionName: row.position_name,
+      positionNameEn: row.position_name_en ?? null,
       contractNo: row.contract_no,
       contractType: row.contract_type,
       startDate: toIsoDateOnly(row.start_date) ?? '',

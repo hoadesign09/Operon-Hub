@@ -16,6 +16,7 @@ export interface ClientBranch {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   isHeadquarters: boolean;
 }
 
@@ -23,6 +24,7 @@ export interface ClientRole {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   dataScope: 'OWN' | 'DEPARTMENT' | 'BRANCH' | 'ALL';
   branchId: number | null;
 }

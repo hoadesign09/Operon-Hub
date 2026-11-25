@@ -11,6 +11,7 @@ export interface LeaveTypeOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   isPaid: boolean;
   defaultDaysPerYear: number;
   requiresAttachment: boolean;
@@ -121,7 +122,7 @@ export function LeaveRequestFormModal({
   onClose,
   onSaved,
 }: LeaveRequestFormModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const todayIso = new Date().toISOString().slice(0, 10);
   const [leaveTypeId, setLeaveTypeId] = useState<number>(
     editingRequest?.leaveTypeId ?? leaveTypes[0]?.id ?? 0,
@@ -179,10 +180,11 @@ export function LeaveRequestFormModal({
       return;
     }
     if (submitNow && selectedType?.requiresAttachment && !attachmentUrl.trim()) {
+      const leaveTypeLabel = ln(selectedType.name, selectedType.nameEn);
       setErrorMsg(
         tr(
-          `Loại phép "${selectedType.name}" yêu cầu nhập đường dẫn minh chứng đính kèm.`,
-          `Leave type "${selectedType.name}" requires an attachment URL.`,
+          `Loại phép "${leaveTypeLabel}" yêu cầu nhập đường dẫn minh chứng đính kèm.`,
+          `Leave type "${leaveTypeLabel}" requires an attachment URL.`,
         ),
       );
       return;
@@ -327,7 +329,8 @@ export function LeaveRequestFormModal({
                   : tr(' (Không giới hạn quỹ)', ' (Unlimited balance)');
                 return (
                   <option key={lt.id} value={lt.id}>
-                    {lt.name} — {lt.isPaid ? tr('Hưởng lương', 'Paid') : tr('Không lương', 'Unpaid')}
+                    {ln(lt.name, lt.nameEn)} —{' '}
+                    {lt.isPaid ? tr('Hưởng lương', 'Paid') : tr('Không lương', 'Unpaid')}
                     {balSuffix}
                   </option>
                 );

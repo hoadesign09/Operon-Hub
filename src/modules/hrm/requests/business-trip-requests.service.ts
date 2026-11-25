@@ -44,7 +44,9 @@ export interface BusinessTripRequestItem {
   employeeName: string;
   branchId: number;
   branchName: string | null;
+  branchNameEn?: string | null;
   departmentName: string | null;
+  departmentNameEn?: string | null;
   destination: string;
   startDate: string;
   endDate: string;
@@ -196,7 +198,9 @@ async function fetchTripByIdInternal(id: number): Promise<BusinessTripRequestIte
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'bt.destination',
       'bt.start_date',
       'bt.end_date',
@@ -223,7 +227,9 @@ async function fetchTripByIdInternal(id: number): Promise<BusinessTripRequestIte
     employeeName: row.employee_name,
     branchId: Number(row.branch_id),
     branchName: row.branch_name ?? null,
+    branchNameEn: row.branch_name_en ?? null,
     departmentName: row.department_name ?? null,
+    departmentNameEn: row.department_name_en ?? null,
     destination: row.destination,
     startDate: toIsoDate(row.start_date),
     endDate: toIsoDate(row.end_date),
@@ -355,7 +361,9 @@ export async function listBusinessTripRequests(
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'bt.destination',
       'bt.start_date',
       'bt.end_date',
@@ -380,7 +388,9 @@ export async function listBusinessTripRequests(
     employeeName: row.employee_name,
     branchId: Number(row.branch_id),
     branchName: row.branch_name ?? null,
+    branchNameEn: row.branch_name_en ?? null,
     departmentName: row.department_name ?? null,
+    departmentNameEn: row.department_name_en ?? null,
     destination: row.destination,
     startDate: toIsoDate(row.start_date),
     endDate: toIsoDate(row.end_date),

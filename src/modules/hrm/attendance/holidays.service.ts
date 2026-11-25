@@ -12,8 +12,10 @@ export interface HolidayItem {
   id: number;
   branchId: number | null;
   branchName: string | null;
+  branchNameEn: string | null;
   holidayDate: string;
   name: string;
+  nameEn: string | null;
   isPaid: boolean;
   note: string | null;
 }
@@ -30,8 +32,10 @@ export async function listHolidays(query: {
       'h.id',
       'h.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'h.holiday_date',
       'h.name',
+      'h.name_en',
       'h.is_paid',
       'h.note',
     ])
@@ -57,8 +61,10 @@ export async function listHolidays(query: {
     id: Number(row.id),
     branchId: row.branch_id !== null ? Number(row.branch_id) : null,
     branchName: row.branch_name ? String(row.branch_name) : null,
+    branchNameEn: row.branch_name_en ? String(row.branch_name_en) : null,
     holidayDate: extractIsoDate(row.holiday_date) ?? '',
     name: String(row.name),
+    nameEn: row.name_en ? String(row.name_en) : null,
     isPaid: Number(row.is_paid) === 1,
     note: row.note ? String(row.note) : null,
   }));
@@ -123,6 +129,7 @@ export async function createHoliday(
       branch_id: branchId,
       holiday_date: input.holidayDate,
       name: input.name,
+      name_en: input.nameEn?.trim() || null,
       is_paid: input.isPaid ? 1 : 0,
       note: input.note ?? null,
       created_by: auth.userId,
@@ -158,7 +165,7 @@ export async function updateHoliday(
   const db = getDb();
   const current = await db
     .selectFrom('holidays')
-    .select(['id', 'branch_id', 'holiday_date', 'name', 'is_paid', 'note'])
+    .select(['id', 'branch_id', 'holiday_date', 'name', 'name_en', 'is_paid', 'note'])
     .where('id', '=', id)
     .where('deleted_at', 'is', null)
     .executeTakeFirst();
@@ -183,6 +190,7 @@ export async function updateHoliday(
       branch_id: nextBranchId,
       holiday_date: nextDate,
       name: input.name ?? String(current.name),
+      name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : current.name_en ?? null,
       is_paid: input.isPaid !== undefined ? (input.isPaid ? 1 : 0) : Number(current.is_paid),
       note:
         input.note !== undefined

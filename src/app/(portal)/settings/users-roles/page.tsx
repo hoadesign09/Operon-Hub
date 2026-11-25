@@ -22,8 +22,10 @@ interface UserAssignment {
   roleId: number;
   roleCode: string;
   roleName: string;
+  roleNameEn?: string | null;
   branchId: number | null;
   branchName: string | null;
+  branchNameEn?: string | null;
 }
 
 interface UserRow {
@@ -39,6 +41,7 @@ interface RoleRow {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   dataScope: string;
   description: string | null;
   isSystem: boolean;
@@ -51,19 +54,21 @@ interface PermissionRow {
   moduleCode: string;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 interface BranchOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 const ERR_LOAD_USERS = '__ERR_LOAD_USERS__';
 const ERR_NETWORK_USERS = '__ERR_NETWORK_USERS__';
 
 export default function UsersRolesSettingsPage() {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const { user: currentUser, hasPermission } = usePortalAuth();
   const canCreateUser = hasPermission('core.users.create');
   const canUpdateUser = hasPermission('core.users.update');
@@ -450,9 +455,9 @@ export default function UsersRolesSettingsPage() {
                                   key={`${a.roleId}-${a.branchId ?? 'all'}-${idx}`}
                                   className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
                                 >
-                                  {a.roleName}
+                                  {ln(a.roleName, a.roleNameEn)}
                                   {a.branchName
-                                    ? ` (${a.branchName})`
+                                    ? ` (${ln(a.branchName, a.branchNameEn)})`
                                     : tr(' (Toàn công ty)', ' (Company-wide)')}
                                 </span>
                               ))}
@@ -524,7 +529,7 @@ export default function UsersRolesSettingsPage() {
                 }`}
               >
                 <div>
-                  <div className="text-sm font-semibold">{role.name}</div>
+                  <div className="text-sm font-semibold">{ln(role.name, role.nameEn)}</div>
                   <div className="text-xs text-slate-500">
                     {role.code} • {tr('Phạm vi', 'Scope')}: {role.dataScope}
                   </div>
@@ -541,7 +546,9 @@ export default function UsersRolesSettingsPage() {
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                   <div>
-                    <h3 className="text-base font-semibold text-slate-900">{selectedRole.name}</h3>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      {ln(selectedRole.name, selectedRole.nameEn)}
+                    </h3>
                     <p className="text-xs text-slate-500">
                       {selectedRole.description ??
                         tr(
@@ -602,7 +609,9 @@ export default function UsersRolesSettingsPage() {
                               className="mt-0.5 h-4 w-4 rounded border-slate-300"
                             />
                             <div>
-                              <div className="text-xs font-medium text-slate-800">{perm.name}</div>
+                              <div className="text-xs font-medium text-slate-800">
+                                {ln(perm.name, perm.nameEn)}
+                              </div>
                               <div className="font-mono text-[11px] text-slate-400">{perm.code}</div>
                             </div>
                           </label>
@@ -704,7 +713,7 @@ export default function UsersRolesSettingsPage() {
                 >
                   {roles.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.name} ({r.code})
+                      {ln(r.name, r.nameEn)} ({r.code})
                     </option>
                   ))}
                 </select>
@@ -722,7 +731,7 @@ export default function UsersRolesSettingsPage() {
                   <option value="">{tr('Toàn công ty', 'Company-wide')}</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.name} ({b.code})
+                      {ln(b.name, b.nameEn)} ({b.code})
                     </option>
                   ))}
                 </select>

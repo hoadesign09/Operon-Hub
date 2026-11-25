@@ -196,7 +196,7 @@ export function RoomBookingModal({
   onClose,
   onSaved,
 }: RoomBookingModalProps) {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -594,7 +594,11 @@ export function RoomBookingModal({
             {initialBooking && (
               <p className="mt-0.5 text-xs text-slate-500">
                 {tr('Người đặt:', 'Booked by:')} {initialBooking.bookedByEmployeeName} (
-                {initialBooking.bookedByDepartmentName})
+                {ln(
+                  initialBooking.bookedByDepartmentName,
+                  initialBooking.bookedByDepartmentNameEn,
+                )}
+                )
               </p>
             )}
           </div>
@@ -638,7 +642,7 @@ export function RoomBookingModal({
                     {tr('Phòng họp', 'Meeting Room')}
                   </div>
                   <div className="font-semibold text-slate-900">
-                    [{initialBooking.roomCode}] {initialBooking.roomName}
+                    [{initialBooking.roomCode}] {ln(initialBooking.roomName, initialBooking.roomNameEn)}
                   </div>
                   <div className="text-xs text-slate-500">
                     {initialBooking.roomFloor ? `${initialBooking.roomFloor} • ` : ''}
@@ -657,7 +661,8 @@ export function RoomBookingModal({
                     {tr('Chi nhánh', 'Branch')}
                   </div>
                   <div className="font-semibold text-slate-900">
-                    {initialBooking.branchName} ({initialBooking.branchCode})
+                    {ln(initialBooking.branchName, initialBooking.branchNameEn)} (
+                    {initialBooking.branchCode})
                   </div>
                 </div>
               </div>
@@ -702,7 +707,10 @@ export function RoomBookingModal({
                     {initialBooking.bookedByEmployeeName} ({initialBooking.bookedByEmployeeCode})
                   </div>
                   <div className="text-xs text-slate-500">
-                    {initialBooking.bookedByDepartmentName}
+                    {ln(
+                      initialBooking.bookedByDepartmentName,
+                      initialBooking.bookedByDepartmentNameEn,
+                    )}
                   </div>
                 </div>
               </div>
@@ -1051,7 +1059,7 @@ export function RoomBookingModal({
                   >
                     {availableRooms.map((r) => (
                       <option key={r.id} value={r.id}>
-                        [{r.code}] {r.name} — {r.capacity} {tr('chỗ', 'seats')}{' '}
+                        [{r.code}] {ln(r.name, r.nameEn)} — {r.capacity} {tr('chỗ', 'seats')}{' '}
                         {r.floor ? `(${r.floor})` : ''}
                       </option>
                     ))}

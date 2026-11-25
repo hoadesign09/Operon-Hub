@@ -34,10 +34,13 @@ interface EmployeeRow {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn?: string | null;
   departmentId: number;
   departmentName: string;
+  departmentNameEn?: string | null;
   positionId: number;
   positionName: string;
+  positionNameEn?: string | null;
   hireDate: string;
   employmentStatus: 'PROBATION' | 'ACTIVE' | 'ON_LEAVE' | 'RESIGNED' | 'TERMINATED';
   userId: number | null;
@@ -64,7 +67,7 @@ const STATUS_BADGES: Record<
 
 export default function EmployeesPage() {
   const { user, selectedBranchId, hasPermission } = usePortalAuth();
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -429,7 +432,7 @@ export default function EmployeesPage() {
             <option value="">{tr('Tất cả phòng ban', 'All departments')}</option>
             {visibleDepartments.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.name} ({d.code})
+                {ln(d.name, d.nameEn)} ({d.code})
               </option>
             ))}
           </select>
@@ -446,7 +449,7 @@ export default function EmployeesPage() {
             <option value="">{tr('Tất cả chức danh', 'All positions')}</option>
             {positions.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {ln(p.name, p.nameEn)}
               </option>
             ))}
           </select>
@@ -553,12 +556,16 @@ export default function EmployeesPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-800">{emp.departmentName}</div>
+                        <div className="font-medium text-slate-800">
+                          {ln(emp.departmentName, emp.departmentNameEn)}
+                        </div>
                         <div className="text-xs text-slate-500">
-                          {emp.branchName} ({emp.branchCode})
+                          {ln(emp.branchName, emp.branchNameEn)} ({emp.branchCode})
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-700">{emp.positionName}</td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {ln(emp.positionName, emp.positionNameEn)}
+                      </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {formatDateVN(emp.hireDate)}
                       </td>

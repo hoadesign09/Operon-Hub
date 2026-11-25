@@ -46,10 +46,13 @@ export interface LeaveRequestItem {
   employeeName: string;
   branchId: number;
   branchName: string | null;
+  branchNameEn: string | null;
   departmentName: string | null;
+  departmentNameEn: string | null;
   leaveTypeId: number;
   leaveTypeCode: string;
   leaveTypeName: string;
+  leaveTypeNameEn: string | null;
   isPaid: boolean;
   startDate: string;
   endDate: string;
@@ -296,10 +299,13 @@ async function fetchLeaveRequestByIdInternal(id: number): Promise<LeaveRequestIt
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'lr.leave_type_id',
       'lt.code as leave_type_code',
       'lt.name as leave_type_name',
+      'lt.name_en as leave_type_name_en',
       'lt.is_paid',
       'lr.start_date',
       'lr.end_date',
@@ -328,10 +334,13 @@ async function fetchLeaveRequestByIdInternal(id: number): Promise<LeaveRequestIt
     employeeName: row.employee_name,
     branchId: Number(row.branch_id),
     branchName: row.branch_name ?? null,
+    branchNameEn: row.branch_name_en ?? null,
     departmentName: row.department_name ?? null,
+    departmentNameEn: row.department_name_en ?? null,
     leaveTypeId: Number(row.leave_type_id),
     leaveTypeCode: row.leave_type_code,
     leaveTypeName: row.leave_type_name,
+    leaveTypeNameEn: row.leave_type_name_en ?? null,
     isPaid: Number(row.is_paid) === 1,
     startDate: toIsoDate(row.start_date),
     endDate: toIsoDate(row.end_date),
@@ -475,10 +484,13 @@ export async function listLeaveRequests(
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'lr.leave_type_id',
       'lt.code as leave_type_code',
       'lt.name as leave_type_name',
+      'lt.name_en as leave_type_name_en',
       'lt.is_paid',
       'lr.start_date',
       'lr.end_date',
@@ -505,10 +517,13 @@ export async function listLeaveRequests(
     employeeName: row.employee_name,
     branchId: Number(row.branch_id),
     branchName: row.branch_name ?? null,
+    branchNameEn: row.branch_name_en ?? null,
     departmentName: row.department_name ?? null,
+    departmentNameEn: row.department_name_en ?? null,
     leaveTypeId: Number(row.leave_type_id),
     leaveTypeCode: row.leave_type_code,
     leaveTypeName: row.leave_type_name,
+    leaveTypeNameEn: row.leave_type_name_en ?? null,
     isPaid: Number(row.is_paid) === 1,
     startDate: toIsoDate(row.start_date),
     endDate: toIsoDate(row.end_date),

@@ -22,17 +22,20 @@ interface WorkflowStepRow {
   approverType: ApproverType;
   approverRoleId: number | null;
   approverRoleName?: string | null;
+  approverRoleNameEn?: string | null;
   approverUserId: number | null;
   approverUserName?: string | null;
 }
 
 interface WorkflowRow {
   id: number;
-  moduleCode: 'core' | 'hrm' | 'crm';
+  moduleCode: 'core' | 'hrm' | 'projects' | 'proposals' | 'crm';
   requestType: string;
   branchId: number | null;
   branchName: string | null;
+  branchNameEn?: string | null;
   name: string;
+  nameEn?: string | null;
   description: string | null;
   conditions: { minDays?: number | null; minAmount?: number | null } | null;
   isActive: boolean;
@@ -43,6 +46,7 @@ interface RoleOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 interface UserOption {
@@ -55,6 +59,7 @@ interface BranchOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 interface StepDraft {
@@ -73,7 +78,7 @@ const APPROVER_TYPE_LABELS: Record<ApproverType, { vi: string; en: string }> = {
 };
 
 export default function WorkflowsSettingsPage() {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const { hasPermission } = usePortalAuth();
   const canManage = hasPermission('core.approvals.workflow_manage');
 
@@ -89,11 +94,13 @@ export default function WorkflowsSettingsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowRow | null>(null);
   const [name, setName] = useState('');
-  const [moduleCode, setModuleCode] = useState<'core' | 'hrm' | 'crm'>('hrm');
+  const [nameEn, setNameEn] = useState('');
+  const [moduleCode, setModuleCode] = useState<'core' | 'hrm' | 'projects' | 'proposals' | 'crm'>('hrm');
   const [requestType, setRequestType] = useState('LEAVE');
   const [branchId, setBranchId] = useState('');
   const [description, setDescription] = useState('');
   const [minDays, setMinDays] = useState('');
+  const [minAmount, setMinAmount] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [steps, setSteps] = useState<StepDraft[]>([
     { approverType: 'ROLE', approverRoleId: '', approverUserId: '' },
@@ -169,11 +176,13 @@ export default function WorkflowsSettingsPage() {
     const defaultRoleId = String(roles.find((r) => r.code === 'DEPT_MANAGER')?.id ?? roles[0]?.id ?? '');
     setEditingWorkflow(null);
     setName('');
+    setNameEn('');
     setModuleCode('hrm');
     setRequestType('LEAVE');
     setBranchId('');
     setDescription('');
     setMinDays('');
+    setMinAmount('');
     setIsActive(true);
     setSteps([{ approverType: 'ROLE', approverRoleId: defaultRoleId, approverUserId: '' }]);
     setFormError('');
@@ -183,11 +192,13 @@ export default function WorkflowsSettingsPage() {
   function openEditModal(wf: WorkflowRow) {
     setEditingWorkflow(wf);
     setName(wf.name);
+    setNameEn(wf.nameEn ?? '');
     setModuleCode(wf.moduleCode);
     setRequestType(wf.requestType);
     setBranchId(wf.branchId ? String(wf.branchId) : '');
     setDescription(wf.description ?? '');
     setMinDays(wf.conditions?.minDays !== null && wf.conditions?.minDays !== undefined ? String(wf.conditions.minDays) : '');
+    setMinAmount(wf.conditions?.minAmount !== null && wf.conditions?.minAmount !== undefined ? String(wf.conditions.minAmount) : '');
     setIsActive(wf.isActive);
     setSteps(
       wf.steps.length > 0
@@ -235,8 +246,15 @@ export default function WorkflowsSettingsPage() {
         requestType: requestType.trim().toUpperCase(),
         branchId: branchId ? Number(branchId) : null,
         name: name.trim(),
+        nameEn: nameEn.trim() || null,
         description: description.trim() || null,
-        conditions: minDays.trim() ? { minDays: Number(minDays) } : null,
+        conditions:
+          minDays.trim() || minAmount.trim()
+            ? {
+                ...(minDays.trim() ? { minDays: Number(minDays) } : {}),
+                ...(minAmount.trim() ? { minAmount: Number(minAmount) } : {}),
+              }
+            : null,
         isActive,
         steps: steps.map((s, idx) => ({
           stepOrder: idx + 1,
@@ -341,6 +359,8 @@ export default function WorkflowsSettingsPage() {
           >
             <option value="">{tr('Tất cả phân hệ', 'All modules')}</option>
             <option value="hrm">HRM</option>
+            <option value="proposals">Proposals</option>
+            <option value="projects">Projects</option>
             <option value="crm">CRM</option>
             <option value="core">Core</option>
           </select>
@@ -409,7 +429,9 @@ export default function WorkflowsSettingsPage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <IconGitBranch size={18} className="text-blue-600" />
-                    <h2 className="text-base font-semibold text-slate-900">{wf.name}</h2>
+                    <h2 className="text-base font-semibold text-slate-900">
+                      {ln(wf.name, wf.nameEn)}
+                    </h2>
                     <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700">
                       {wf.moduleCode}/{wf.requestType}
                     </span>
@@ -428,12 +450,21 @@ export default function WorkflowsSettingsPage() {
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                     <span>
-                      {tr('Phạm vi', 'Scope')}: {wf.branchName ?? tr('Toàn công ty', 'Company-wide')}
+                      {tr('Phạm vi', 'Scope')}:{' '}
+                      {wf.branchName
+                        ? ln(wf.branchName, wf.branchNameEn)
+                        : tr('Toàn công ty', 'Company-wide')}
                     </span>
                     {wf.conditions?.minDays !== undefined && wf.conditions?.minDays !== null && (
                       <span>
                         • {tr('Điều kiện', 'Condition')}: &ge; {wf.conditions.minDays}{' '}
                         {tr('ngày', 'days')}
+                      </span>
+                    )}
+                    {wf.conditions?.minAmount !== undefined && wf.conditions?.minAmount !== null && (
+                      <span>
+                        • {tr('Ngân sách tối thiểu', 'Min Budget')}: &ge;{' '}
+                        {wf.conditions.minAmount.toLocaleString('vi-VN')} ₫
                       </span>
                     )}
                   </div>
@@ -467,7 +498,7 @@ export default function WorkflowsSettingsPage() {
                     <span className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
                       {tr('Bước', 'Step')} {step.stepOrder}:{' '}
                       {step.approverType === 'ROLE'
-                        ? step.approverRoleName ?? tr('Vai trò', 'Role')
+                        ? ln(step.approverRoleName, step.approverRoleNameEn) || tr('Vai trò', 'Role')
                         : step.approverType === 'SPECIFIC_USER'
                           ? step.approverUserName ?? tr('Người dùng', 'User')
                           : tr('Quản lý trực tiếp', 'Direct Manager')}
@@ -513,17 +544,31 @@ export default function WorkflowsSettingsPage() {
                 </div>
               )}
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">
-                  {tr('Tên quy trình *', 'Workflow Name *')}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Tên quy trình (Tiếng Việt) *', 'Workflow Name (Vietnamese) *')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Tên tiếng Anh (tùy chọn)', 'English Name (optional)')}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Standard Leave Approval Workflow"
+                    value={nameEn}
+                    onChange={(e) => setNameEn(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -533,10 +578,16 @@ export default function WorkflowsSettingsPage() {
                   </label>
                   <select
                     value={moduleCode}
-                    onChange={(e) => setModuleCode(e.target.value as 'core' | 'hrm' | 'crm')}
+                    onChange={(e) =>
+                      setModuleCode(
+                        e.target.value as 'core' | 'hrm' | 'projects' | 'proposals' | 'crm',
+                      )
+                    }
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                   >
                     <option value="hrm">HRM</option>
+                    <option value="proposals">Proposals</option>
+                    <option value="projects">Projects</option>
                     <option value="crm">CRM</option>
                     <option value="core">Core</option>
                   </select>
@@ -566,19 +617,19 @@ export default function WorkflowsSettingsPage() {
                     <option value="">{tr('Toàn công ty', 'Company-wide')}</option>
                     {branches.map((b) => (
                       <option key={b.id} value={b.id}>
-                        {b.name} ({b.code})
+                        {ln(b.name, b.nameEn)} ({b.code})
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
                     {tr(
-                      'Điều kiện số ngày tối thiểu (tùy chọn)',
-                      'Minimum Days Condition (optional)',
+                      'Số ngày tối thiểu (tùy chọn)',
+                      'Min Days Condition (optional)',
                     )}
                   </label>
                   <input
@@ -588,6 +639,23 @@ export default function WorkflowsSettingsPage() {
                     placeholder={tr('VD: 3', 'e.g. 3')}
                     value={minDays}
                     onChange={(e) => setMinDays(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr(
+                      'Ngân sách tối thiểu VNĐ (tùy chọn)',
+                      'Min Amount VND (optional)',
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000000"
+                    placeholder={tr('VD: 20000000', 'e.g. 20000000')}
+                    value={minAmount}
+                    onChange={(e) => setMinAmount(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                   />
                 </div>
@@ -656,7 +724,7 @@ export default function WorkflowsSettingsPage() {
                           <option value="">{tr('-- Chọn vai trò --', '-- Select role --')}</option>
                           {roles.map((r) => (
                             <option key={r.id} value={r.id}>
-                              {r.name} ({r.code})
+                              {ln(r.name, r.nameEn)} ({r.code})
                             </option>
                           ))}
                         </select>
@@ -689,7 +757,7 @@ export default function WorkflowsSettingsPage() {
                           </option>
                           {roles.map((r) => (
                             <option key={r.id} value={r.id}>
-                              {tr('Dự phòng', 'Fallback')}: {r.name}
+                              {tr('Dự phòng', 'Fallback')}: {ln(r.name, r.nameEn)}
                             </option>
                           ))}
                         </select>

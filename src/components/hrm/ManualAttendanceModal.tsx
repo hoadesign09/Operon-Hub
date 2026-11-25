@@ -14,12 +14,15 @@ export interface AttendanceLogRecord {
   employeeName: string;
   branchId: number;
   branchName: string;
+  branchNameEn?: string | null;
   departmentId: number;
   departmentName: string;
+  departmentNameEn?: string | null;
   workDate: string;
   shiftId: number | null;
   shiftCode: string | null;
   shiftName: string | null;
+  shiftNameEn?: string | null;
   checkInTime: string | null;
   checkOutTime: string | null;
   source: 'WEB' | 'IMPORT' | 'MANUAL';
@@ -45,7 +48,7 @@ export function ManualAttendanceModal({
   onClose,
   onSuccess,
 }: ManualAttendanceModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const isEdit = Boolean(initialData);
   const [employeeId, setEmployeeId] = useState<string>(
     initialData ? String(initialData.employeeId) : employees[0] ? String(employees[0].id) : '',
@@ -220,7 +223,7 @@ export function ManualAttendanceModal({
                 </option>
                 {shifts.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.code} - {s.name} ({s.startTime}–{s.endTime})
+                    {s.code} - {ln(s.name, s.nameEn)} ({s.startTime}–{s.endTime})
                   </option>
                 ))}
               </select>

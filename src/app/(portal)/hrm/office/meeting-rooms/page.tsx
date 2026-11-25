@@ -15,6 +15,7 @@ import {
   IconTrash,
   IconUsers,
 } from '@tabler/icons-react';
+import { DayBookingsModal } from '@/components/hrm/DayBookingsModal';
 import {
   MeetingRoomFormModal,
   type MeetingRoomFormData,
@@ -36,7 +37,17 @@ type MainTab = 'calendar' | 'rooms' | 'mine';
 type CalendarMode = 'day' | 'week' | 'month';
 type BookingStatusFilter = 'ALL' | RoomBookingStatus;
 
-const DAY_HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+const MONTH_CELL_MAX_VISIBLE = 2;
+const WEEK_CELL_MAX_VISIBLE = 3;
+
+const TIMELINE_START_HOUR = 8;
+const TIMELINE_END_HOUR = 19; // 08:00 -> 19:00 (11 hour rows)
+const TIMELINE_HOUR_HEIGHT = 64; // px per hour
+const TIMELINE_HOURS = Array.from(
+  { length: TIMELINE_END_HOUR - TIMELINE_START_HOUR },
+  (_, idx) => TIMELINE_START_HOUR + idx,
+);
+
 const WEEKDAY_SHORT: Array<{ vi: string; en: string }> = [
   { vi: 'CN', en: 'Sun' },
   { vi: 'T2', en: 'Mon' },
@@ -56,6 +67,13 @@ const MONTH_WEEKDAY_HEADERS: Array<{ vi: string; en: string }> = [
   { vi: 'CN', en: 'Sun' },
 ];
 
+const BOOKING_STATUS_ORDER: readonly RoomBookingStatus[] = [
+  'PENDING',
+  'IN_PROGRESS',
+  'DONE',
+  'CANCELLED',
+];
+
 const BOOKING_STATUS_META: Record<
   RoomBookingStatus,
   {
@@ -64,6 +82,7 @@ const BOOKING_STATUS_META: Record<
     badgeCls: string;
     dotCls: string;
     cardCls: string;
+    accentBorderCls: string;
     timeCls: string;
     titleCls: string;
   }
@@ -73,7 +92,8 @@ const BOOKING_STATUS_META: Record<
     en: 'Pending',
     badgeCls: 'border-amber-200 bg-amber-50 text-amber-700',
     dotCls: 'bg-amber-500',
-    cardCls: 'border-amber-200 bg-white hover:border-amber-400 hover:bg-amber-50/40',
+    cardCls: 'border-amber-200/90 bg-amber-50/35 hover:border-amber-400 hover:bg-amber-50/80',
+    accentBorderCls: 'border-l-amber-500',
     timeCls: 'text-amber-700',
     titleCls: 'text-slate-900',
   },
@@ -82,7 +102,8 @@ const BOOKING_STATUS_META: Record<
     en: 'In-progress',
     badgeCls: 'border-blue-200 bg-blue-50 text-blue-700',
     dotCls: 'bg-blue-500 animate-pulse',
-    cardCls: 'border-blue-300 bg-blue-50/60 hover:border-blue-500 hover:bg-blue-100/60',
+    cardCls: 'border-blue-200 bg-blue-50/65 hover:border-blue-400 hover:bg-blue-100/70',
+    accentBorderCls: 'border-l-blue-600',
     timeCls: 'text-blue-700',
     titleCls: 'text-slate-900',
   },
@@ -91,7 +112,8 @@ const BOOKING_STATUS_META: Record<
     en: 'Done',
     badgeCls: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     dotCls: 'bg-emerald-500',
-    cardCls: 'border-emerald-200 bg-emerald-50/30 hover:border-emerald-400 hover:bg-emerald-50/60',
+    cardCls: 'border-emerald-200/90 bg-emerald-50/35 hover:border-emerald-400 hover:bg-emerald-50/75',
+    accentBorderCls: 'border-l-emerald-500',
     timeCls: 'text-emerald-700',
     titleCls: 'text-slate-800',
   },
@@ -100,7 +122,8 @@ const BOOKING_STATUS_META: Record<
     en: 'Cancelled',
     badgeCls: 'border-rose-200 bg-rose-50 text-rose-600',
     dotCls: 'bg-rose-500',
-    cardCls: 'border-slate-200 bg-slate-50/80 hover:border-slate-300 hover:bg-slate-100/80',
+    cardCls: 'border-slate-200 bg-slate-50/90 hover:border-slate-300 hover:bg-slate-100/80',
+    accentBorderCls: 'border-l-rose-400',
     timeCls: 'text-slate-400',
     titleCls: 'text-slate-500 line-through',
   },
@@ -166,16 +189,122 @@ function bookingTouchesDate(booking: RoomBookingItem, targetDateIso: string): bo
   return start.getTime() <= dayEnd.getTime() && end.getTime() >= dayStart.getTime();
 }
 
-function bookingTouchesHourSlot(booking: RoomBookingItem, targetDateIso: string, hourStr: string): boolean {
+function bookingBlocksHourSlot(
+  booking: RoomBookingItem,
+  targetDateIso: string,
+  hourNum: number,
+): boolean {
+  if (booking.status === 'CANCELLED') {
+    return false;
+  }
   const start = new Date(booking.startTime);
   const end = new Date(booking.endTime);
-  const slotStart = new Date(`${targetDateIso}T${hourStr}:00`);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const slotStart = new Date(`${targetDateIso}T${pad(hourNum)}:00:00`);
   const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
   return start.getTime() < slotEnd.getTime() && end.getTime() > slotStart.getTime();
 }
 
+interface PositionedTimelineBooking {
+  booking: RoomBookingItem;
+  topPx: number;
+  heightPx: number;
+  colIndex: number;
+  colCount: number;
+}
+
+/**
+ * Computes proportional vertical placement & side-by-side lanes for bookings inside a single room's day timeline.
+ */
+function layoutRoomTimelineBookings(
+  roomBookings: readonly RoomBookingItem[],
+  targetDateIso: string,
+): { positioned: PositionedTimelineBooking[]; outsideHours: RoomBookingItem[] } {
+  const timelineStartMs = new Date(
+    `${targetDateIso}T${String(TIMELINE_START_HOUR).padStart(2, '0')}:00:00`,
+  ).getTime();
+  const timelineEndMs = new Date(
+    `${targetDateIso}T${String(TIMELINE_END_HOUR).padStart(2, '0')}:00:00`,
+  ).getTime();
+  const pxPerMinute = TIMELINE_HOUR_HEIGHT / 60;
+
+  const inside: Array<{
+    booking: RoomBookingItem;
+    clampedStart: number;
+    clampedEnd: number;
+  }> = [];
+  const outsideHours: RoomBookingItem[] = [];
+
+  for (const bk of roomBookings) {
+    const startMs = new Date(bk.startTime).getTime();
+    const endMs = new Date(bk.endTime).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+      continue;
+    }
+    if (endMs <= timelineStartMs || startMs >= timelineEndMs) {
+      outsideHours.push(bk);
+      continue;
+    }
+    inside.push({
+      booking: bk,
+      clampedStart: Math.max(startMs, timelineStartMs),
+      clampedEnd: Math.min(endMs, timelineEndMs),
+    });
+  }
+
+  inside.sort((a, b) => a.clampedStart - b.clampedStart || a.clampedEnd - b.clampedEnd);
+
+  // Cluster overlapping events (e.g. cancelled + rebooked) into side-by-side columns
+  const positioned: PositionedTimelineBooking[] = [];
+  let cluster: typeof inside = [];
+  let clusterMaxEnd = -1;
+
+  const flushCluster = () => {
+    if (cluster.length === 0) return;
+    const laneEnds: number[] = [];
+    const laneAssignments: Array<{ item: (typeof inside)[number]; colIndex: number }> = [];
+
+    for (const item of cluster) {
+      let lane = laneEnds.findIndex((endMs) => endMs <= item.clampedStart);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(item.clampedEnd);
+      } else {
+        laneEnds[lane] = item.clampedEnd;
+      }
+      laneAssignments.push({ item, colIndex: lane });
+    }
+
+    const colCount = Math.max(1, laneEnds.length);
+    for (const { item, colIndex } of laneAssignments) {
+      const startMinutes = (item.clampedStart - timelineStartMs) / 60000;
+      const durationMinutes = (item.clampedEnd - item.clampedStart) / 60000;
+      positioned.push({
+        booking: item.booking,
+        topPx: Math.max(0, Math.round(startMinutes * pxPerMinute) + 2),
+        heightPx: Math.max(30, Math.round(durationMinutes * pxPerMinute) - 4),
+        colIndex,
+        colCount,
+      });
+    }
+    cluster = [];
+    clusterMaxEnd = -1;
+  };
+
+  for (const item of inside) {
+    if (cluster.length > 0 && item.clampedStart >= clusterMaxEnd) {
+      flushCluster();
+    }
+    cluster.push(item);
+    clusterMaxEnd = Math.max(clusterMaxEnd, item.clampedEnd);
+  }
+  flushCluster();
+
+  return { positioned, outsideHours };
+}
+
 export default function MeetingRoomsPage() {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -186,7 +315,7 @@ export default function MeetingRoomsPage() {
   const canBookRooms = hasPermission('hrm.rooms.book');
 
   const [activeTab, setActiveTab] = useState<MainTab>('calendar');
-  const [calendarMode, setCalendarMode] = useState<CalendarMode>('week');
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>('month');
   const [anchorDate, setAnchorDate] = useState<Date>(() => new Date());
   const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('');
   const [calendarStatusFilter, setCalendarStatusFilter] = useState<BookingStatusFilter>('ALL');
@@ -221,6 +350,7 @@ export default function MeetingRoomsPage() {
     date?: string;
     startHour?: string;
   }>({});
+  const [dayModalDateIso, setDayModalDateIso] = useState<string | null>(null);
 
   const weekDays = useMemo(() => {
     const monday = getMondayOfWeek(anchorDate);
@@ -375,6 +505,7 @@ export default function MeetingRoomsPage() {
       branchId: room.branchId,
       code: room.code,
       name: room.name,
+      nameEn: room.nameEn,
       floor: room.floor,
       capacity: room.capacity,
       equipment: room.equipment,
@@ -420,8 +551,8 @@ export default function MeetingRoomsPage() {
       setDeletingRoom(null);
       showToast(
         tr(
-          `Đã lưu trữ (ẩn) phòng họp "${deletingRoom.name}".`,
-          `Archived meeting room "${deletingRoom.name}".`,
+          `Đã lưu trữ (ẩn) phòng họp "${ln(deletingRoom.name, deletingRoom.nameEn)}".`,
+          `Archived meeting room "${ln(deletingRoom.name, deletingRoom.nameEn)}".`,
         ),
       );
       setReloadTick((v) => v + 1);
@@ -446,12 +577,46 @@ export default function MeetingRoomsPage() {
   }, [rooms, selectedRoomFilter]);
 
   const anchorDateIso = formatIsoDateLocal(anchorDate);
-  const todayIso = formatIsoDateLocal(new Date(loadedAtMs));
+  const nowDate = useMemo(() => new Date(loadedAtMs), [loadedAtMs]);
+  const todayIso = formatIsoDateLocal(nowDate);
   const anchorMonth = anchorDate.getMonth();
   const anchorYear = anchorDate.getFullYear();
   const upcomingMineCount = myBookings.filter(
     (b) => b.status === 'PENDING' || b.status === 'IN_PROGRESS',
   ).length;
+
+  // Compute current-time indicator line position for Day timeline when viewing Today
+  const nowIndicatorTopPx = useMemo(() => {
+    if (anchorDateIso !== todayIso) {
+      return null;
+    }
+    const nowMinutesFromStart =
+      (nowDate.getHours() - TIMELINE_START_HOUR) * 60 + nowDate.getMinutes();
+    const totalMinutes = (TIMELINE_END_HOUR - TIMELINE_START_HOUR) * 60;
+    if (nowMinutesFromStart < 0 || nowMinutesFromStart > totalMinutes) {
+      return null;
+    }
+    return Math.round((nowMinutesFromStart / 60) * TIMELINE_HOUR_HEIGHT);
+  }, [anchorDateIso, nowDate, todayIso]);
+
+  // Day view timeline layout per room
+  const dayTimelineByRoom = useMemo(() => {
+    const map = new Map<
+      number,
+      { positioned: PositionedTimelineBooking[]; outsideHours: RoomBookingItem[] }
+    >();
+    const allOutside: RoomBookingItem[] = [];
+
+    for (const room of activeRoomsForDayGrid) {
+      const roomBookings = bookings.filter(
+        (b) => b.roomId === room.id && bookingTouchesDate(b, anchorDateIso),
+      );
+      const layout = layoutRoomTimelineBookings(roomBookings, anchorDateIso);
+      map.set(room.id, layout);
+      allOutside.push(...layout.outsideHours);
+    }
+    return { map, allOutside };
+  }, [activeRoomsForDayGrid, anchorDateIso, bookings]);
 
   function renderStatusBadge(status: RoomBookingStatus, compact: boolean = false) {
     const meta = BOOKING_STATUS_META[status];
@@ -597,7 +762,7 @@ export default function MeetingRoomsPage() {
               <option value="">{tr('Tất cả phòng họp', 'All Meeting Rooms')}</option>
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>
-                  [{r.code}] {r.name} ({r.capacity} {tr('chỗ', 'seats')})
+                  [{r.code}] {ln(r.name, r.nameEn)} ({r.capacity} {tr('chỗ', 'seats')})
                 </option>
               ))}
             </select>
@@ -682,29 +847,41 @@ export default function MeetingRoomsPage() {
         </div>
       ) : activeTab === 'calendar' ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          {/* Calendar Toolbar & Compact Status Legend */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-800">
-              {calendarMode === 'day'
-                ? tr(
-                    `Lịch ngày ${formatDateVN(anchorDateIso)}`,
-                    `Schedule for ${formatDateVN(anchorDateIso)}`,
-                  )
-                : calendarMode === 'month'
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-sm font-bold text-slate-800">
+                {calendarMode === 'day'
                   ? tr(
-                      `Lịch ${formatPeriodLabel('vi', anchorMonth + 1, anchorYear)}`,
-                      `Schedule for ${formatPeriodLabel('en', anchorMonth + 1, anchorYear)}`,
+                      `Lịch ngày ${formatDateVN(anchorDateIso)}`,
+                      `Schedule for ${formatDateVN(anchorDateIso)}`,
                     )
-                  : tr(
-                      `Tuần từ ${formatDateVN(dateRange.dateFrom)} đến ${formatDateVN(dateRange.dateTo)}`,
-                      `Week of ${formatDateVN(dateRange.dateFrom)} – ${formatDateVN(dateRange.dateTo)}`,
-                    )}
-            </h2>
-            <span className="text-xs text-slate-500">
-              {tr(
-                `Hiển thị ${bookings.length} lịch họp • Nhấn vào lịch họp để Xem chi tiết (Sửa / Hủy)`,
-                `Showing ${bookings.length} bookings • Click any booking to View details (Edit / Cancel)`,
-              )}
-            </span>
+                  : calendarMode === 'month'
+                    ? tr(
+                        `Lịch ${formatPeriodLabel('vi', anchorMonth + 1, anchorYear)}`,
+                        `Schedule for ${formatPeriodLabel('en', anchorMonth + 1, anchorYear)}`,
+                      )
+                    : tr(
+                        `Tuần từ ${formatDateVN(dateRange.dateFrom)} đến ${formatDateVN(dateRange.dateTo)}`,
+                        `Week of ${formatDateVN(dateRange.dateFrom)} – ${formatDateVN(dateRange.dateTo)}`,
+                      )}
+              </h2>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
+                {tr(`${bookings.length} lịch họp`, `${bookings.length} bookings`)}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-600">
+              {BOOKING_STATUS_ORDER.map((st) => {
+                const meta = BOOKING_STATUS_META[st];
+                return (
+                  <span key={st} className="inline-flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${meta.dotCls}`} />
+                    <span>{locale === 'en' ? meta.en : meta.vi}</span>
+                  </span>
+                );
+              })}
+            </div>
           </div>
 
           {calendarMode === 'month' ? (
@@ -728,13 +905,16 @@ export default function MeetingRoomsPage() {
                     const isToday = iso === todayIso;
                     const isPastDay = iso < todayIso;
                     const dayBookings = bookings.filter((b) => bookingTouchesDate(b, iso));
-                    const visibleBookings = dayBookings.slice(0, 3);
+                    const hasOverflow = dayBookings.length > MONTH_CELL_MAX_VISIBLE;
+                    const visibleBookings = hasOverflow
+                      ? dayBookings.slice(0, MONTH_CELL_MAX_VISIBLE - 1)
+                      : dayBookings;
                     const overflowCount = dayBookings.length - visibleBookings.length;
 
                     return (
                       <div
                         key={iso}
-                        className={`flex min-h-[124px] flex-col rounded-xl border p-2 transition ${
+                        className={`flex h-[116px] flex-col rounded-xl border p-2 transition ${
                           isToday
                             ? 'border-blue-400 bg-blue-50/40'
                             : !isCurrentMonth
@@ -744,14 +924,11 @@ export default function MeetingRoomsPage() {
                                 : 'border-slate-200 bg-white'
                         }`}
                       >
-                        <div className="mb-1.5 flex items-center justify-between">
+                        <div className="mb-1.5 flex shrink-0 items-center justify-between">
                           <button
                             type="button"
-                            onClick={() => {
-                              setAnchorDate(dayDate);
-                              setCalendarMode('day');
-                            }}
-                            title={tr('Xem lịch chi tiết ngày này', 'Open day view')}
+                            onClick={() => setDayModalDateIso(iso)}
+                            title={tr('Xem tất cả lịch họp ngày này', 'View all bookings for this day')}
                             className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold transition ${
                               isToday
                                 ? 'bg-blue-600 text-white'
@@ -780,38 +957,36 @@ export default function MeetingRoomsPage() {
                           )}
                         </div>
 
-                        <div className="flex-1 space-y-1">
-                          {visibleBookings.map((bk) => {
-                            const meta = BOOKING_STATUS_META[bk.status];
-                            return (
-                              <button
-                                key={bk.id}
-                                type="button"
-                                onClick={() => openBookingDetailModal(bk)}
-                                title={`${formatTimeHHMM(bk.startTime)}–${formatTimeHHMM(bk.endTime)} • ${bk.title} (${bk.roomCode})`}
-                                className={`flex w-full items-center gap-1.5 rounded-lg border px-1.5 py-1 text-left text-[11px] transition ${meta.cardCls}`}
-                              >
-                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dotCls}`} />
-                                <span className={`shrink-0 font-semibold tabular-nums ${meta.timeCls}`}>
-                                  {formatTimeHHMM(bk.startTime)}
-                                </span>
-                                <span className={`truncate font-medium ${meta.titleCls}`}>
-                                  {bk.title}
-                                </span>
-                              </button>
-                            );
-                          })}
+                        <div className="flex flex-1 flex-col justify-between gap-1 overflow-hidden">
+                          <div className="space-y-1">
+                            {visibleBookings.map((bk) => {
+                              const meta = BOOKING_STATUS_META[bk.status];
+                              return (
+                                <button
+                                  key={bk.id}
+                                  type="button"
+                                  onClick={() => openBookingDetailModal(bk)}
+                                  title={`${formatTimeHHMM(bk.startTime)}–${formatTimeHHMM(bk.endTime)} • ${bk.title} (${bk.roomCode})`}
+                                  className={`flex w-full items-center gap-1.5 rounded-lg border border-l-[3px] px-1.5 py-0.5 text-left text-[11px] transition ${meta.cardCls} ${meta.accentBorderCls}`}
+                                >
+                                  <span className={`shrink-0 font-semibold tabular-nums ${meta.timeCls}`}>
+                                    {formatTimeHHMM(bk.startTime)}
+                                  </span>
+                                  <span className={`truncate font-medium ${meta.titleCls}`}>
+                                    {bk.title}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
 
                           {overflowCount > 0 && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setAnchorDate(dayDate);
-                                setCalendarMode('day');
-                              }}
-                              className="w-full rounded-md py-0.5 text-center text-[11px] font-semibold text-blue-600 hover:bg-blue-50"
+                              onClick={() => setDayModalDateIso(iso)}
+                              className="w-full rounded-md bg-blue-50/70 py-0.5 text-center text-[11px] font-semibold text-blue-600 transition hover:bg-blue-100"
                             >
-                              {tr(`+${overflowCount} lịch khác`, `+${overflowCount} more`)}
+                              {tr(`+${overflowCount} thêm`, `+${overflowCount} more`)}
                             </button>
                           )}
                         </div>
@@ -822,87 +997,128 @@ export default function MeetingRoomsPage() {
               </div>
             </div>
           ) : calendarMode === 'week' ? (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
+            /* Uniform Fixed-Height Week View: Show Representative Bookings + "+N more" Modal */
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-7">
               {weekDays.map((dayDate) => {
                 const iso = formatIsoDateLocal(dayDate);
                 const isToday = iso === todayIso;
                 const isPastDay = iso < todayIso;
                 const dayBookings = bookings.filter((b) => bookingTouchesDate(b, iso));
                 const weekdayLabel = WEEKDAY_SHORT[dayDate.getDay()];
+                const hasOverflow = dayBookings.length > WEEK_CELL_MAX_VISIBLE;
+                const visibleBookings = hasOverflow
+                  ? dayBookings.slice(0, WEEK_CELL_MAX_VISIBLE - 1)
+                  : dayBookings;
+                const overflowCount = dayBookings.length - visibleBookings.length;
 
                 return (
                   <div
                     key={iso}
-                    className={`flex min-h-[260px] flex-col rounded-xl border p-2.5 ${
+                    className={`flex h-[252px] flex-col rounded-xl border p-2.5 ${
                       isToday
-                        ? 'border-blue-300 bg-blue-50/40'
+                        ? 'border-blue-300 bg-blue-50/35'
                         : isPastDay
                           ? 'border-slate-200/80 bg-slate-50/70'
-                          : 'border-slate-200 bg-slate-50/40'
+                          : 'border-slate-200 bg-slate-50/35'
                     }`}
                   >
-                    <div className="mb-2 flex items-center justify-between border-b border-slate-200 pb-2">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase text-slate-500">
-                          {locale === 'en' ? weekdayLabel.en : weekdayLabel.vi}
+                    {/* Column Header */}
+                    <div className="mb-2 flex shrink-0 items-center justify-between border-b border-slate-200/90 pb-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setDayModalDateIso(iso)}
+                        title={tr('Xem tất cả lịch họp ngày này', 'View all bookings for this day')}
+                        className="flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-left transition hover:bg-slate-200/60"
+                      >
+                        <div>
+                          <div className="text-[10px] font-semibold uppercase text-slate-500">
+                            {locale === 'en' ? weekdayLabel.en : weekdayLabel.vi}
+                          </div>
+                          <div
+                            className={`text-xs font-bold tabular-nums ${
+                              isToday
+                                ? 'text-blue-700'
+                                : isPastDay
+                                  ? 'text-slate-400'
+                                  : 'text-slate-900'
+                            }`}
+                          >
+                            {formatDateVN(iso).slice(0, 5)}
+                          </div>
                         </div>
-                        <div
-                          className={`text-sm font-bold ${
-                            isToday
-                              ? 'text-blue-700'
-                              : isPastDay
-                                ? 'text-slate-400'
-                                : 'text-slate-900'
-                          }`}
-                        >
-                          {formatDateVN(iso).slice(0, 5)}
-                        </div>
-                      </div>
+                        {dayBookings.length > 0 && (
+                          <span className="rounded-full bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 tabular-nums">
+                            {dayBookings.length}
+                          </span>
+                        )}
+                      </button>
+
                       {canBookRooms && !isPastDay && (
                         <button
                           type="button"
                           title={tr('Đặt phòng vào ngày này', 'Book a room on this day')}
-                          onClick={() => openNewBookingModal({ date: iso, startHour: isToday ? undefined : '09:00' })}
+                          onClick={() =>
+                            openNewBookingModal({
+                              date: iso,
+                              startHour: isToday ? undefined : '09:00',
+                            })
+                          }
                           className="rounded-lg p-1 text-slate-500 hover:bg-blue-100 hover:text-blue-700"
                         >
-                          <IconPlus size={15} />
+                          <IconPlus size={14} />
                         </button>
                       )}
                     </div>
 
-                    <div className="flex-1 space-y-2">
+                    {/* Representative Bookings (Fixed Height — No Scroll Stretching) */}
+                    <div className="flex flex-1 flex-col justify-between gap-1.5 overflow-hidden">
                       {dayBookings.length === 0 ? (
-                        <div className="py-6 text-center text-xs text-slate-400">
+                        <div className="flex flex-1 items-center justify-center text-xs text-slate-400">
                           {tr('Trống lịch', 'No bookings')}
                         </div>
                       ) : (
-                        dayBookings.map((bk) => {
-                          const meta = BOOKING_STATUS_META[bk.status];
-                          return (
+                        <>
+                          <div className="space-y-1.5">
+                            {visibleBookings.map((bk) => {
+                              const meta = BOOKING_STATUS_META[bk.status];
+                              const statusLabel = locale === 'en' ? meta.en : meta.vi;
+                              return (
+                                <button
+                                  key={bk.id}
+                                  type="button"
+                                  onClick={() => openBookingDetailModal(bk)}
+                                  title={`${formatTimeHHMM(bk.startTime)}–${formatTimeHHMM(bk.endTime)} • ${bk.title} (${bk.roomCode} • ${bk.bookedByEmployeeName}) — ${statusLabel}`}
+                                  className={`w-full rounded-lg border border-l-[3px] px-2 py-1.5 text-left transition ${meta.cardCls} ${meta.accentBorderCls}`}
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span
+                                      className={`inline-flex items-center gap-1 text-[10px] font-semibold tabular-nums ${meta.timeCls}`}
+                                    >
+                                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dotCls}`} />
+                                      {formatTimeHHMM(bk.startTime)}–{formatTimeHHMM(bk.endTime)}
+                                    </span>
+                                    <span className="shrink-0 rounded bg-white/80 px-1 py-0.2 text-[9px] font-bold text-slate-600 ring-1 ring-slate-200/80">
+                                      {bk.roomCode}
+                                    </span>
+                                  </div>
+                                  <div className={`mt-0.5 truncate text-[11px] font-semibold ${meta.titleCls}`}>
+                                    {bk.title}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {overflowCount > 0 && (
                             <button
-                              key={bk.id}
                               type="button"
-                              onClick={() => openBookingDetailModal(bk)}
-                              className={`w-full rounded-xl border p-2 text-left shadow-xs transition ${meta.cardCls}`}
+                              onClick={() => setDayModalDateIso(iso)}
+                              className="w-full shrink-0 rounded-lg border border-blue-200 bg-blue-50/70 py-1 text-center text-[11px] font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
                             >
-                              <div className="flex flex-wrap items-center justify-between gap-1">
-                                <span className={`text-[11px] font-semibold tabular-nums ${meta.timeCls}`}>
-                                  {formatTimeHHMM(bk.startTime)} – {formatTimeHHMM(bk.endTime)}
-                                </span>
-                                {renderStatusBadge(bk.status, true)}
-                              </div>
-                              <div
-                                className={`mt-1 line-clamp-2 text-xs font-semibold ${meta.titleCls}`}
-                                title={bk.title}
-                              >
-                                {bk.title}
-                              </div>
-                              <div className="mt-1 truncate text-[11px] text-slate-500" title={bk.roomName}>
-                                {bk.roomCode} • {bk.bookedByEmployeeName}
-                              </div>
+                              {tr(`+${overflowCount} thêm`, `+${overflowCount} more`)}
                             </button>
-                          );
-                        })
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -917,108 +1133,186 @@ export default function MeetingRoomsPage() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 text-left text-slate-600">
-                    <th className="w-20 border border-slate-200 px-3 py-2 font-semibold">
-                      {tr('Khung giờ', 'Time Slot')}
-                    </th>
-                    {activeRoomsForDayGrid.map((room) => (
-                      <th key={room.id} className="min-w-[220px] border border-slate-200 px-3 py-2">
-                        <div className="font-bold text-slate-900">
-                          [{room.code}] {room.name}
-                        </div>
-                        <div className="font-normal text-slate-500">
-                          {room.floor ? `${room.floor} • ` : ''}
-                          {room.capacity} {tr('chỗ', 'seats')}
-                        </div>
-                      </th>
+            /* Proportional Room Timeline Day View — Single Event Block per Booking (No Hour Duplication!) */
+            <div className="space-y-3">
+              {dayTimelineByRoom.allOutside.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="mb-2 text-[11px] font-semibold text-slate-600">
+                    {tr(
+                      'Lịch họp ngoài khung 08:00 – 19:00',
+                      'Bookings outside 08:00 – 19:00',
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {dayTimelineByRoom.allOutside.map((bk) => {
+                      const meta = BOOKING_STATUS_META[bk.status];
+                      return (
+                        <button
+                          key={bk.id}
+                          type="button"
+                          onClick={() => openBookingDetailModal(bk)}
+                          className={`inline-flex items-center gap-2 rounded-lg border border-l-[3px] px-2.5 py-1.5 text-xs transition ${meta.cardCls} ${meta.accentBorderCls}`}
+                        >
+                          <span className={`font-semibold tabular-nums ${meta.timeCls}`}>
+                            {formatTimeHHMM(bk.startTime)}–{formatTimeHHMM(bk.endTime)}
+                          </span>
+                          <span className={`font-semibold ${meta.titleCls}`}>{bk.title}</span>
+                          <span className="text-[11px] text-slate-500">[{bk.roomCode}]</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="max-h-[580px] overflow-auto rounded-xl border border-slate-200">
+                <div
+                  className="grid min-w-full"
+                  style={{
+                    gridTemplateColumns: `68px repeat(${activeRoomsForDayGrid.length}, minmax(220px, 1fr))`,
+                  }}
+                >
+                  {/* Sticky Header Row */}
+                  <div className="sticky top-0 z-20 border-r border-b border-slate-200 bg-slate-50 px-2 py-2.5 text-center text-[11px] font-semibold text-slate-500">
+                    {tr('Giờ', 'Time')}
+                  </div>
+                  {activeRoomsForDayGrid.map((room) => (
+                    <div
+                      key={room.id}
+                      className="sticky top-0 z-20 border-r border-b border-slate-200 bg-slate-50 px-3 py-2 last:border-r-0"
+                    >
+                      <div className="truncate text-xs font-bold text-slate-900">
+                        [{room.code}] {ln(room.name, room.nameEn)}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {room.floor ? `${room.floor} • ` : ''}
+                        {room.capacity} {tr('chỗ', 'seats')}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Time Axis Column */}
+                  <div
+                    className="relative border-r border-slate-200 bg-slate-50/70"
+                    style={{ height: `${TIMELINE_HOURS.length * TIMELINE_HOUR_HEIGHT}px` }}
+                  >
+                    {TIMELINE_HOURS.map((hourNum, idx) => (
+                      <div
+                        key={hourNum}
+                        className="flex items-start justify-center border-b border-slate-200/80 pt-1 text-[11px] font-semibold text-slate-500 tabular-nums last:border-b-0"
+                        style={{ height: `${TIMELINE_HOUR_HEIGHT}px` }}
+                      >
+                        {String(hourNum).padStart(2, '0')}:00
+                        {idx === TIMELINE_HOURS.length - 1 ? '' : ''}
+                      </div>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {DAY_HOURS.map((hour) => {
-                    const slotStartMs = new Date(`${anchorDateIso}T${hour}:00`).getTime();
-                    const isSlotInPast = slotStartMs < loadedAtMs;
+                  </div>
+
+                  {/* Room Columns with Proportional Event Overlay */}
+                  {activeRoomsForDayGrid.map((room) => {
+                    const roomBookings = bookings.filter(
+                      (b) => b.roomId === room.id && bookingTouchesDate(b, anchorDateIso),
+                    );
+                    const positioned = dayTimelineByRoom.map.get(room.id)?.positioned ?? [];
 
                     return (
-                      <tr key={hour}>
-                        <td className="border border-slate-200 bg-slate-50/70 px-3 py-2.5 font-semibold text-slate-600">
-                          {hour}
-                        </td>
-                        {activeRoomsForDayGrid.map((room) => {
-                          const slotBookings = bookings.filter(
-                            (b) =>
-                              b.roomId === room.id &&
-                              bookingTouchesHourSlot(b, anchorDateIso, hour),
-                          );
-                          const hasBlockingBooking = slotBookings.some(
-                            (b) => b.status !== 'CANCELLED',
+                      <div
+                        key={room.id}
+                        className="relative border-r border-slate-200 bg-white last:border-r-0"
+                        style={{ height: `${TIMELINE_HOURS.length * TIMELINE_HOUR_HEIGHT}px` }}
+                      >
+                        {/* Background Hourly Slots (clickable to quick-book future free slots) */}
+                        {TIMELINE_HOURS.map((hourNum) => {
+                          const hourStr = `${String(hourNum).padStart(2, '0')}:00`;
+                          const slotStartMs = new Date(`${anchorDateIso}T${hourStr}:00`).getTime();
+                          const isSlotInPast = slotStartMs < loadedAtMs;
+                          const isBlocked = roomBookings.some((b) =>
+                            bookingBlocksHourSlot(b, anchorDateIso, hourNum),
                           );
 
                           return (
-                            <td
-                              key={`${room.id}-${hour}`}
-                              className={`border border-slate-200 p-1.5 align-top ${
-                                isSlotInPast ? 'bg-slate-50/60' : ''
+                            <div
+                              key={hourNum}
+                              className={`group border-b border-slate-100 last:border-b-0 ${
+                                isSlotInPast ? 'bg-slate-50/55' : ''
                               }`}
+                              style={{ height: `${TIMELINE_HOUR_HEIGHT}px` }}
                             >
-                              <div className="space-y-1">
-                                {slotBookings.map((bk) => {
-                                  const meta = BOOKING_STATUS_META[bk.status];
-                                  return (
-                                    <button
-                                      key={bk.id}
-                                      type="button"
-                                      onClick={() => openBookingDetailModal(bk)}
-                                      className={`w-full rounded-lg border px-2 py-1.5 text-left transition ${meta.cardCls}`}
-                                    >
-                                      <div className="flex flex-wrap items-center justify-between gap-1">
-                                        <span className={`font-semibold tabular-nums ${meta.timeCls}`}>
-                                          {formatTimeHHMM(bk.startTime)}–{formatTimeHHMM(bk.endTime)}
-                                        </span>
-                                        {renderStatusBadge(bk.status, true)}
-                                      </div>
-                                      <div className={`mt-0.5 truncate font-semibold ${meta.titleCls}`}>
-                                        {bk.title}
-                                      </div>
-                                      <div className="truncate text-[11px] text-slate-500">
-                                        {bk.bookedByEmployeeName} ({bk.attendeesCount}{' '}
-                                        {tr('người', 'attendees')})
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-
-                                {!hasBlockingBooking && !isSlotInPast && canBookRooms ? (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      openNewBookingModal({
-                                        roomId: room.id,
-                                        date: anchorDateIso,
-                                        startHour: hour,
-                                      })
-                                    }
-                                    className="flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-transparent text-[11px] text-slate-400 transition hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-600"
-                                  >
-                                    {tr('+ Đặt giờ này', '+ Book this slot')}
-                                  </button>
-                                ) : slotBookings.length === 0 && isSlotInPast ? (
-                                  <div className="flex h-9 items-center justify-center text-[11px] text-slate-300">
-                                    {tr('Đã qua', 'Past')}
-                                  </div>
-                                ) : null}
-                              </div>
-                            </td>
+                              {!isBlocked && !isSlotInPast && canBookRooms && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openNewBookingModal({
+                                      roomId: room.id,
+                                      date: anchorDateIso,
+                                      startHour: hourStr,
+                                    })
+                                  }
+                                  className="flex h-full w-full items-center justify-center text-[11px] font-medium text-transparent transition group-hover:bg-blue-50/45 group-hover:text-blue-600"
+                                >
+                                  {tr(`+ Đặt lúc ${hourStr}`, `+ Book ${hourStr}`)}
+                                </button>
+                              )}
+                            </div>
                           );
                         })}
-                      </tr>
+
+                        {/* Current-time indicator line */}
+                        {nowIndicatorTopPx !== null && (
+                          <div
+                            className="pointer-events-none absolute right-0 left-0 z-10 border-t-2 border-rose-500/80"
+                            style={{ top: `${nowIndicatorTopPx}px` }}
+                          >
+                            <span className="absolute -top-1.5 -left-1 h-2.5 w-2.5 rounded-full bg-rose-500" />
+                          </div>
+                        )}
+
+                        {/* Positioned Booking Cards (each rendered ONCE with exact proportional height) */}
+                        {positioned.map(({ booking: bk, topPx, heightPx, colIndex, colCount }) => {
+                          const meta = BOOKING_STATUS_META[bk.status];
+                          const isShort = heightPx < 54;
+                          const widthPct = 100 / colCount;
+                          const leftPct = colIndex * widthPct;
+
+                          return (
+                            <button
+                              key={bk.id}
+                              type="button"
+                              onClick={() => openBookingDetailModal(bk)}
+                              title={`${formatTimeHHMM(bk.startTime)}–${formatTimeHHMM(bk.endTime)} • ${bk.title} (${bk.bookedByEmployeeName})`}
+                              className={`absolute z-10 overflow-hidden rounded-lg border border-l-[3px] px-2 py-1 text-left shadow-xs transition hover:z-20 hover:shadow-md ${meta.cardCls} ${meta.accentBorderCls}`}
+                              style={{
+                                top: `${topPx}px`,
+                                height: `${heightPx}px`,
+                                left: `calc(${leftPct}% + 4px)`,
+                                width: `calc(${widthPct}% - 8px)`,
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span
+                                  className={`truncate text-[11px] font-semibold tabular-nums ${meta.timeCls}`}
+                                >
+                                  {formatTimeHHMM(bk.startTime)}–{formatTimeHHMM(bk.endTime)}
+                                </span>
+                                {!isShort && renderStatusBadge(bk.status, true)}
+                              </div>
+                              <div className={`truncate text-xs font-bold ${meta.titleCls}`}>
+                                {bk.title}
+                              </div>
+                              {!isShort && (
+                                <div className="truncate text-[11px] text-slate-500">
+                                  {bk.bookedByEmployeeName} ({bk.attendeesCount}{' '}
+                                  {tr('người', 'attendees')})
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1052,9 +1346,12 @@ export default function MeetingRoomsPage() {
                       <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
                         {room.code}
                       </span>
-                      <h3 className="mt-1.5 text-base font-bold text-slate-900">{room.name}</h3>
+                      <h3 className="mt-1.5 text-base font-bold text-slate-900">
+                        {ln(room.name, room.nameEn)}
+                      </h3>
                       <p className="text-xs text-slate-500">
-                        {room.branchName} {room.floor ? `• ${room.floor}` : ''}
+                        {ln(room.branchName, room.branchNameEn)}{' '}
+                        {room.floor ? `• ${room.floor}` : ''}
                       </p>
                     </div>
                     <span
@@ -1200,7 +1497,8 @@ export default function MeetingRoomsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-slate-700">
-                        <span className="font-semibold">{bk.roomCode}</span> — {bk.roomName}
+                        <span className="font-semibold">{bk.roomCode}</span> —{' '}
+                        {ln(bk.roomName, bk.roomNameEn)}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600 tabular-nums">
                         {formatDateTimeVN(bk.startTime)} → {formatTimeHHMM(bk.endTime)}
@@ -1248,6 +1546,35 @@ export default function MeetingRoomsPage() {
         />
       )}
 
+      {dayModalDateIso && (() => {
+        const modalDateObj = new Date(`${dayModalDateIso}T00:00:00`);
+        const modalWeekday = WEEKDAY_SHORT[modalDateObj.getDay()] ?? WEEKDAY_SHORT[1];
+        const modalBookings = bookings.filter((b) => bookingTouchesDate(b, dayModalDateIso));
+        const modalIsToday = dayModalDateIso === todayIso;
+        return (
+          <DayBookingsModal
+            dateIso={dayModalDateIso}
+            weekdayLabel={locale === 'en' ? modalWeekday.en : modalWeekday.vi}
+            bookings={modalBookings}
+            canBook={canBookRooms}
+            isPastDay={dayModalDateIso < todayIso}
+            onSelectBooking={(bk) => openBookingDetailModal(bk)}
+            onBookOnDay={() =>
+              openNewBookingModal({
+                date: dayModalDateIso,
+                startHour: modalIsToday ? undefined : '09:00',
+              })
+            }
+            onOpenDayTimeline={() => {
+              setAnchorDate(modalDateObj);
+              setCalendarMode('day');
+              setDayModalDateIso(null);
+            }}
+            onClose={() => setDayModalDateIso(null)}
+          />
+        );
+      })()}
+
       {isBookingModalOpen && (
         <RoomBookingModal
           key={activeBooking ? `bk-${activeBooking.id}-${activeBooking.status}` : `new-${bookingPreset.roomId ?? 'x'}-${bookingPreset.date ?? ''}-${bookingPreset.startHour ?? ''}`}
@@ -1274,8 +1601,8 @@ export default function MeetingRoomsPage() {
         description={
           deletingRoom
             ? tr(
-                `Phòng họp "${deletingRoom.name}" (${deletingRoom.code}) sẽ được lưu trữ (xóa mềm, không xóa dữ liệu khỏi DB). Thao tác sẽ bị chặn nếu phòng đang có lịch đặt sắp tới.`,
-                `Meeting room "${deletingRoom.name}" (${deletingRoom.code}) will be archived (soft-hidden, never deleted from DB). Blocked if upcoming bookings exist.`,
+                `Phòng họp "${ln(deletingRoom.name, deletingRoom.nameEn)}" (${deletingRoom.code}) sẽ được lưu trữ (xóa mềm, không xóa dữ liệu khỏi DB). Thao tác sẽ bị chặn nếu phòng đang có lịch đặt sắp tới.`,
+                `Meeting room "${ln(deletingRoom.name, deletingRoom.nameEn)}" (${deletingRoom.code}) will be archived (soft-hidden, never deleted from DB). Blocked if upcoming bookings exist.`,
               )
             : ''
         }

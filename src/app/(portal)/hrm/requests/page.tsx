@@ -39,7 +39,9 @@ interface HrLeaveRequest {
   employeeCode: string;
   employeeName: string;
   departmentName: string | null;
+  departmentNameEn?: string | null;
   leaveTypeName: string;
+  leaveTypeNameEn?: string | null;
   startDate: string;
   endDate: string;
   startSession: LeaveSession;
@@ -56,6 +58,7 @@ interface HrOvertimeRequest {
   employeeCode: string;
   employeeName: string;
   departmentName: string | null;
+  departmentNameEn?: string | null;
   workDate: string;
   startTime: string;
   endTime: string;
@@ -72,6 +75,7 @@ interface HrBusinessTripRequest {
   employeeCode: string;
   employeeName: string;
   departmentName: string | null;
+  departmentNameEn?: string | null;
   destination: string;
   startDate: string;
   endDate: string;
@@ -87,8 +91,10 @@ interface HrLeaveBalance {
   employeeCode: string;
   employeeName: string;
   departmentName: string | null;
+  departmentNameEn?: string | null;
   leaveTypeCode: string;
   leaveTypeName: string;
+  leaveTypeNameEn?: string | null;
   year: number;
   entitledDays: number;
   carriedOverDays: number;
@@ -132,7 +138,7 @@ const STATUS_BADGE: Record<RequestStatus, { vi: string; en: string; className: s
 
 export default function HrmRequestsPage() {
   const { user, selectedBranchId } = usePortalAuth();
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -436,11 +442,12 @@ export default function HrmRequestsPage() {
             tr('Không thể xóa loại nghỉ phép.', 'Failed to delete leave type.'),
         });
       } else {
+        const deletedLabel = ln(deletingType.name, deletingType.nameEn);
         setBannerMsg({
           type: 'success',
           text: tr(
-            `Đã xóa loại nghỉ phép "${deletingType.name}".`,
-            `Deleted leave type "${deletingType.name}".`,
+            `Đã xóa loại nghỉ phép "${deletedLabel}".`,
+            `Deleted leave type "${deletedLabel}".`,
           ),
         });
         triggerReload();
@@ -656,7 +663,7 @@ export default function HrmRequestsPage() {
               <option value="">{tr('Tất cả loại phép', 'All leave types')}</option>
               {leaveTypes.map((lt) => (
                 <option key={lt.id} value={lt.id}>
-                  {lt.name} ({lt.code})
+                  {ln(lt.name, lt.nameEn)} ({lt.code})
                 </option>
               ))}
             </select>
@@ -769,10 +776,15 @@ export default function HrmRequestsPage() {
                         <td className="px-4 py-3">
                           <div className="font-semibold text-slate-900">{item.employeeName}</div>
                           <div className="text-xs text-slate-500">
-                            {item.employeeCode} • {item.departmentName ?? '-'}
+                            {item.employeeCode} •{' '}
+                            {item.departmentName
+                              ? ln(item.departmentName, item.departmentNameEn)
+                              : '-'}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-800">{item.leaveTypeName}</td>
+                        <td className="px-4 py-3 text-slate-800">
+                          {ln(item.leaveTypeName, item.leaveTypeNameEn)}
+                        </td>
                         <td className="px-4 py-3 text-xs text-slate-700">
                           <div>
                             {formatDateVN(item.startDate)} (
@@ -856,7 +868,10 @@ export default function HrmRequestsPage() {
                         <td className="px-4 py-3">
                           <div className="font-semibold text-slate-900">{item.employeeName}</div>
                           <div className="text-xs text-slate-500">
-                            {item.employeeCode} • {item.departmentName ?? '-'}
+                            {item.employeeCode} •{' '}
+                            {item.departmentName
+                              ? ln(item.departmentName, item.departmentNameEn)
+                              : '-'}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-700">
@@ -946,7 +961,10 @@ export default function HrmRequestsPage() {
                         <td className="px-4 py-3">
                           <div className="font-semibold text-slate-900">{item.employeeName}</div>
                           <div className="text-xs text-slate-500">
-                            {item.employeeCode} • {item.departmentName ?? '-'}
+                            {item.employeeCode} •{' '}
+                            {item.departmentName
+                              ? ln(item.departmentName, item.departmentNameEn)
+                              : '-'}
                           </div>
                         </td>
                         <td className="px-4 py-3 font-medium text-slate-800">{item.destination}</td>
@@ -1039,11 +1057,16 @@ export default function HrmRequestsPage() {
                       <td className="px-4 py-3">
                         <div className="font-semibold text-slate-900">{bal.employeeName}</div>
                         <div className="text-xs text-slate-500">
-                          {bal.employeeCode} • {bal.departmentName ?? '-'}
+                          {bal.employeeCode} •{' '}
+                          {bal.departmentName
+                            ? ln(bal.departmentName, bal.departmentNameEn)
+                            : '-'}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-medium text-slate-800">{bal.leaveTypeName}</span>
+                        <span className="font-medium text-slate-800">
+                          {ln(bal.leaveTypeName, bal.leaveTypeNameEn)}
+                        </span>
                         <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
                           {bal.leaveTypeCode}
                         </span>
@@ -1111,7 +1134,7 @@ export default function HrmRequestsPage() {
                       {lt.code}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-900">{lt.name}</div>
+                      <div className="font-semibold text-slate-900">{ln(lt.name, lt.nameEn)}</div>
                       {lt.description && (
                         <div className="text-xs text-slate-500">{lt.description}</div>
                       )}
@@ -1257,7 +1280,8 @@ export default function HrmRequestsPage() {
                   {adjustingBalance.employeeName} ({adjustingBalance.employeeCode})
                 </div>
                 <div className="mt-1">
-                  {adjustingBalance.leaveTypeName} — {tr('Năm', 'Year')} {adjustingBalance.year} |{' '}
+                  {ln(adjustingBalance.leaveTypeName, adjustingBalance.leaveTypeNameEn)} —{' '}
+                  {tr('Năm', 'Year')} {adjustingBalance.year} |{' '}
                   {tr('Đã dùng:', 'Used:')} <strong>{adjustingBalance.usedDays}</strong> |{' '}
                   {tr('Chờ duyệt:', 'Pending:')} <strong>{adjustingBalance.pendingDays}</strong>
                 </div>
@@ -1334,8 +1358,8 @@ export default function HrmRequestsPage() {
         isOpen={Boolean(deletingType)}
         title={tr('Xóa mềm loại nghỉ phép', 'Soft Delete Leave Type')}
         description={tr(
-          `Bạn có chắc muốn xóa loại nghỉ phép "${deletingType?.name}" (${deletingType?.code})? Hệ thống sẽ chặn xóa nếu đang có đơn chờ duyệt hoặc đã duyệt.`,
-          `Are you sure you want to delete leave type "${deletingType?.name}" (${deletingType?.code})? Deletion is blocked if there are pending or approved requests.`,
+          `Bạn có chắc muốn xóa loại nghỉ phép "${deletingType ? ln(deletingType.name, deletingType.nameEn) : ''}" (${deletingType?.code})? Hệ thống sẽ chặn xóa nếu đang có đơn chờ duyệt hoặc đã duyệt.`,
+          `Are you sure you want to delete leave type "${deletingType ? ln(deletingType.name, deletingType.nameEn) : ''}" (${deletingType?.code})? Deletion is blocked if there are pending or approved requests.`,
         )}
         confirmLabel={tr('Xóa loại phép', 'Delete Leave Type')}
         variant="danger"

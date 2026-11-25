@@ -11,6 +11,7 @@ export const createDepartmentSchema = z.object({
     .toUpperCase()
     .regex(ORG_CODE_REGEX, 'Mã phòng ban gồm 2–30 ký tự chữ hoa, số, gạch ngang hoặc gạch dưới'),
   name: z.string().trim().min(2, 'Tên phòng ban tối thiểu 2 ký tự').max(150),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   description: z.string().trim().max(255).nullable().optional(),
   sortOrder: z.coerce.number().int().min(0).max(9999).optional().default(0),
   isActive: z.boolean().optional().default(true),
@@ -26,6 +27,7 @@ export const updateDepartmentSchema = z.object({
     .regex(ORG_CODE_REGEX, 'Mã phòng ban gồm 2–30 ký tự chữ hoa, số, gạch ngang hoặc gạch dưới')
     .optional(),
   name: z.string().trim().min(2, 'Tên phòng ban tối thiểu 2 ký tự').max(150).optional(),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   description: z.string().trim().max(255).nullable().optional(),
   sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
   isActive: z.boolean().optional(),
@@ -38,6 +40,7 @@ export const createPositionSchema = z.object({
     .toUpperCase()
     .regex(ORG_CODE_REGEX, 'Mã chức danh gồm 2–30 ký tự chữ hoa, số, gạch ngang hoặc gạch dưới'),
   name: z.string().trim().min(2, 'Tên chức danh tối thiểu 2 ký tự').max(150),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   level: z.coerce.number().int().min(1, 'Cấp bậc tối thiểu là 1').max(10, 'Cấp bậc tối đa là 10').default(1),
   description: z.string().trim().max(255).nullable().optional(),
   isActive: z.boolean().optional().default(true),
@@ -51,6 +54,7 @@ export const updatePositionSchema = z.object({
     .regex(ORG_CODE_REGEX, 'Mã chức danh gồm 2–30 ký tự chữ hoa, số, gạch ngang hoặc gạch dưới')
     .optional(),
   name: z.string().trim().min(2, 'Tên chức danh tối thiểu 2 ký tự').max(150).optional(),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   level: z.coerce.number().int().min(1).max(10).optional(),
   description: z.string().trim().max(255).nullable().optional(),
   isActive: z.boolean().optional(),

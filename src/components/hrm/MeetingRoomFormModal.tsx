@@ -9,6 +9,7 @@ export interface MeetingRoomFormData {
   branchId: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   floor: string | null;
   capacity: number;
   equipment: string[];
@@ -20,6 +21,7 @@ interface BranchOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 interface MeetingRoomFormModalProps {
@@ -37,13 +39,14 @@ export function MeetingRoomFormModal({
   onClose,
   onSaved,
 }: MeetingRoomFormModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const isEdit = Boolean(initialData?.id);
   const [branchId, setBranchId] = useState<string>(
     String(initialData?.branchId ?? defaultBranchId ?? branches[0]?.id ?? ''),
   );
   const [code, setCode] = useState(initialData?.code ?? '');
   const [name, setName] = useState(initialData?.name ?? '');
+  const [nameEn, setNameEn] = useState(initialData?.nameEn ?? '');
   const [floor, setFloor] = useState(initialData?.floor ?? '');
   const [capacity, setCapacity] = useState(String(initialData?.capacity ?? 6));
   const [equipmentText, setEquipmentText] = useState(
@@ -98,6 +101,7 @@ export function MeetingRoomFormModal({
           branchId: parsedBranchId,
           code: code.trim().toUpperCase(),
           name: name.trim(),
+          nameEn: nameEn.trim() || null,
           floor: floor.trim() || null,
           capacity: parsedCapacity,
           equipment,
@@ -169,7 +173,7 @@ export function MeetingRoomFormModal({
               >
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.code})
+                    {ln(b.name, b.nameEn)} ({b.code})
                   </option>
                 ))}
               </select>
@@ -190,18 +194,33 @@ export function MeetingRoomFormModal({
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-700">
-              {tr('Tên phòng họp', 'Room name')} <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder={tr('VD: Phòng họp Sáng tạo Tầng 5', 'e.g. Innovation Room - Floor 5')}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                {tr('Tên phòng họp', 'Room name')} <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                placeholder={tr('VD: Phòng họp Sáng tạo Tầng 5', 'e.g. Innovation Room - Floor 5')}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                {tr('Tên tiếng Anh', 'English Name')}
+              </label>
+              <input
+                type="text"
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+                placeholder="e.g. Innovation Room - Floor 5"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

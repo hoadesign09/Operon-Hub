@@ -41,8 +41,11 @@ interface MyProfileData {
   bankName: string | null;
   bankAccountNo: string | null;
   branchName: string;
+  branchNameEn?: string | null;
   departmentName: string;
+  departmentNameEn?: string | null;
   positionName: string;
+  positionNameEn?: string | null;
   managerName: string | null;
   hireDate: string;
   employmentStatus: string;
@@ -52,7 +55,7 @@ interface MyProfileData {
 
 export default function MyProfilePage() {
   const { user, logout } = usePortalAuth();
-  const { t } = useI18n();
+  const { t, ln } = useI18n();
 
   const [profile, setProfile] = useState<MyProfileData | null>(null);
   const [isNotLinked, setIsNotLinked] = useState(false);
@@ -205,7 +208,7 @@ export default function MyProfilePage() {
                 {user && user.roles.length > 0 && (
                   <span className="inline-flex items-center gap-1.5">
                     <IconShieldCheck size={14} className="text-cyan-300" />
-                    {user.roles.map((r) => r.name).join(' • ')}
+                    {user.roles.map((r) => ln(r.name, r.nameEn)).join(' • ')}
                   </span>
                 )}
               </div>
@@ -255,7 +258,7 @@ export default function MyProfilePage() {
                   key={branch.id}
                   className="rounded-lg border border-white/10 bg-white/6 px-2.5 py-1 text-xs text-slate-200"
                 >
-                  {branch.name} ({branch.code})
+                  {ln(branch.name, branch.nameEn)} ({branch.code})
                 </span>
               ))}
             </div>
@@ -334,15 +337,21 @@ export default function MyProfilePage() {
               </div>
               <div>
                 <dt className="text-xs text-slate-500">{t('profile.field.branch')}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">{profile.branchName}</dd>
+                <dd className="mt-0.5 font-medium text-slate-900">
+                  {ln(profile.branchName, profile.branchNameEn)}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">{t('profile.field.department')}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">{profile.departmentName}</dd>
+                <dd className="mt-0.5 font-medium text-slate-900">
+                  {ln(profile.departmentName, profile.departmentNameEn)}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">{t('profile.field.position')}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">{profile.positionName}</dd>
+                <dd className="mt-0.5 font-medium text-slate-900">
+                  {ln(profile.positionName, profile.positionNameEn)}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">{t('profile.field.manager')}</dt>

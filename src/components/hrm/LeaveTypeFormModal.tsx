@@ -8,6 +8,7 @@ export interface LeaveTypeFormItem {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   isPaid: boolean;
   defaultDaysPerYear: number;
   allowCarryOver: boolean;
@@ -31,6 +32,7 @@ export function LeaveTypeFormModal({
   const { tr } = useI18n();
   const [code, setCode] = useState(editingItem?.code ?? '');
   const [name, setName] = useState(editingItem?.name ?? '');
+  const [nameEn, setNameEn] = useState(editingItem?.nameEn ?? '');
   const [isPaid, setIsPaid] = useState(editingItem?.isPaid ?? true);
   const [defaultDaysPerYear, setDefaultDaysPerYear] = useState(
     String(editingItem?.defaultDaysPerYear ?? 12),
@@ -61,6 +63,7 @@ export function LeaveTypeFormModal({
       const payload = editingItem
         ? {
             name: name.trim(),
+            nameEn: nameEn.trim() || null,
             isPaid,
             defaultDaysPerYear: Number(defaultDaysPerYear),
             allowCarryOver,
@@ -72,6 +75,7 @@ export function LeaveTypeFormModal({
         : {
             code: code.trim().toUpperCase(),
             name: name.trim(),
+            nameEn: nameEn.trim() || null,
             isPaid,
             defaultDaysPerYear: Number(defaultDaysPerYear),
             allowCarryOver,
@@ -184,6 +188,19 @@ export function LeaveTypeFormModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={tr('Ví dụ: Nghỉ phép năm', 'e.g. Annual Leave')}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+              {tr('Tên tiếng Anh', 'English Name')}
+            </label>
+            <input
+              type="text"
+              value={nameEn}
+              onChange={(e) => setNameEn(e.target.value)}
+              placeholder="e.g. Annual Leave"
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
             />
           </div>

@@ -8,8 +8,10 @@ export interface WorkShiftRecord {
   id: number;
   branchId: number | null;
   branchName: string | null;
+  branchNameEn?: string | null;
   code: string;
   name: string;
+  nameEn?: string | null;
   startTime: string;
   endTime: string;
   breakStartTime: string | null;
@@ -27,6 +29,7 @@ export interface BranchOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 interface WorkShiftFormModalProps {
@@ -42,10 +45,11 @@ export function WorkShiftFormModal({
   onClose,
   onSuccess,
 }: WorkShiftFormModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const isEdit = Boolean(initialData);
   const [code, setCode] = useState(initialData?.code ?? '');
   const [name, setName] = useState(initialData?.name ?? '');
+  const [nameEn, setNameEn] = useState(initialData?.nameEn ?? '');
   const [branchId, setBranchId] = useState<string>(
     initialData?.branchId ? String(initialData.branchId) : '',
   );
@@ -78,6 +82,7 @@ export function WorkShiftFormModal({
       const payload = {
         ...(isEdit ? {} : { code: code.trim().toUpperCase() }),
         name: name.trim(),
+        nameEn: nameEn.trim() || null,
         branchId: branchId ? Number(branchId) : null,
         startTime,
         endTime,
@@ -182,26 +187,42 @@ export function WorkShiftFormModal({
                 <option value="">{tr('Toàn công ty', 'All Branches')}</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.code})
+                    {ln(b.name, b.nameEn)} ({b.code})
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">
-              {tr('Tên ca làm việc', 'Shift name')} <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              disabled={isSubmitting}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={tr('VD: Ca Hành chính chuẩn', 'e.g. Standard Office Shift')}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Tên ca làm việc', 'Shift name')} <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                disabled={isSubmitting}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={tr('VD: Ca Hành chính chuẩn', 'e.g. Standard Office Shift')}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Tên tiếng Anh', 'English Name')}
+              </label>
+              <input
+                type="text"
+                disabled={isSubmitting}
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+                placeholder="e.g. Standard Office Shift"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

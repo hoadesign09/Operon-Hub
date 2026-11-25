@@ -10,6 +10,7 @@ export interface SimpleEmployeeOption {
   employeeCode: string;
   fullName: string;
   departmentName: string;
+  departmentNameEn?: string | null;
 }
 
 interface ShiftAssignmentModalProps {
@@ -35,7 +36,7 @@ export function ShiftAssignmentModal({
   onClose,
   onSuccess,
 }: ShiftAssignmentModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const activeShifts = shifts.filter((s) => s.isActive);
   const [selectedEmpIds, setSelectedEmpIds] = useState<number[]>([]);
   const [empSearch, setEmpSearch] = useState('');
@@ -177,7 +178,7 @@ export function ShiftAssignmentModal({
                 <option value="">{tr('-- Chọn ca --', '-- Select shift --')}</option>
                 {activeShifts.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.code} - {s.name} ({s.startTime}–{s.endTime})
+                    {s.code} - {ln(s.name, s.nameEn)} ({s.startTime}–{s.endTime})
                   </option>
                 ))}
               </select>
@@ -292,7 +293,9 @@ export function ShiftAssignmentModal({
                       <span className="font-semibold text-slate-800">{emp.employeeCode}</span>
                       <span className="text-slate-700">{emp.fullName}</span>
                     </span>
-                    <span className="text-slate-400">{emp.departmentName}</span>
+                    <span className="text-slate-400">
+                      {ln(emp.departmentName, emp.departmentNameEn)}
+                    </span>
                   </label>
                 ))
               )}

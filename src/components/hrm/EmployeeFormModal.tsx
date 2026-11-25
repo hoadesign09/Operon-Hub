@@ -8,6 +8,7 @@ export interface BranchOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 export interface DepartmentOption {
@@ -15,12 +16,14 @@ export interface DepartmentOption {
   branchId: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 export interface PositionOption {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
 }
 
 export interface ManagerOption {
@@ -62,7 +65,7 @@ export function EmployeeFormModal({
   onClose,
   onCreated,
 }: EmployeeFormModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const initialBranch = defaultBranchId ?? branches[0]?.id ?? 0;
   const initialDept = departments.find((d) => d.branchId === initialBranch)?.id ?? 0;
   const initialPos = positions[0]?.id ?? 0;
@@ -284,7 +287,7 @@ export function EmployeeFormModal({
               >
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.code})
+                    {ln(b.name, b.nameEn)} ({b.code})
                   </option>
                 ))}
               </select>
@@ -307,7 +310,7 @@ export function EmployeeFormModal({
                 ) : (
                   filteredDepartments.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name} ({d.code})
+                      {ln(d.name, d.nameEn)} ({d.code})
                     </option>
                   ))
                 )}
@@ -326,7 +329,7 @@ export function EmployeeFormModal({
               >
                 {positions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} ({p.code})
+                    {ln(p.name, p.nameEn)} ({p.code})
                   </option>
                 ))}
               </select>

@@ -10,6 +10,7 @@ export interface WorkflowStepView {
   approverType: ApproverType;
   approverRoleId: number | null;
   approverRoleName: string | null;
+  approverRoleNameEn: string | null;
   approverUserId: number | null;
   approverUserName: string | null;
 }
@@ -20,7 +21,9 @@ export interface WorkflowItem {
   requestType: string;
   branchId: number | null;
   branchName: string | null;
+  branchNameEn: string | null;
   name: string;
+  nameEn: string | null;
   description: string | null;
   conditions: WorkflowConditionRule | null;
   isActive: boolean;
@@ -65,6 +68,7 @@ async function fetchStepsByWorkflowIds(
       's.approver_type',
       's.approver_role_id',
       'r.name as role_name',
+      'r.name_en as role_name_en',
       's.approver_user_id',
       'u.full_name as user_name',
     ])
@@ -81,6 +85,7 @@ async function fetchStepsByWorkflowIds(
       approverType: row.approver_type,
       approverRoleId: row.approver_role_id !== null ? Number(row.approver_role_id) : null,
       approverRoleName: row.role_name ?? null,
+      approverRoleNameEn: row.role_name_en ?? null,
       approverUserId: row.approver_user_id !== null ? Number(row.approver_user_id) : null,
       approverUserName: row.user_name ?? null,
     });
@@ -169,7 +174,9 @@ export async function listWorkflows(query: {
       'w.request_type',
       'w.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'w.name',
+      'w.name_en',
       'w.description',
       'w.conditions_json',
       'w.is_active',
@@ -191,7 +198,9 @@ export async function listWorkflows(query: {
       requestType: row.request_type,
       branchId: row.branch_id !== null ? Number(row.branch_id) : null,
       branchName: row.branch_name ?? null,
+      branchNameEn: row.branch_name_en ?? null,
       name: row.name,
+      nameEn: row.name_en ?? null,
       description: row.description,
       conditions: parseConditions(row.conditions_json),
       isActive: Boolean(row.is_active),
@@ -217,6 +226,7 @@ export async function createWorkflow(
         request_type: input.requestType,
         branch_id: input.branchId ?? null,
         name: input.name,
+        name_en: input.nameEn?.trim() || null,
         description: input.description ?? null,
         conditions_json: input.conditions ? JSON.stringify(input.conditions) : null,
         is_active: input.isActive ? 1 : 0,
@@ -277,6 +287,7 @@ export async function updateWorkflow(
       'request_type',
       'branch_id',
       'name',
+      'name_en',
       'description',
       'conditions_json',
       'is_active',
@@ -304,6 +315,7 @@ export async function updateWorkflow(
         request_type: input.requestType ?? existing.request_type,
         branch_id: nextBranchId ?? null,
         name: input.name ?? existing.name,
+        name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : existing.name_en,
         description: input.description !== undefined ? input.description : existing.description,
         conditions_json:
           input.conditions !== undefined

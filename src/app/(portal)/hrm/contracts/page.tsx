@@ -29,7 +29,9 @@ interface ContractRow extends EditableContractData {
   employeeCode: string;
   employeeName: string;
   branchName: string;
+  branchNameEn?: string | null;
   departmentName: string;
+  departmentNameEn?: string | null;
   totalAllowances: number;
   expiryLevel: 'NONE' | 'OVERDUE' | 'URGENT_15D' | 'WARNING_30D' | 'SAFE';
   daysRemaining: number | null;
@@ -68,7 +70,7 @@ const STATUS_BADGES: Record<
 
 export default function ContractsPage() {
   const { selectedBranchId, hasPermission } = usePortalAuth();
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -527,7 +529,7 @@ export default function ContractsPage() {
                           {item.employeeName}
                         </Link>
                         <div className="text-xs text-slate-500">
-                          {item.employeeCode} • {item.departmentName}
+                          {item.employeeCode} • {ln(item.departmentName, item.departmentNameEn)}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-700">

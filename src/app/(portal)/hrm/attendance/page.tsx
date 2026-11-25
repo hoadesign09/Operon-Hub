@@ -44,10 +44,13 @@ interface ShiftAssignmentRecord {
   employeeName: string;
   branchId: number;
   branchName: string;
+  branchNameEn?: string | null;
   departmentName: string;
+  departmentNameEn?: string | null;
   shiftId: number;
   shiftCode: string;
   shiftName: string;
+  shiftNameEn?: string | null;
   startTime: string;
   endTime: string;
   effectiveFrom: string;
@@ -96,7 +99,7 @@ function getMonthDefaultRange(): { fromDate: string; toDate: string } {
 }
 
 export default function HrmAttendancePage() {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -229,12 +232,14 @@ export default function HrmAttendancePage() {
             employeeCode: string;
             fullName: string;
             departmentName?: string;
+            departmentNameEn?: string | null;
           }>
         ).map((e) => ({
           id: e.id,
           employeeCode: e.employeeCode,
           fullName: e.fullName,
           departmentName: e.departmentName ?? '',
+          departmentNameEn: e.departmentNameEn ?? null,
         }));
         setEmployees(mapped);
       }
@@ -774,8 +779,15 @@ export default function HrmAttendancePage() {
                               <div className="font-semibold text-slate-900">{row.employeeName}</div>
                               <div className="text-[11px] text-slate-500">{row.employeeCode}</div>
                             </td>
-                            <td className="px-4 py-3 text-slate-600">{row.departmentName}</td>
-                            <td className="px-4 py-3 text-slate-600">{row.shiftCode ?? '-'}</td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {ln(row.departmentName, row.departmentNameEn)}
+                            </td>
+                            <td
+                              className="px-4 py-3 text-slate-600"
+                              title={row.shiftName ? ln(row.shiftName, row.shiftNameEn) : undefined}
+                            >
+                              {row.shiftCode ?? '-'}
+                            </td>
                             <td className="px-4 py-3 text-center font-mono font-semibold">
                               <span className="text-emerald-700">{row.checkInTime ?? '--:--'}</span>
                               <span className="mx-1 text-slate-300">/</span>
@@ -929,10 +941,12 @@ export default function HrmAttendancePage() {
                             </span>
                           )}
                         </div>
-                        <div className="text-slate-600">{shift.name}</div>
+                        <div className="text-slate-600">{ln(shift.name, shift.nameEn)}</div>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {shift.branchName ?? tr('Toàn công ty', 'Company-wide')}
+                        {shift.branchName
+                          ? ln(shift.branchName, shift.branchNameEn)
+                          : tr('Toàn công ty', 'Company-wide')}
                       </td>
                       <td className="px-4 py-3 text-center font-mono font-semibold text-slate-800">
                         {shift.startTime} – {shift.endTime}
@@ -1024,7 +1038,7 @@ export default function HrmAttendancePage() {
                 <option value="">{tr('Tất cả ca làm việc', 'All Work Shifts')}</option>
                 {shifts.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.code} - {s.name}
+                    {s.code} - {ln(s.name, s.nameEn)}
                   </option>
                 ))}
               </select>
@@ -1088,9 +1102,16 @@ export default function HrmAttendancePage() {
                             <div className="font-semibold text-slate-900">{item.employeeName}</div>
                             <div className="text-[11px] text-slate-500">{item.employeeCode}</div>
                           </td>
-                          <td className="px-4 py-3 text-slate-600">{item.departmentName}</td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {ln(item.departmentName, item.departmentNameEn)}
+                          </td>
                           <td className="px-4 py-3">
-                            <span className="font-mono font-semibold text-blue-700">{item.shiftCode}</span>
+                            <span
+                              className="font-mono font-semibold text-blue-700"
+                              title={ln(item.shiftName, item.shiftNameEn)}
+                            >
+                              {item.shiftCode}
+                            </span>
                             <span className="ml-1.5 text-slate-600">
                               ({item.startTime}–{item.endTime})
                             </span>
@@ -1259,9 +1280,13 @@ export default function HrmAttendancePage() {
                         <td className="px-4 py-3 font-mono font-semibold text-slate-900">
                           {formatDateVN(item.holidayDate)}
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-900">{item.name}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          {ln(item.name, item.nameEn)}
+                        </td>
                         <td className="px-4 py-3 text-slate-600">
-                          {item.branchName ?? tr('Toàn công ty', 'Company-wide')}
+                          {item.branchName
+                            ? ln(item.branchName, item.branchNameEn)
+                            : tr('Toàn công ty', 'Company-wide')}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span

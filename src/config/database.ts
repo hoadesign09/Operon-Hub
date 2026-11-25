@@ -1,6 +1,12 @@
-import { Kysely, MysqlDialect, sql, type Generated } from 'kysely';
+import { Kysely, MysqlDialect, sql, type ColumnType, type Generated } from 'kysely';
 import { createPool, type Pool } from 'mysql2';
 import { getServerEnv } from '@/config/env';
+
+export type OptionalNullableString = ColumnType<
+  string | null,
+  string | null | undefined,
+  string | null | undefined
+>;
 
 export type UserStatus = 'ACTIVE' | 'LOCKED';
 export type DataScope = 'OWN' | 'DEPARTMENT' | 'BRANCH' | 'ALL';
@@ -34,6 +40,76 @@ export type AssetAssignmentStatus = 'ACTIVE' | 'RETURNED';
 export type RoomBookingStatus = 'PENDING' | 'IN_PROGRESS' | 'CANCELLED' | 'DONE';
 export type AnnouncementCategory = 'GENERAL' | 'HR_POLICY' | 'EVENT' | 'URGENT';
 export type AnnouncementStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type ProjectMethodology = 'KANBAN' | 'SCRUM' | 'WATERFALL' | 'HYBRID';
+export type ProjectVisibility = 'PUBLIC_COMPANY' | 'BRANCH' | 'DEPARTMENT' | 'PRIVATE_INVITE';
+export type ProjectPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type ProjectStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'PLANNING'
+  | 'ACTIVE'
+  | 'ON_HOLD'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'ARCHIVED';
+export type ProjectHealthStatus = 'ON_TRACK' | 'AT_RISK' | 'OFF_TRACK';
+export type ProjectMemberRole =
+  | 'PROJECT_OWNER'
+  | 'PROJECT_MANAGER'
+  | 'TEAM_LEAD'
+  | 'MEMBER'
+  | 'VIEWER';
+export type TaskStatusCategory = 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'BLOCKED' | 'DONE';
+export type SprintStatus = 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+export type MilestoneStatus =
+  | 'UPCOMING'
+  | 'IN_PROGRESS'
+  | 'PENDING_SIGNOFF'
+  | 'COMPLETED'
+  | 'DELAYED'
+  | 'CANCELLED';
+export type TaskType = 'EPIC' | 'TASK' | 'BUG' | 'FEATURE' | 'IMPROVEMENT';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type TaskAssignmentRole = 'PRIMARY' | 'COLLABORATOR';
+export type TaskDependencyType = 'FS' | 'SS' | 'FF' | 'SF';
+export type TimeLogApprovalStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+export type ProjectBudgetCategory =
+  | 'LABOR'
+  | 'VENDOR'
+  | 'INFRA'
+  | 'SOFTWARE'
+  | 'TRAVEL'
+  | 'OTHER';
+export type ProjectBudgetStatus =
+  | 'PLANNED'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'SPENT'
+  | 'CANCELLED';
+export type ProjectRiskItemType = 'RISK' | 'ISSUE';
+export type ProjectRiskStatus = 'OPEN' | 'MITIGATING' | 'ESCALATED' | 'RESOLVED' | 'CLOSED';
+export type TaskRecurrenceFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type ProjectAutomationTrigger =
+  | 'TASK_MOVED_COLUMN'
+  | 'TASK_OVERDUE'
+  | 'ALL_SUBTASKS_DONE'
+  | 'TASK_ASSIGNED';
+export type ProjectAutomationAction =
+  | 'NOTIFY_PM'
+  | 'MOVE_COLUMN'
+  | 'SET_BLOCKED'
+  | 'ADD_WATCHER';
+export type ProposalPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type ProposalStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'NEEDS_REVISION'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'IN_EXECUTION'
+  | 'COMPLETED'
+  | 'CANCELLED';
+export type ProposalCommentType = 'GENERAL' | 'REVISION_REQUEST' | 'EXECUTION_UPDATE';
 
 export interface SchemaMigrationsTable {
   id: Generated<number>;
@@ -58,6 +134,7 @@ export interface BranchesTable {
   id: Generated<number>;
   code: string;
   name: string;
+  name_en: OptionalNullableString;
   tax_code: string | null;
   address: string | null;
   phone: string | null;
@@ -89,6 +166,7 @@ export interface RolesTable {
   id: Generated<number>;
   code: string;
   name: string;
+  name_en: OptionalNullableString;
   data_scope: DataScope;
   description: string | null;
   is_system: number;
@@ -104,6 +182,7 @@ export interface PermissionsTable {
   module_code: string;
   code: string;
   name: string;
+  name_en: OptionalNullableString;
   description: string | null;
   created_at: Generated<Date>;
 }
@@ -152,6 +231,7 @@ export interface ApprovalWorkflowsTable {
   request_type: string;
   branch_id: number | null;
   name: string;
+  name_en: OptionalNullableString;
   description: string | null;
   conditions_json: string | null;
   is_active: number;
@@ -223,6 +303,7 @@ export interface DepartmentsTable {
   parent_id: number | null;
   code: string;
   name: string;
+  name_en: OptionalNullableString;
   description: string | null;
   manager_employee_id: number | null;
   sort_order: number;
@@ -238,6 +319,7 @@ export interface PositionsTable {
   id: Generated<number>;
   code: string;
   name: string;
+  name_en: OptionalNullableString;
   level: number;
   description: string | null;
   is_active: number;
@@ -345,6 +427,7 @@ export interface LeaveTypesTable {
   id: Generated<number>;
   code: string;
   name: string;
+  name_en: OptionalNullableString;
   is_paid: number;
   default_days_per_year: string | number;
   allow_carry_over: number;
@@ -441,6 +524,7 @@ export interface WorkShiftsTable {
   branch_id: number | null;
   code: string;
   name: string;
+  name_en: OptionalNullableString;
   start_time: string;
   end_time: string;
   break_start_time: string | null;
@@ -478,6 +562,7 @@ export interface HolidaysTable {
   branch_id: number | null;
   holiday_date: Date | string;
   name: string;
+  name_en: OptionalNullableString;
   is_paid: number;
   note: string | null;
   created_by: number | null;
@@ -664,6 +749,7 @@ export interface MeetingRoomsTable {
   branch_id: number;
   code: string;
   name: string;
+  name_en: OptionalNullableString;
   floor: string | null;
   capacity: number;
   equipment_json: string | string[] | null;
@@ -719,6 +805,472 @@ export interface AnnouncementReadsTable {
   read_at: Generated<Date>;
 }
 
+export interface ProjectsTable {
+  id: Generated<number>;
+  code: string;
+  name: string;
+  description: string | null;
+  branch_id: number;
+  department_id: number | null;
+  owner_employee_id: number;
+  manager_employee_id: number;
+  methodology: ProjectMethodology;
+  visibility: ProjectVisibility;
+  priority: ProjectPriority;
+  status: ProjectStatus;
+  health_status: ProjectHealthStatus;
+  start_date: Date | string | null;
+  target_end_date: Date | string | null;
+  actual_end_date: Date | string | null;
+  baseline_start_date: Date | string | null;
+  baseline_end_date: Date | string | null;
+  planned_budget: string | number;
+  actual_cost: string | number;
+  progress_percent: string | number;
+  task_seq_counter: number;
+  approval_request_id: number | null;
+  color_hex: string;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectMembersTable {
+  id: Generated<number>;
+  project_id: number;
+  employee_id: number;
+  project_role: ProjectMemberRole;
+  allocation_percent: number;
+  hourly_cost_rate: string | number;
+  joined_at: Generated<Date>;
+  left_at: Date | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectBoardColumnsTable {
+  id: Generated<number>;
+  project_id: number;
+  code: string;
+  name: string;
+  name_en: OptionalNullableString;
+  status_category: TaskStatusCategory;
+  color_hex: string;
+  wip_limit: number | null;
+  sort_order: number;
+  is_default_initial: number;
+  is_done_column: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectLabelsTable {
+  id: Generated<number>;
+  project_id: number | null;
+  name: string;
+  color_hex: string;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectSprintsTable {
+  id: Generated<number>;
+  project_id: number;
+  name: string;
+  goal: string | null;
+  start_date: Date | string | null;
+  end_date: Date | string | null;
+  status: SprintStatus;
+  committed_points: string | number;
+  completed_points: string | number;
+  completed_at: Date | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectMilestonesTable {
+  id: Generated<number>;
+  project_id: number;
+  name: string;
+  description: string | null;
+  due_date: Date | string;
+  completed_at: Date | null;
+  status: MilestoneStatus;
+  requires_signoff: number;
+  approval_request_id: number | null;
+  owner_employee_id: number | null;
+  sort_order: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface TasksTable {
+  id: Generated<number>;
+  project_id: number;
+  parent_task_id: number | null;
+  column_id: number;
+  sprint_id: number | null;
+  milestone_id: number | null;
+  task_key: string;
+  title: string;
+  description: string | null;
+  task_type: TaskType;
+  priority: TaskPriority;
+  status_category: TaskStatusCategory;
+  reporter_employee_id: number;
+  start_date: Date | string | null;
+  due_date: Date | string | null;
+  baseline_start_date: Date | string | null;
+  baseline_due_date: Date | string | null;
+  completed_at: Date | null;
+  estimated_hours: string | number;
+  actual_hours: string | number;
+  story_points: string | number | null;
+  progress_percent: number;
+  sort_rank: string;
+  is_blocked: number;
+  blocked_reason: string | null;
+  version: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface TaskAssigneesTable {
+  task_id: number;
+  employee_id: number;
+  assignment_role: TaskAssignmentRole;
+  assigned_by: number | null;
+  assigned_at: Generated<Date>;
+}
+
+export interface TaskWatchersTable {
+  task_id: number;
+  employee_id: number;
+  created_at: Generated<Date>;
+}
+
+export interface TaskLabelLinksTable {
+  task_id: number;
+  label_id: number;
+}
+
+export interface TaskChecklistsTable {
+  id: Generated<number>;
+  task_id: number;
+  title: string;
+  is_completed: number;
+  assignee_employee_id: number | null;
+  due_date: Date | string | null;
+  sort_order: number;
+  completed_at: Date | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface TaskDependenciesTable {
+  id: Generated<number>;
+  project_id: number;
+  predecessor_task_id: number;
+  successor_task_id: number;
+  dependency_type: TaskDependencyType;
+  lag_days: number;
+  created_by: number | null;
+  created_at: Generated<Date>;
+}
+
+export interface TaskCommentsTable {
+  id: Generated<number>;
+  task_id: number;
+  parent_comment_id: number | null;
+  author_employee_id: number;
+  content: string;
+  mentioned_employee_ids_json: string | null;
+  is_resolved: number;
+  edited_at: Date | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface TaskAttachmentsTable {
+  id: Generated<number>;
+  project_id: number;
+  task_id: number | null;
+  uploaded_by_employee_id: number;
+  file_name: string;
+  stored_path: string;
+  mime_type: string;
+  file_size_bytes: number;
+  checksum_sha256: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface TaskActivitiesTable {
+  id: Generated<number>;
+  project_id: number;
+  task_id: number | null;
+  actor_user_id: number;
+  action_type: string;
+  field_name: string | null;
+  old_value_json: string | null;
+  new_value_json: string | null;
+  created_at: Generated<Date>;
+}
+
+export interface TaskTimeLogsTable {
+  id: Generated<number>;
+  project_id: number;
+  task_id: number;
+  employee_id: number;
+  logged_date: Date | string;
+  started_at: Date | string | null;
+  ended_at: Date | string | null;
+  duration_minutes: number;
+  is_billable: number;
+  hourly_cost_snapshot: string | number;
+  description: string | null;
+  approval_status: TimeLogApprovalStatus;
+  approved_by_user_id: number | null;
+  approved_at: Date | null;
+  rejection_reason: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectBudgetItemsTable {
+  id: Generated<number>;
+  project_id: number;
+  category: ProjectBudgetCategory;
+  title: string;
+  planned_amount: string | number;
+  actual_amount: string | number;
+  incurred_date: Date | string | null;
+  status: ProjectBudgetStatus;
+  approval_request_id: number | null;
+  note: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectRisksTable {
+  id: Generated<number>;
+  project_id: number;
+  code: string;
+  item_type: ProjectRiskItemType;
+  title: string;
+  description: string | null;
+  probability: number;
+  impact: number;
+  severity_score: number;
+  status: ProjectRiskStatus;
+  owner_employee_id: number | null;
+  mitigation_plan: string | null;
+  linked_task_id: number | null;
+  identified_date: Date | string;
+  resolved_at: Date | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectTemplatesTable {
+  id: Generated<number>;
+  branch_id: number | null;
+  code: string;
+  name: string;
+  name_en: OptionalNullableString;
+  description: string | null;
+  methodology: ProjectMethodology;
+  template_payload_json: string | Record<string, unknown>;
+  is_active: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface TaskRecurrenceRulesTable {
+  id: Generated<number>;
+  project_id: number;
+  template_task_id: number;
+  frequency: TaskRecurrenceFrequency;
+  interval_value: number;
+  weekdays_json: string | number[] | null;
+  day_of_month: number | null;
+  next_run_date: Date | string;
+  end_date: Date | string | null;
+  is_active: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProjectAutomationRulesTable {
+  id: Generated<number>;
+  project_id: number;
+  name: string;
+  trigger_event: ProjectAutomationTrigger;
+  condition_json: string | Record<string, unknown> | null;
+  action_type: ProjectAutomationAction;
+  action_payload_json: string | Record<string, unknown> | null;
+  is_active: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProposalCategoriesTable {
+  id: Generated<number>;
+  code: string;
+  name: string;
+  name_en: OptionalNullableString;
+  description: string | null;
+  default_request_type: string;
+  requires_budget: number;
+  budget_threshold_high: number | string;
+  icon_name: string | null;
+  color_hex: string;
+  sort_order: number;
+  is_active: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProposalsTable {
+  id: Generated<number>;
+  proposal_code: string;
+  category_id: number;
+  branch_id: number;
+  department_id: number | null;
+  requester_employee_id: number | null;
+  requester_user_id: number;
+  title: string;
+  summary: string | null;
+  content: string;
+  expected_outcome: string | null;
+  priority: ProposalPriority;
+  status: ProposalStatus;
+  estimated_budget: number | string;
+  approved_budget: number | string | null;
+  currency: string;
+  needed_by_date: Date | string | null;
+  effective_from: Date | string | null;
+  effective_to: Date | string | null;
+  vendor_name: string | null;
+  approval_request_id: number | null;
+  submitted_at: Date | null;
+  approved_at: Date | null;
+  completed_at: Date | null;
+  rejection_reason: string | null;
+  execution_notes: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProposalItemsTable {
+  id: Generated<number>;
+  proposal_id: number;
+  line_no: number;
+  item_name: string;
+  specification: string | null;
+  unit: string;
+  quantity: number | string;
+  unit_price: number | string;
+  line_total: number | string;
+  vendor_note: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProposalCommentsTable {
+  id: Generated<number>;
+  proposal_id: number;
+  author_user_id: number;
+  comment_type: ProposalCommentType;
+  content: string;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProposalAttachmentsTable {
+  id: Generated<number>;
+  proposal_id: number;
+  uploaded_by_user_id: number;
+  file_name: string;
+  stored_path: string;
+  mime_type: string;
+  file_size_bytes: number | string;
+  checksum_sha256: string;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ProposalActivitiesTable {
+  id: Generated<number>;
+  proposal_id: number;
+  actor_user_id: number;
+  action_type: string;
+  detail_json: string | null;
+  created_at: Generated<Date>;
+}
+
 export interface DatabaseSchema {
   schema_migrations: SchemaMigrationsTable;
   settings: SettingsTable;
@@ -760,6 +1312,33 @@ export interface DatabaseSchema {
   room_bookings: RoomBookingsTable;
   announcements: AnnouncementsTable;
   announcement_reads: AnnouncementReadsTable;
+  projects: ProjectsTable;
+  project_members: ProjectMembersTable;
+  project_board_columns: ProjectBoardColumnsTable;
+  project_labels: ProjectLabelsTable;
+  project_sprints: ProjectSprintsTable;
+  project_milestones: ProjectMilestonesTable;
+  tasks: TasksTable;
+  task_assignees: TaskAssigneesTable;
+  task_watchers: TaskWatchersTable;
+  task_label_links: TaskLabelLinksTable;
+  task_checklists: TaskChecklistsTable;
+  task_dependencies: TaskDependenciesTable;
+  task_comments: TaskCommentsTable;
+  task_attachments: TaskAttachmentsTable;
+  task_activities: TaskActivitiesTable;
+  task_time_logs: TaskTimeLogsTable;
+  project_budget_items: ProjectBudgetItemsTable;
+  project_risks: ProjectRisksTable;
+  project_templates: ProjectTemplatesTable;
+  task_recurrence_rules: TaskRecurrenceRulesTable;
+  project_automation_rules: ProjectAutomationRulesTable;
+  proposal_categories: ProposalCategoriesTable;
+  proposals: ProposalsTable;
+  proposal_items: ProposalItemsTable;
+  proposal_comments: ProposalCommentsTable;
+  proposal_attachments: ProposalAttachmentsTable;
+  proposal_activities: ProposalActivitiesTable;
 }
 
 export interface DatabasePingResult {

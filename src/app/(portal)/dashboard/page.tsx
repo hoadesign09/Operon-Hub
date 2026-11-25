@@ -23,6 +23,7 @@ import {
 } from '@tabler/icons-react';
 import { HrmDashboardCharts } from '@/components/hrm/HrmDashboardCharts';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { DashboardMyTasksWidget } from '@/components/projects/DashboardMyTasksWidget';
 import { SystemStatusCard } from '@/components/system/SystemStatusCard';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
@@ -61,7 +62,7 @@ const ANNOUNCEMENT_CAT_STYLES: Record<string, { key: TranslationKey; cls: string
 
 export default function DashboardPage() {
   const { user, selectedBranchId, hasPermission } = usePortalAuth();
-  const { locale, t } = useI18n();
+  const { locale, t, ln } = useI18n();
   const canReadDashboard = hasPermission('hrm.dashboard.read');
 
   const [initialPeriod] = useState(() => {
@@ -173,7 +174,7 @@ export default function DashboardPage() {
               {t('dashboard.displayBranch')}{' '}
               <span className="font-semibold text-white">
                 {currentBranch
-                  ? `${currentBranch.name} (${currentBranch.code})`
+                  ? `${ln(currentBranch.name, currentBranch.nameEn)} (${currentBranch.code})`
                   : t('common.allBranches')}
               </span>
             </p>
@@ -225,8 +226,9 @@ export default function DashboardPage() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs text-slate-300">
                 <strong className="text-white">{t('dashboard.ess.title')}</strong> —{' '}
-                {data.selfService.employeeCode} • {data.selfService.positionName} (
-                {data.selfService.departmentName})
+                {data.selfService.employeeCode} •{' '}
+                {ln(data.selfService.positionName, data.selfService.positionNameEn)} (
+                {ln(data.selfService.departmentName, data.selfService.departmentNameEn)})
               </div>
               <span
                 className={`rounded-full px-3 py-1 text-[11px] font-semibold ring-1 ${
@@ -656,7 +658,7 @@ export default function DashboardPage() {
                         {m.title}
                       </div>
                       <div className="mt-1 text-[11px] font-semibold text-blue-700 tabular-nums">
-                        {formatDateTimeVN(m.startTime)} • [{m.roomCode}] {m.roomName}
+                        {formatDateTimeVN(m.startTime)} • [{m.roomCode}] {ln(m.roomName, m.roomNameEn)}
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-500">
                         {t('dashboard.widget.bookedBy', { name: m.bookedByEmployeeName })}
@@ -718,7 +720,7 @@ export default function DashboardPage() {
                           {ann.title}
                         </div>
                         <div className="mt-1 text-[11px] text-slate-500">
-                          {ann.branchName ?? t('common.companyWide')}
+                          {ann.branchName ? ln(ann.branchName, ann.branchNameEn) : t('common.companyWide')}
                           {ann.publishedAt ? ` • ${formatDateVN(ann.publishedAt)}` : ''}
                         </div>
                       </Link>
@@ -730,6 +732,9 @@ export default function DashboardPage() {
           </div>
         </>
       ) : null}
+
+      {/* My Project Tasks Widget (Phase 2) */}
+      <DashboardMyTasksWidget />
 
       {/* Core Admin Quick Links */}
       {adminQuickLinks.length > 0 && (

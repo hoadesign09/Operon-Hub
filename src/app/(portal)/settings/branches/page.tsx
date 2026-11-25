@@ -20,6 +20,7 @@ interface BranchRow {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   taxCode: string | null;
   address: string | null;
   phone: string | null;
@@ -30,6 +31,7 @@ interface BranchRow {
 interface BranchFormState {
   code: string;
   name: string;
+  nameEn: string;
   taxCode: string;
   address: string;
   phone: string;
@@ -43,6 +45,7 @@ const ERR_NETWORK_BRANCHES = '__ERR_NETWORK_BRANCHES__';
 const EMPTY_FORM: BranchFormState = {
   code: '',
   name: '',
+  nameEn: '',
   taxCode: '',
   address: '',
   phone: '',
@@ -51,7 +54,7 @@ const EMPTY_FORM: BranchFormState = {
 };
 
 export default function BranchesSettingsPage() {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const { hasPermission } = usePortalAuth();
   const canCreate = hasPermission('core.branches.create');
   const canUpdate = hasPermission('core.branches.update');
@@ -146,6 +149,7 @@ export default function BranchesSettingsPage() {
     setForm({
       code: branch.code,
       name: branch.name,
+      nameEn: branch.nameEn ?? '',
       taxCode: branch.taxCode ?? '',
       address: branch.address ?? '',
       phone: branch.phone ?? '',
@@ -173,6 +177,7 @@ export default function BranchesSettingsPage() {
         body: JSON.stringify({
           code: form.code.trim().toUpperCase(),
           name: form.name.trim(),
+          nameEn: form.nameEn.trim() || null,
           taxCode: form.taxCode.trim() || null,
           address: form.address.trim() || null,
           phone: form.phone.trim() || null,
@@ -382,7 +387,7 @@ export default function BranchesSettingsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 font-medium text-slate-900">
                         <IconBuilding size={16} className="shrink-0 text-slate-400" />
-                        <span>{branch.name}</span>
+                        <span>{ln(branch.name, branch.nameEn)}</span>
                         {branch.isHeadquarters && (
                           <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
                             {tr('Trụ sở chính', 'Headquarters')}
@@ -529,7 +534,7 @@ export default function BranchesSettingsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-700">
-                    {tr('Tên chi nhánh *', 'Branch Name *')}
+                    {tr('Tên chi nhánh (Tiếng Việt) *', 'Branch Name (Vietnamese) *')}
                   </label>
                   <input
                     type="text"
@@ -540,6 +545,19 @@ export default function BranchesSettingsPage() {
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  {tr('Tên tiếng Anh (tùy chọn)', 'English Name (optional)')}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Hanoi Branch"
+                  value={form.nameEn}
+                  onChange={(e) => setForm((f) => ({ ...f, nameEn: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">

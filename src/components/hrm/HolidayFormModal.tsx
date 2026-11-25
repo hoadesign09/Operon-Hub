@@ -9,8 +9,10 @@ export interface HolidayRecord {
   id: number;
   branchId: number | null;
   branchName: string | null;
+  branchNameEn?: string | null;
   holidayDate: string;
   name: string;
+  nameEn?: string | null;
   isPaid: boolean;
   note: string | null;
 }
@@ -30,12 +32,13 @@ export function HolidayFormModal({
   onClose,
   onSuccess,
 }: HolidayFormModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const isEdit = Boolean(initialData);
   const [holidayDate, setHolidayDate] = useState(
     initialData?.holidayDate ?? `${defaultYear}-01-01`,
   );
   const [name, setName] = useState(initialData?.name ?? '');
+  const [nameEn, setNameEn] = useState(initialData?.nameEn ?? '');
   const [branchId, setBranchId] = useState<string>(
     initialData?.branchId ? String(initialData.branchId) : '',
   );
@@ -60,6 +63,7 @@ export function HolidayFormModal({
         body: JSON.stringify({
           holidayDate,
           name: name.trim(),
+          nameEn: nameEn.trim() || null,
           branchId: branchId ? Number(branchId) : null,
           isPaid,
           note: note.trim() || null,
@@ -143,26 +147,42 @@ export function HolidayFormModal({
                 <option value="">{tr('Toàn công ty', 'Company-wide')}</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.code})
+                    {ln(b.name, b.nameEn)} ({b.code})
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">
-              {tr('Tên ngày lễ *', 'Holiday Name *')}
-            </label>
-            <input
-              type="text"
-              required
-              disabled={isSubmitting}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={tr('VD: Ngày Quốc khánh 2/9', 'e.g. National Day (Sep 2)')}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Tên ngày lễ *', 'Holiday Name *')}
+              </label>
+              <input
+                type="text"
+                required
+                disabled={isSubmitting}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={tr('VD: Ngày Quốc khánh 2/9', 'e.g. National Day (Sep 2)')}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                {tr('Tên tiếng Anh', 'English Name')}
+              </label>
+              <input
+                type="text"
+                disabled={isSubmitting}
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+                placeholder="e.g. National Day"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            </div>
           </div>
 
           <div>

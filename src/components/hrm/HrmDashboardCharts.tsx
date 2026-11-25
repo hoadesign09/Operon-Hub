@@ -59,7 +59,7 @@ const ATT_STATUS_KEYS: Record<string, TranslationKey> = {
 };
 
 export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashboardChartsProps) {
-  const { t } = useI18n();
+  const { t, ln } = useI18n();
   const hasAnyChart =
     visibility.canViewWorkforce || visibility.canViewAttendance || visibility.canViewPayroll;
 
@@ -130,8 +130,12 @@ export function HrmDashboardCharts({ visibility, charts, periodLabel }: HrmDashb
                       t('charts.headcountDept.label'),
                     ]}
                     labelFormatter={(_label, payload) => {
-                      const item = payload?.[0]?.payload as { departmentName?: string } | undefined;
-                      return item?.departmentName ?? String(_label ?? '');
+                      const item = payload?.[0]?.payload as
+                        | { departmentName?: string; departmentNameEn?: string | null }
+                        | undefined;
+                      return item?.departmentName
+                        ? ln(item.departmentName, item.departmentNameEn)
+                        : String(_label ?? '');
                     }}
                   />
                   <Bar

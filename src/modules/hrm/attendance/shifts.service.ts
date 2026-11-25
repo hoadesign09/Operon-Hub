@@ -23,8 +23,10 @@ export interface WorkShiftItem {
   id: number;
   branchId: number | null;
   branchName: string | null;
+  branchNameEn: string | null;
   code: string;
   name: string;
+  nameEn: string | null;
   startTime: string;
   endTime: string;
   breakStartTime: string | null;
@@ -45,10 +47,13 @@ export interface ShiftAssignmentItem {
   employeeName: string;
   branchId: number;
   branchName: string;
+  branchNameEn: string | null;
   departmentName: string;
+  departmentNameEn: string | null;
   shiftId: number;
   shiftCode: string;
   shiftName: string;
+  shiftNameEn: string | null;
   startTime: string;
   endTime: string;
   effectiveFrom: string;
@@ -61,6 +66,7 @@ export interface ResolvedEffectiveShift extends ShiftMetricConfig {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   workingHours: number;
   workDays: number[];
 }
@@ -95,8 +101,10 @@ export async function listWorkShifts(query: {
       'ws.id',
       'ws.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'ws.code',
       'ws.name',
+      'ws.name_en',
       'ws.start_time',
       'ws.end_time',
       'ws.break_start_time',
@@ -152,8 +160,10 @@ export async function listWorkShifts(query: {
     id: Number(row.id),
     branchId: row.branch_id !== null ? Number(row.branch_id) : null,
     branchName: row.branch_name ? String(row.branch_name) : null,
+    branchNameEn: row.branch_name_en ? String(row.branch_name_en) : null,
     code: String(row.code),
     name: String(row.name),
+    nameEn: row.name_en ? String(row.name_en) : null,
     startTime: String(row.start_time),
     endTime: String(row.end_time),
     breakStartTime: row.break_start_time ? String(row.break_start_time) : null,
@@ -232,6 +242,7 @@ export async function createWorkShift(
         branch_id: branchId,
         code: input.code,
         name: input.name,
+        name_en: input.nameEn?.trim() || null,
         start_time: input.startTime,
         end_time: input.endTime,
         break_start_time: input.breakStartTime ?? null,
@@ -283,6 +294,7 @@ export async function updateWorkShift(
       'branch_id',
       'code',
       'name',
+      'name_en',
       'start_time',
       'end_time',
       'break_start_time',
@@ -354,6 +366,7 @@ export async function updateWorkShift(
       .set({
         branch_id: nextBranchId,
         name: input.name ?? String(current.name),
+        name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : current.name_en ?? null,
         start_time: nextStart,
         end_time: nextEnd,
         break_start_time: nextBreakStart,
@@ -548,10 +561,13 @@ export async function listShiftAssignments(
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'esa.shift_id',
       'ws.code as shift_code',
       'ws.name as shift_name',
+      'ws.name_en as shift_name_en',
       'ws.start_time',
       'ws.end_time',
       'esa.effective_from',
@@ -572,10 +588,13 @@ export async function listShiftAssignments(
     employeeName: String(row.employee_name),
     branchId: Number(row.branch_id),
     branchName: String(row.branch_name),
+    branchNameEn: row.branch_name_en ? String(row.branch_name_en) : null,
     departmentName: String(row.department_name),
+    departmentNameEn: row.department_name_en ? String(row.department_name_en) : null,
     shiftId: Number(row.shift_id),
     shiftCode: String(row.shift_code),
     shiftName: String(row.shift_name),
+    shiftNameEn: row.shift_name_en ? String(row.shift_name_en) : null,
     startTime: String(row.start_time),
     endTime: String(row.end_time),
     effectiveFrom: extractIsoDate(row.effective_from) ?? '',
@@ -777,6 +796,7 @@ export async function resolveEffectiveShift(
       'ws.id',
       'ws.code',
       'ws.name',
+      'ws.name_en',
       'ws.start_time',
       'ws.end_time',
       'ws.break_start_time',
@@ -802,6 +822,7 @@ export async function resolveEffectiveShift(
       id: Number(assigned.id),
       code: String(assigned.code),
       name: String(assigned.name),
+      nameEn: assigned.name_en ? String(assigned.name_en) : null,
       startTime: String(assigned.start_time),
       endTime: String(assigned.end_time),
       breakStartTime: assigned.break_start_time ? String(assigned.break_start_time) : null,
@@ -821,6 +842,7 @@ export async function resolveEffectiveShift(
       'branch_id',
       'code',
       'name',
+      'name_en',
       'start_time',
       'end_time',
       'break_start_time',
@@ -847,6 +869,7 @@ export async function resolveEffectiveShift(
     id: Number(chosen.id),
     code: String(chosen.code),
     name: String(chosen.name),
+    nameEn: chosen.name_en ? String(chosen.name_en) : null,
     startTime: String(chosen.start_time),
     endTime: String(chosen.end_time),
     breakStartTime: chosen.break_start_time ? String(chosen.break_start_time) : null,

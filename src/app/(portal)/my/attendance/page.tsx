@@ -22,7 +22,9 @@ interface MyAttendanceData {
     employeeCode: string;
     fullName: string;
     branchName: string;
+    branchNameEn?: string | null;
     departmentName: string;
+    departmentNameEn?: string | null;
   };
   year: number;
   month: number;
@@ -31,6 +33,7 @@ interface MyAttendanceData {
     id: number;
     code: string;
     name: string;
+    nameEn?: string | null;
     startTime: string;
     endTime: string;
     breakStartTime: string | null;
@@ -94,7 +97,7 @@ function getCurrentVnTimeString(): string {
 }
 
 export default function MyAttendancePage() {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -343,14 +346,16 @@ export default function MyAttendancePage() {
                   <span className="font-semibold text-slate-800">
                     {data.employee.employeeCode} — {data.employee.fullName}
                   </span>{' '}
-                  • {data.employee.departmentName} ({data.employee.branchName})
+                  • {ln(data.employee.departmentName, data.employee.departmentNameEn)} (
+                  {ln(data.employee.branchName, data.employee.branchNameEn)})
                 </div>
 
                 <div className="text-xs text-slate-500">
                   {tr('Ca áp dụng:', 'Assigned shift:')}{' '}
                   {data.todayShift ? (
                     <span className="font-semibold text-slate-700">
-                      {data.todayShift.code} — {data.todayShift.name} ({data.todayShift.startTime}–
+                      {data.todayShift.code} — {ln(data.todayShift.name, data.todayShift.nameEn)} (
+                      {data.todayShift.startTime}–
                       {data.todayShift.endTime}
                       {data.todayShift.breakStartTime && data.todayShift.breakEndTime
                         ? tr(
@@ -651,7 +656,9 @@ export default function MyAttendancePage() {
                             {formatDateVN(log.workDate)}
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600">
-                            {log.shiftCode ? `${log.shiftCode} - ${log.shiftName ?? ''}` : '-'}
+                            {log.shiftCode
+                              ? `${log.shiftCode} - ${ln(log.shiftName ?? '', log.shiftNameEn)}`
+                              : '-'}
                           </td>
                           <td className="px-4 py-3 text-center font-mono text-xs font-semibold text-emerald-700">
                             {log.checkInTime ?? '--:--'}

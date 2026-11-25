@@ -41,7 +41,7 @@ const STATUS_BADGES: Record<
 };
 
 export default function HrmPayrollPage() {
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -620,7 +620,9 @@ export default function HrmPayrollPage() {
                               {String(period.month).padStart(2, '0')}/{period.year}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-700">{period.branchName}</td>
+                          <td className="px-4 py-3 text-slate-700">
+                            {ln(period.branchName, period.branchNameEn)}
+                          </td>
                           <td className="px-4 py-3 text-right font-medium text-slate-800">
                             {period.totalEmployees}
                           </td>
@@ -923,8 +925,12 @@ export default function HrmPayrollPage() {
                             <div className="font-semibold text-slate-900">
                               {ps.employeeCode} — {ps.employeeName}
                             </div>
-                            <div className="max-w-[200px] truncate text-xs text-slate-500" title={`${ps.departmentName} • ${ps.positionName}`}>
-                              {ps.departmentName} • {ps.positionName}
+                            <div
+                              className="max-w-[200px] truncate text-xs text-slate-500"
+                              title={`${ln(ps.departmentName, ps.departmentNameEn)} • ${ln(ps.positionName, ps.positionNameEn)}`}
+                            >
+                              {ln(ps.departmentName, ps.departmentNameEn)} •{' '}
+                              {ln(ps.positionName, ps.positionNameEn)}
                             </div>
                           </td>
                           <td className="px-3 py-3 text-right whitespace-nowrap text-slate-700">

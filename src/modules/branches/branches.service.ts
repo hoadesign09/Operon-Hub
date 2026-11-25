@@ -12,6 +12,7 @@ export interface BranchItem {
   id: number;
   code: string;
   name: string;
+  nameEn: string | null;
   taxCode: string | null;
   address: string | null;
   phone: string | null;
@@ -25,6 +26,7 @@ function mapBranchRow(row: {
   id: number;
   code: string;
   name: string;
+  name_en: string | null;
   tax_code: string | null;
   address: string | null;
   phone: string | null;
@@ -37,6 +39,7 @@ function mapBranchRow(row: {
     id: Number(row.id),
     code: row.code,
     name: row.name,
+    nameEn: row.name_en ?? null,
     taxCode: row.tax_code,
     address: row.address,
     phone: row.phone,
@@ -64,7 +67,7 @@ export async function listBranches(query: {
   if (query.search && query.search.trim().length > 0) {
     const keyword = `%${query.search.trim()}%`;
     baseQuery = baseQuery.where((eb) =>
-      eb.or([eb('code', 'like', keyword), eb('name', 'like', keyword)]),
+      eb.or([eb('code', 'like', keyword), eb('name', 'like', keyword), eb('name_en', 'like', keyword)]),
     );
   }
 
@@ -84,6 +87,7 @@ export async function listBranches(query: {
       'id',
       'code',
       'name',
+      'name_en',
       'tax_code',
       'address',
       'phone',
@@ -135,6 +139,7 @@ export async function createBranch(
       .values({
         code: input.code,
         name: input.name,
+        name_en: input.nameEn?.trim() || null,
         tax_code: input.taxCode ?? null,
         address: input.address ?? null,
         phone: input.phone ?? null,
@@ -154,6 +159,7 @@ export async function createBranch(
       'id',
       'code',
       'name',
+      'name_en',
       'tax_code',
       'address',
       'phone',
@@ -193,6 +199,7 @@ export async function updateBranch(
       'id',
       'code',
       'name',
+      'name_en',
       'tax_code',
       'address',
       'phone',
@@ -241,6 +248,7 @@ export async function updateBranch(
       .set({
         code: input.code ?? existing.code,
         name: input.name ?? existing.name,
+        name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : existing.name_en,
         tax_code: input.taxCode !== undefined ? input.taxCode : existing.tax_code,
         address: input.address !== undefined ? input.address : existing.address,
         phone: input.phone !== undefined ? input.phone : existing.phone,
@@ -264,6 +272,7 @@ export async function updateBranch(
       'id',
       'code',
       'name',
+      'name_en',
       'tax_code',
       'address',
       'phone',

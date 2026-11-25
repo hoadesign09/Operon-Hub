@@ -47,6 +47,7 @@ export interface AssetListItem {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn?: string | null;
   assetCode: string;
   name: string;
   category: AssetCategory;
@@ -63,6 +64,7 @@ export interface AssetListItem {
   holderEmployeeCode: string | null;
   holderEmployeeName: string | null;
   holderDepartmentName: string | null;
+  holderDepartmentNameEn?: string | null;
   holderEmploymentStatus: EmploymentStatus | null;
   assignedAt: string | null;
   createdAt: string;
@@ -292,6 +294,7 @@ function mapAssetRow(row: {
   branch_id: number | bigint;
   branch_code: string;
   branch_name: string;
+  branch_name_en?: string | null;
   asset_code: string;
   name: string;
   category: AssetCategory;
@@ -308,6 +311,7 @@ function mapAssetRow(row: {
   holder_employee_code: string | null;
   holder_employee_name: string | null;
   holder_department_name: string | null;
+  holder_department_name_en?: string | null;
   holder_employment_status: EmploymentStatus | null;
   assigned_at: Date | string | null;
   created_at: Date | string;
@@ -317,6 +321,7 @@ function mapAssetRow(row: {
     branchId: Number(row.branch_id),
     branchCode: String(row.branch_code),
     branchName: String(row.branch_name),
+    branchNameEn: row.branch_name_en ? String(row.branch_name_en) : null,
     assetCode: String(row.asset_code),
     name: String(row.name),
     category: row.category,
@@ -336,6 +341,9 @@ function mapAssetRow(row: {
     holderEmployeeName: row.holder_employee_name ? String(row.holder_employee_name) : null,
     holderDepartmentName: row.holder_department_name
       ? String(row.holder_department_name)
+      : null,
+    holderDepartmentNameEn: row.holder_department_name_en
+      ? String(row.holder_department_name_en)
       : null,
     holderEmploymentStatus: row.holder_employment_status ?? null,
     assignedAt: row.assigned_at ? formatDateVN(row.assigned_at) : null,
@@ -382,6 +390,7 @@ export async function listAssets(
         'a.branch_id',
         'b.code as branch_code',
         'b.name as branch_name',
+        'b.name_en as branch_name_en',
         'a.asset_code',
         'a.name',
         'a.category',
@@ -398,6 +407,7 @@ export async function listAssets(
         'e.employee_code as holder_employee_code',
         'e.full_name as holder_employee_name',
         'd.name as holder_department_name',
+        'd.name_en as holder_department_name_en',
         'e.employment_status as holder_employment_status',
         'aa.assigned_at',
         'a.created_at',

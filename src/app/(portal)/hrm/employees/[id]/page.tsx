@@ -46,12 +46,15 @@ interface EmployeeDetailData {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn?: string | null;
   departmentId: number;
   departmentCode: string;
   departmentName: string;
+  departmentNameEn?: string | null;
   positionId: number;
   positionCode: string;
   positionName: string;
+  positionNameEn?: string | null;
   managerId: number | null;
   managerName: string | null;
   hireDate: string;
@@ -92,7 +95,7 @@ export default function EmployeeDetailPage({
 }) {
   const { id } = use(params);
   const { user, hasPermission } = usePortalAuth();
-  const { locale, tr } = useI18n();
+  const { locale, tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -362,7 +365,9 @@ export default function EmployeeDetailPage({
                 </span>
               </div>
               <p className="mt-1 text-sm text-slate-600">
-                {employee.positionName} • {employee.departmentName} • {employee.branchName}
+                {ln(employee.positionName, employee.positionNameEn)} •{' '}
+                {ln(employee.departmentName, employee.departmentNameEn)} •{' '}
+                {ln(employee.branchName, employee.branchNameEn)}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
                 {employee.workEmail} {employee.phone ? `• ${employee.phone}` : ''} •{' '}
@@ -508,7 +513,7 @@ export default function EmployeeDetailPage({
                   >
                     {(user?.branches ?? []).map((b) => (
                       <option key={b.id} value={b.id}>
-                        {b.name}
+                        {ln(b.name, b.nameEn)}
                       </option>
                     ))}
                   </select>
@@ -526,7 +531,7 @@ export default function EmployeeDetailPage({
                   >
                     {branchDepts.map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.name}
+                        {ln(d.name, d.nameEn)}
                       </option>
                     ))}
                   </select>
@@ -544,7 +549,7 @@ export default function EmployeeDetailPage({
                   >
                     {positions.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name}
+                        {ln(p.name, p.nameEn)}
                       </option>
                     ))}
                   </select>

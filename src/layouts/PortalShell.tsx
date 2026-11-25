@@ -4,24 +4,31 @@ import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  IconApps,
   IconBriefcase,
   IconBuilding,
   IconBuildingSkyscraper,
   IconCalendarEvent,
   IconCalendarStats,
   IconCalendarTime,
+  IconCar,
   IconCash,
   IconChecklist,
   IconChevronRight,
   IconClockCheck,
   IconClockHour8,
+  IconCreditCard,
   IconDeviceLaptop,
   IconDevices,
   IconFileCertificate,
+  IconFileDescription,
   IconGitBranch,
+  IconHeadset,
   IconHierarchy2,
   IconIdBadge2,
   IconLayoutDashboard,
+  IconLayoutKanban,
+  IconListCheck,
   IconLogout,
   IconMenu2,
   IconReceipt2,
@@ -37,6 +44,7 @@ import {
 import { LanguageSwitcher } from '@/components/portal/LanguageSwitcher';
 import { NotificationBell } from '@/components/portal/NotificationBell';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { QuickTimerWidget } from '@/components/projects/QuickTimerWidget';
 import { useI18n } from '@/shared/i18n/I18nContext';
 import {
   buildDualRailGroups,
@@ -50,6 +58,10 @@ function renderRailIcon(key: PortalRailKey) {
   switch (key) {
     case 'workspace':
       return <IconLayoutDashboard size={19} />;
+    case 'services':
+      return <IconApps size={19} />;
+    case 'projects':
+      return <IconLayoutKanban size={19} />;
     case 'hrm':
       return <IconUsers size={19} />;
     case 'admin':
@@ -61,7 +73,18 @@ function renderRailIcon(key: PortalRailKey) {
 
 function renderNavItemIcon(href: string) {
   if (href === '/dashboard') return <IconLayoutDashboard size={17} />;
+  if (href === '/services') return <IconApps size={17} />;
+  if (href.includes('services/it-requests')) return <IconHeadset size={17} />;
+  if (href.includes('services/proposals')) return <IconFileDescription size={17} />;
+  if (href.includes('services/payments')) return <IconCreditCard size={17} />;
+  if (href.includes('services/car-booking')) return <IconCar size={17} />;
+  if (href === '/projects/dashboard') return <IconLayoutDashboard size={17} />;
+  if (href === '/projects') return <IconLayoutKanban size={17} />;
+  if (href === '/projects/workload') return <IconUsers size={17} />;
+  if (href === '/projects/timesheets') return <IconClockHour8 size={17} />;
+  if (href === '/projects/templates') return <IconFileDescription size={17} />;
   if (href.includes('my/profile')) return <IconUserCircle size={17} />;
+  if (href.includes('my/tasks')) return <IconListCheck size={17} />;
   if (href.includes('my/requests')) return <IconCalendarEvent size={17} />;
   if (href.includes('my/attendance')) return <IconClockCheck size={17} />;
   if (href.includes('my/payslips')) return <IconReceipt2 size={17} />;
@@ -101,7 +124,7 @@ function PortalLoadingView() {
 
 export function PortalShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { locale, t } = useI18n();
+  const { locale, t, ln } = useI18n();
   const {
     user,
     modules,
@@ -156,7 +179,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
   const activeGroup =
     railGroups.find((group) => group.key === preferredRailKey) ?? railGroups[0];
   const pageContext = resolvePageContextLabel(pathname, railGroups, locale);
-  const primaryRoleName = user.roles[0]?.name ?? t('common.user');
+  const primaryRoleName =
+    ln(user.roles[0]?.name, user.roles[0]?.nameEn) || t('common.user');
   const userInitials = getUserInitials(user.fullName);
   const isProfileActive = pathname === '/my/profile' || pathname.startsWith('/my/profile/');
 
@@ -284,22 +308,38 @@ export function PortalShell({ children }: { children: ReactNode }) {
               activeGroup?.items.map((item) => {
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
+                  (item.href !== '/dashboard' &&
+                    item.href !== '/services' &&
+                    item.href !== '/projects' &&
+                    pathname.startsWith(`${item.href}/`)) ||
+                  (item.href === '/projects' &&
+                    pathname.startsWith('/projects/') &&
+                    !pathname.startsWith('/projects/dashboard') &&
+                    !pathname.startsWith('/projects/workload') &&
+                    !pathname.startsWith('/projects/timesheets') &&
+                    !pathname.startsWith('/projects/templates'));
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${
+                    className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${
                       isActive
                         ? 'bg-white/10 text-white shadow-xs ring-1 ring-white/15'
                         : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
                     }`}
                   >
-                    <span className={isActive ? 'text-cyan-400' : 'text-slate-500'}>
-                      {renderNavItemIcon(item.href)}
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <span className={isActive ? 'text-cyan-400' : 'text-slate-500'}>
+                        {renderNavItemIcon(item.href)}
+                      </span>
+                      <span className="truncate">{item.label}</span>
                     </span>
-                    <span className="truncate">{item.label}</span>
+                    {item.isComingSoon && (
+                      <span className="shrink-0 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-amber-300 uppercase">
+                        {t('nav.badge.soon')}
+                      </span>
+                    )}
                   </Link>
                 );
               })
@@ -350,11 +390,13 @@ export function PortalShell({ children }: { children: ReactNode }) {
                 {user.hasAllBranches && <option value="">{t('common.allBranches')}</option>}
                 {user.branches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
-                    {branch.name} ({branch.code})
+                    {ln(branch.name, branch.nameEn)} ({branch.code})
                   </option>
                 ))}
               </select>
             </label>
+
+            <QuickTimerWidget />
 
             <LanguageSwitcher variant="light" />
 

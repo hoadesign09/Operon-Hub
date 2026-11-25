@@ -9,6 +9,7 @@ export const createBranchSchema = z.object({
     .toUpperCase()
     .regex(BRANCH_CODE_REGEX, 'Mã chi nhánh gồm 2–30 ký tự chữ hoa, số, gạch ngang hoặc gạch dưới'),
   name: z.string().trim().min(2, 'Tên chi nhánh phải có tối thiểu 2 ký tự').max(150),
+  nameEn: z.string().trim().max(160).optional().nullable(),
   taxCode: z.string().trim().max(30).optional().nullable(),
   address: z.string().trim().max(255).optional().nullable(),
   phone: z.string().trim().max(30).optional().nullable(),
@@ -24,6 +25,7 @@ export const updateBranchSchema = z.object({
     .regex(BRANCH_CODE_REGEX, 'Mã chi nhánh gồm 2–30 ký tự chữ hoa, số, gạch ngang hoặc gạch dưới')
     .optional(),
   name: z.string().trim().min(2, 'Tên chi nhánh phải có tối thiểu 2 ký tự').max(150).optional(),
+  nameEn: z.string().trim().max(160).optional().nullable(),
   taxCode: z.string().trim().max(30).optional().nullable(),
   address: z.string().trim().max(255).optional().nullable(),
   phone: z.string().trim().max(30).optional().nullable(),

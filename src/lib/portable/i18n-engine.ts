@@ -99,6 +99,26 @@ export function interpolateTemplate(
 }
 
 /**
+ * Selects the localized database/master-data display string based on the active locale.
+ * Returns the English text when locale is 'en' and a non-empty English value exists;
+ * otherwise gracefully falls back to the primary text.
+ */
+export function pickLocalizedText(
+  locale: string,
+  primaryText: string | null | undefined,
+  enText?: string | null,
+): string {
+  const normalized = locale.trim().toLowerCase();
+  if (normalized === 'en' || normalized.startsWith('en-') || normalized.startsWith('en_')) {
+    const trimmedEn = typeof enText === 'string' ? enText.trim() : '';
+    if (trimmedEn.length > 0) {
+      return trimmedEn;
+    }
+  }
+  return primaryText ?? '';
+}
+
+/**
  * Creates a pure, strongly-typed translator bound to the provided locale dictionaries.
  */
 export function createTranslator<TLocale extends string, TKey extends string>(

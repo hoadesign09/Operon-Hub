@@ -69,12 +69,15 @@ export interface EmployeeListItem {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn: string | null;
   departmentId: number;
   departmentCode: string;
   departmentName: string;
+  departmentNameEn: string | null;
   positionId: number;
   positionCode: string;
   positionName: string;
+  positionNameEn: string | null;
   managerId: number | null;
   managerName: string | null;
   hireDate: string;
@@ -286,12 +289,15 @@ async function queryEmployeesWithScope(
       'e.branch_id',
       'b.code as branch_code',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'e.department_id',
       'd.code as department_code',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'e.position_id',
       'p.code as position_code',
       'p.name as position_name',
+      'p.name_en as position_name_en',
       'e.manager_id',
       'm.full_name as manager_name',
       'e.hire_date',
@@ -316,12 +322,15 @@ async function queryEmployeesWithScope(
     branchId: Number(row.branch_id),
     branchCode: row.branch_code,
     branchName: row.branch_name,
+    branchNameEn: row.branch_name_en ?? null,
     departmentId: Number(row.department_id),
     departmentCode: row.department_code,
     departmentName: row.department_name,
+    departmentNameEn: row.department_name_en ?? null,
     positionId: Number(row.position_id),
     positionCode: row.position_code,
     positionName: row.position_name,
+    positionNameEn: row.position_name_en ?? null,
     managerId: row.manager_id !== null ? Number(row.manager_id) : null,
     managerName: row.manager_name ?? null,
     hireDate: toIsoDateOnly(row.hire_date) ?? '',
@@ -378,12 +387,15 @@ async function fetchEmployeeDetailByRowId(
       'e.branch_id',
       'b.code as branch_code',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'e.department_id',
       'd.code as department_code',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'e.position_id',
       'p.code as position_code',
       'p.name as position_name',
+      'p.name_en as position_name_en',
       'e.manager_id',
       'm.full_name as manager_name',
       'e.full_name',
@@ -459,12 +471,15 @@ async function fetchEmployeeDetailByRowId(
     branchId: Number(row.branch_id),
     branchCode: row.branch_code,
     branchName: row.branch_name,
+    branchNameEn: row.branch_name_en ?? null,
     departmentId: Number(row.department_id),
     departmentCode: row.department_code,
     departmentName: row.department_name,
+    departmentNameEn: row.department_name_en ?? null,
     positionId: Number(row.position_id),
     positionCode: row.position_code,
     positionName: row.position_name,
+    positionNameEn: row.position_name_en ?? null,
     managerId: row.manager_id !== null ? Number(row.manager_id) : null,
     managerName: row.manager_name ?? null,
     hireDate: toIsoDateOnly(row.hire_date) ?? '',

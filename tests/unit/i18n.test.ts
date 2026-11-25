@@ -7,6 +7,7 @@ import {
   interpolateTemplate,
   normalizeLocale,
   parseCookieValue,
+  pickLocalizedText,
 } from '@/lib/portable/i18n-engine';
 import { resolveAppLocale } from '@/shared/i18n/config';
 import { enDictionary } from '@/shared/i18n/dictionaries/en';
@@ -53,6 +54,17 @@ describe('Portable i18n Engine (Zero Dependencies)', () => {
     );
     expect(translator.translate('vi', 'greeting', { name: 'Operon' })).toBe('Xin chào Operon');
     expect(translator.translate('en', 'greeting', { name: 'Operon' })).toBe('Hello Operon');
+  });
+
+  it('picks localized master-data text with safe fallback to primary text', () => {
+    expect(pickLocalizedText('vi', 'Trụ sở chính', 'Headquarters')).toBe('Trụ sở chính');
+    expect(pickLocalizedText('en', 'Trụ sở chính', 'Headquarters')).toBe('Headquarters');
+    expect(pickLocalizedText('en-US', 'Phòng Nhân sự', '  Human Resources  ')).toBe(
+      'Human Resources',
+    );
+    expect(pickLocalizedText('en', 'Phòng Công nghệ', null)).toBe('Phòng Công nghệ');
+    expect(pickLocalizedText('en', 'Phòng Công nghệ', '   ')).toBe('Phòng Công nghệ');
+    expect(pickLocalizedText('vi', null, 'Headquarters')).toBe('');
   });
 });
 
@@ -112,6 +124,8 @@ describe('Operon Hub VI/EN Bilingual Dictionaries & Formatters', () => {
       ...walk(path.join(root, 'src/app/(portal)')),
       ...walk(path.join(root, 'src/components/portal')),
       ...walk(path.join(root, 'src/components/hrm')),
+      ...walk(path.join(root, 'src/components/projects')),
+      ...walk(path.join(root, 'src/components/proposals')),
       ...walk(path.join(root, 'src/components/system')),
       ...walk(path.join(root, 'src/components/ui')),
       ...walk(path.join(root, 'src/layouts')),

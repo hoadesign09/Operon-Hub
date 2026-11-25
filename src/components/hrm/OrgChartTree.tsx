@@ -17,6 +17,7 @@ export interface OrgDepartmentNode {
   parentId: number | null;
   code: string;
   name: string;
+  nameEn?: string | null;
   description: string | null;
   sortOrder: number;
   isActive: boolean;
@@ -27,6 +28,7 @@ export interface BranchOrgTreeData {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn?: string | null;
   isHeadquarters: boolean;
   departments: OrgDepartmentNode[];
 }
@@ -40,7 +42,7 @@ interface OrgNodeCardProps {
 }
 
 function OrgNodeCard({ node, depth, canManage, onAddChild, onEdit }: OrgNodeCardProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
 
@@ -63,7 +65,7 @@ function OrgNodeCard({ node, depth, canManage, onAddChild, onEdit }: OrgNodeCard
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-slate-900">{node.name}</span>
+              <span className="font-semibold text-slate-900">{ln(node.name, node.nameEn)}</span>
               <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">
                 {node.code}
               </span>
@@ -132,7 +134,7 @@ export function OrgChartTree({
   onAddChild: (branchId: number, parentId: number) => void;
   onEdit: (node: OrgDepartmentNode) => void;
 }) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
 
   return (
     <div className="space-y-5">
@@ -148,7 +150,9 @@ export function OrgChartTree({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900">{branch.branchName}</h2>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {ln(branch.branchName, branch.branchNameEn)}
+                  </h2>
                   <span className="rounded bg-white px-2 py-0.5 font-mono text-xs text-slate-600 ring-1 ring-slate-200">
                     {branch.branchCode}
                   </span>

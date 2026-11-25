@@ -27,10 +27,13 @@ interface DepartmentRow {
   branchId: number;
   branchCode: string;
   branchName: string;
+  branchNameEn?: string | null;
   parentId: number | null;
   parentName: string | null;
+  parentNameEn?: string | null;
   code: string;
   name: string;
+  nameEn?: string | null;
   description: string | null;
   sortOrder: number;
   isActive: boolean;
@@ -40,6 +43,7 @@ interface PositionRow {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   level: number;
   description: string | null;
   isActive: boolean;
@@ -49,7 +53,7 @@ type OrgTab = 'tree' | 'departments' | 'positions';
 
 export default function HrmOrganizationPage() {
   const { user, selectedBranchId, hasPermission } = usePortalAuth();
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -75,6 +79,7 @@ export default function HrmOrganizationPage() {
   const [deptParentId, setDeptParentId] = useState('');
   const [deptCode, setDeptCode] = useState('');
   const [deptName, setDeptName] = useState('');
+  const [deptNameEn, setDeptNameEn] = useState('');
   const [deptDesc, setDeptDesc] = useState('');
   const [deptSortOrder, setDeptSortOrder] = useState('0');
   const [deptIsActive, setDeptIsActive] = useState(true);
@@ -86,6 +91,7 @@ export default function HrmOrganizationPage() {
   const [editingPosId, setEditingPosId] = useState<number | null>(null);
   const [posCode, setPosCode] = useState('');
   const [posName, setPosName] = useState('');
+  const [posNameEn, setPosNameEn] = useState('');
   const [posLevel, setPosLevel] = useState('1');
   const [posDesc, setPosDesc] = useState('');
   const [posIsActive, setPosIsActive] = useState(true);
@@ -180,6 +186,7 @@ export default function HrmOrganizationPage() {
     setDeptParentId(prefillParentId ? String(prefillParentId) : '');
     setDeptCode('');
     setDeptName('');
+    setDeptNameEn('');
     setDeptDesc('');
     setDeptSortOrder('0');
     setDeptIsActive(true);
@@ -193,6 +200,7 @@ export default function HrmOrganizationPage() {
     setDeptParentId(dept.parentId ? String(dept.parentId) : '');
     setDeptCode(dept.code);
     setDeptName(dept.name);
+    setDeptNameEn(dept.nameEn ?? '');
     setDeptDesc(dept.description ?? '');
     setDeptSortOrder(String(dept.sortOrder));
     setDeptIsActive(dept.isActive);
@@ -219,6 +227,7 @@ export default function HrmOrganizationPage() {
           parentId: deptParentId ? Number(deptParentId) : null,
           code: deptCode.trim().toUpperCase(),
           name: deptName.trim(),
+          nameEn: deptNameEn.trim() || null,
           description: deptDesc.trim() || null,
           sortOrder: Number(deptSortOrder) || 0,
           isActive: deptIsActive,
@@ -251,6 +260,7 @@ export default function HrmOrganizationPage() {
     setEditingPosId(null);
     setPosCode('');
     setPosName('');
+    setPosNameEn('');
     setPosLevel('1');
     setPosDesc('');
     setPosIsActive(true);
@@ -262,6 +272,7 @@ export default function HrmOrganizationPage() {
     setEditingPosId(pos.id);
     setPosCode(pos.code);
     setPosName(pos.name);
+    setPosNameEn(pos.nameEn ?? '');
     setPosLevel(String(pos.level));
     setPosDesc(pos.description ?? '');
     setPosIsActive(pos.isActive);
@@ -286,6 +297,7 @@ export default function HrmOrganizationPage() {
         body: JSON.stringify({
           code: posCode.trim().toUpperCase(),
           name: posName.trim(),
+          nameEn: posNameEn.trim() || null,
           level: Number(posLevel) || 1,
           description: posDesc.trim() || null,
           isActive: posIsActive,
@@ -539,16 +551,16 @@ export default function HrmOrganizationPage() {
                         {d.code}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900">{d.name}</div>
+                        <div className="font-medium text-slate-900">{ln(d.name, d.nameEn)}</div>
                         {d.description && (
                           <div className="text-xs text-slate-500">{d.description}</div>
                         )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700">
-                        {d.branchName} ({d.branchCode})
+                        {ln(d.branchName, d.branchNameEn)} ({d.branchCode})
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
-                        {d.parentName ?? tr('Cấp gốc', 'Root Level')}
+                        {d.parentName ? ln(d.parentName, d.parentNameEn) : tr('Cấp gốc', 'Root Level')}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <span
@@ -578,7 +590,7 @@ export default function HrmOrganizationPage() {
                                 setDeleteTarget({
                                   kind: 'department',
                                   id: d.id,
-                                  label: `${d.name} (${d.code})`,
+                                  label: `${ln(d.name, d.nameEn)} (${d.code})`,
                                 })
                               }
                               className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600"
@@ -636,7 +648,7 @@ export default function HrmOrganizationPage() {
                         {pos.code}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900">{pos.name}</div>
+                        <div className="font-medium text-slate-900">{ln(pos.name, pos.nameEn)}</div>
                         {pos.description && (
                           <div className="text-xs text-slate-500">{pos.description}</div>
                         )}
@@ -674,7 +686,7 @@ export default function HrmOrganizationPage() {
                                 setDeleteTarget({
                                   kind: 'position',
                                   id: pos.id,
-                                  label: `${pos.name} (${pos.code})`,
+                                  label: `${ln(pos.name, pos.nameEn)} (${pos.code})`,
                                 })
                               }
                               className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600"
@@ -740,7 +752,7 @@ export default function HrmOrganizationPage() {
                   >
                     {(user?.branches ?? []).map((b) => (
                       <option key={b.id} value={b.id}>
-                        {b.name} ({b.code})
+                        {ln(b.name, b.nameEn)} ({b.code})
                       </option>
                     ))}
                   </select>
@@ -757,7 +769,7 @@ export default function HrmOrganizationPage() {
                     <option value="">{tr('-- Không (Cấp gốc) --', '-- None (Root Level) --')}</option>
                     {candidateParentDepts.map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.name} ({d.code})
+                        {ln(d.name, d.nameEn)} ({d.code})
                       </option>
                     ))}
                   </select>
@@ -790,6 +802,19 @@ export default function HrmOrganizationPage() {
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  {tr('Tên tiếng Anh', 'English Name')}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sales Department"
+                  value={deptNameEn}
+                  onChange={(e) => setDeptNameEn(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -921,6 +946,19 @@ export default function HrmOrganizationPage() {
                   required
                   value={posName}
                   onChange={(e) => setPosName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  {tr('Tên tiếng Anh', 'English Name')}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Senior Specialist"
+                  value={posNameEn}
+                  onChange={(e) => setPosNameEn(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                 />
               </div>

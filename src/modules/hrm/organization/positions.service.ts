@@ -15,6 +15,7 @@ export interface PositionItem {
   id: number;
   code: string;
   name: string;
+  nameEn: string | null;
   level: number;
   description: string | null;
   isActive: boolean;
@@ -25,6 +26,7 @@ function mapPositionRow(row: {
   id: number;
   code: string;
   name: string;
+  name_en: string | null;
   level: number;
   description: string | null;
   is_active: number;
@@ -34,6 +36,7 @@ function mapPositionRow(row: {
     id: Number(row.id),
     code: row.code,
     name: row.name,
+    nameEn: row.name_en ?? null,
     level: Number(row.level),
     description: row.description,
     isActive: Boolean(row.is_active),
@@ -58,7 +61,7 @@ export async function listPositions(query: {
   if (query.search && query.search.trim().length > 0) {
     const keyword = `%${query.search.trim()}%`;
     baseQuery = baseQuery.where((eb) =>
-      eb.or([eb('code', 'like', keyword), eb('name', 'like', keyword)]),
+      eb.or([eb('code', 'like', keyword), eb('name', 'like', keyword), eb('name_en', 'like', keyword)]),
     );
   }
 
@@ -74,7 +77,7 @@ export async function listPositions(query: {
   const total = Number(countRow?.total ?? 0);
 
   const rows = await baseQuery
-    .select(['id', 'code', 'name', 'level', 'description', 'is_active', 'created_at'])
+    .select(['id', 'code', 'name', 'name_en', 'level', 'description', 'is_active', 'created_at'])
     .orderBy('level', 'desc')
     .orderBy('name', 'asc')
     .limit(pagination.limit)
@@ -109,6 +112,7 @@ export async function createPosition(
     .values({
       code: input.code,
       name: input.name,
+      name_en: input.nameEn?.trim() || null,
       level: input.level,
       description: input.description ?? null,
       is_active: input.isActive ? 1 : 0,
@@ -120,7 +124,7 @@ export async function createPosition(
   const createdId = Number(inserted.insertId);
   const row = await db
     .selectFrom('positions')
-    .select(['id', 'code', 'name', 'level', 'description', 'is_active', 'created_at'])
+    .select(['id', 'code', 'name', 'name_en', 'level', 'description', 'is_active', 'created_at'])
     .where('id', '=', createdId)
     .executeTakeFirstOrThrow();
 
@@ -147,7 +151,7 @@ export async function updatePosition(
 
   const existing = await db
     .selectFrom('positions')
-    .select(['id', 'code', 'name', 'level', 'description', 'is_active'])
+    .select(['id', 'code', 'name', 'name_en', 'level', 'description', 'is_active'])
     .where('id', '=', positionId)
     .where('deleted_at', 'is', null)
     .executeTakeFirst();
@@ -173,6 +177,7 @@ export async function updatePosition(
     .set({
       code: input.code ?? existing.code,
       name: input.name ?? existing.name,
+      name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : existing.name_en,
       level: input.level ?? Number(existing.level),
       description: input.description !== undefined ? input.description : existing.description,
       is_active:
@@ -184,7 +189,7 @@ export async function updatePosition(
 
   const updated = await db
     .selectFrom('positions')
-    .select(['id', 'code', 'name', 'level', 'description', 'is_active', 'created_at'])
+    .select(['id', 'code', 'name', 'name_en', 'level', 'description', 'is_active', 'created_at'])
     .where('id', '=', positionId)
     .executeTakeFirstOrThrow();
 

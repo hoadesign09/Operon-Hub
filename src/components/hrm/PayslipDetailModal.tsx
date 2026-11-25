@@ -34,7 +34,7 @@ export function PayslipDetailModal({
   onClose,
   onSaved,
 }: PayslipDetailModalProps) {
-  const { tr } = useI18n();
+  const { tr, ln } = useI18n();
   const trRef = useRef(tr);
   useEffect(() => {
     trRef.current = tr;
@@ -218,7 +218,9 @@ export function PayslipDetailModal({
             </h2>
             {payslip && (
               <p className="text-xs text-slate-500">
-                {payslip.branchName} • {payslip.departmentName} • {payslip.positionName}
+                {ln(payslip.branchName, payslip.branchNameEn)} •{' '}
+                {ln(payslip.departmentName, payslip.departmentNameEn)} •{' '}
+                {ln(payslip.positionName, payslip.positionNameEn)}
               </p>
             )}
           </div>

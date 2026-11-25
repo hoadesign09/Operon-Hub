@@ -56,6 +56,7 @@ export interface ApprovalRequestItem {
   currentApproverUserId: number | null;
   currentApproverRoleId: number | null;
   currentApproverRoleName: string | null;
+  currentApproverRoleNameEn?: string | null;
   status: ApprovalRequestStatus;
   submittedAt: string;
   completedAt: string | null;
@@ -390,6 +391,7 @@ export async function listApprovalInbox(
       'ar.current_approver_user_id',
       'ar.current_approver_role_id',
       'app_role.name as approver_role_name',
+      'app_role.name_en as approver_role_name_en',
       'ar.status',
       'ar.submitted_at',
       'ar.completed_at',
@@ -419,6 +421,7 @@ export async function listApprovalInbox(
     currentApproverRoleId:
       row.current_approver_role_id !== null ? Number(row.current_approver_role_id) : null,
     currentApproverRoleName: row.approver_role_name ?? null,
+    currentApproverRoleNameEn: row.approver_role_name_en ?? null,
     status: row.status,
     submittedAt: new Date(row.submitted_at).toISOString(),
     completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,
@@ -462,6 +465,7 @@ export async function getApprovalDetailWithHistory(
       'ar.current_approver_user_id',
       'ar.current_approver_role_id',
       'app_role.name as approver_role_name',
+      'app_role.name_en as approver_role_name_en',
       'ar.status',
       'ar.submitted_at',
       'ar.completed_at',
@@ -492,6 +496,7 @@ export async function getApprovalDetailWithHistory(
     currentApproverRoleId:
       row.current_approver_role_id !== null ? Number(row.current_approver_role_id) : null,
     currentApproverRoleName: row.approver_role_name ?? null,
+    currentApproverRoleNameEn: row.approver_role_name_en ?? null,
     status: row.status,
     submittedAt: new Date(row.submitted_at).toISOString(),
     completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,

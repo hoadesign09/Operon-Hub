@@ -37,7 +37,7 @@ const workflowConditionsSchema = z
   .optional();
 
 export const createWorkflowSchema = z.object({
-  moduleCode: z.enum(['core', 'hrm', 'crm']),
+  moduleCode: z.enum(['core', 'hrm', 'projects', 'proposals', 'crm']),
   requestType: z
     .string()
     .trim()
@@ -45,6 +45,7 @@ export const createWorkflowSchema = z.object({
     .regex(REQUEST_TYPE_REGEX, 'Loại yêu cầu gồm 2–60 ký tự chữ hoa, số hoặc gạch dưới'),
   branchId: z.coerce.number().int().positive().nullable().optional(),
   name: z.string().trim().min(3, 'Tên quy trình tối thiểu 3 ký tự').max(150),
+  nameEn: z.string().trim().max(200).nullable().optional(),
   description: z.string().trim().max(255).nullable().optional(),
   conditions: workflowConditionsSchema,
   isActive: z.boolean().optional().default(true),
@@ -55,7 +56,7 @@ export const createWorkflowSchema = z.object({
 });
 
 export const updateWorkflowSchema = z.object({
-  moduleCode: z.enum(['core', 'hrm', 'crm']).optional(),
+  moduleCode: z.enum(['core', 'hrm', 'projects', 'proposals', 'crm']).optional(),
   requestType: z
     .string()
     .trim()
@@ -64,6 +65,7 @@ export const updateWorkflowSchema = z.object({
     .optional(),
   branchId: z.coerce.number().int().positive().nullable().optional(),
   name: z.string().trim().min(3, 'Tên quy trình tối thiểu 3 ký tự').max(150).optional(),
+  nameEn: z.string().trim().max(200).nullable().optional(),
   description: z.string().trim().max(255).nullable().optional(),
   conditions: workflowConditionsSchema,
   isActive: z.boolean().optional(),

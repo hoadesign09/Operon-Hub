@@ -27,6 +27,7 @@ describe('API GET /api/v1/health', () => {
     expect(json.data.modules.map((m: { code: string }) => m.code)).toEqual([
       'core',
       'hrm',
+      'projects',
       'crm',
     ]);
   });

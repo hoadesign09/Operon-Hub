@@ -39,6 +39,7 @@ export const createWorkShiftSchema = z.object({
     .trim()
     .min(2, 'Tên ca làm việc phải từ 2 ký tự.')
     .max(120, 'Tên ca làm việc tối đa 120 ký tự.'),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   startTime: TIME_HHMM_SCHEMA,
   endTime: TIME_HHMM_SCHEMA,
   breakStartTime: OPTIONAL_TIME_SCHEMA,
@@ -58,6 +59,7 @@ export const updateWorkShiftSchema = z.object({
     .min(2, 'Tên ca làm việc phải từ 2 ký tự.')
     .max(120, 'Tên ca làm việc tối đa 120 ký tự.')
     .optional(),
+  nameEn: z.string().trim().max(160).nullable().optional(),
   startTime: TIME_HHMM_SCHEMA.optional(),
   endTime: TIME_HHMM_SCHEMA.optional(),
   breakStartTime: OPTIONAL_TIME_SCHEMA,
@@ -104,6 +106,7 @@ export const createHolidaySchema = z.object({
     .trim()
     .min(2, 'Tên ngày lễ phải từ 2 ký tự.')
     .max(160, 'Tên ngày lễ tối đa 160 ký tự.'),
+  nameEn: z.string().trim().max(180).nullable().optional(),
   isPaid: z.boolean().default(true),
   note: z.string().trim().max(500).nullable().optional(),
 });
@@ -117,6 +120,7 @@ export const updateHolidaySchema = z.object({
     .min(2, 'Tên ngày lễ phải từ 2 ký tự.')
     .max(160, 'Tên ngày lễ tối đa 160 ký tự.')
     .optional(),
+  nameEn: z.string().trim().max(180).nullable().optional(),
   isPaid: z.boolean().optional(),
   note: z.string().trim().max(500).nullable().optional(),
 });

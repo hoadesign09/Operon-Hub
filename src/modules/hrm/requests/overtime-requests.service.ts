@@ -45,7 +45,9 @@ export interface OvertimeRequestItem {
   employeeName: string;
   branchId: number;
   branchName: string | null;
+  branchNameEn?: string | null;
   departmentName: string | null;
+  departmentNameEn?: string | null;
   workDate: string;
   startTime: string;
   endTime: string;
@@ -209,7 +211,9 @@ async function fetchOvertimeByIdInternal(id: number): Promise<OvertimeRequestIte
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'ot.work_date',
       'ot.start_time',
       'ot.end_time',
@@ -237,7 +241,9 @@ async function fetchOvertimeByIdInternal(id: number): Promise<OvertimeRequestIte
     employeeName: row.employee_name,
     branchId: Number(row.branch_id),
     branchName: row.branch_name ?? null,
+    branchNameEn: row.branch_name_en ?? null,
     departmentName: row.department_name ?? null,
+    departmentNameEn: row.department_name_en ?? null,
     workDate: toIsoDate(row.work_date),
     startTime: row.start_time,
     endTime: row.end_time,
@@ -377,7 +383,9 @@ export async function listOvertimeRequests(
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'ot.work_date',
       'ot.start_time',
       'ot.end_time',
@@ -403,7 +411,9 @@ export async function listOvertimeRequests(
     employeeName: row.employee_name,
     branchId: Number(row.branch_id),
     branchName: row.branch_name ?? null,
+    branchNameEn: row.branch_name_en ?? null,
     departmentName: row.department_name ?? null,
+    departmentNameEn: row.department_name_en ?? null,
     workDate: toIsoDate(row.work_date),
     startTime: row.start_time,
     endTime: row.end_time,

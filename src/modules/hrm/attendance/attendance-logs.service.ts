@@ -36,12 +36,15 @@ export interface AttendanceLogItem {
   employeeName: string;
   branchId: number;
   branchName: string;
+  branchNameEn?: string | null;
   departmentId: number;
   departmentName: string;
+  departmentNameEn?: string | null;
   workDate: string;
   shiftId: number | null;
   shiftCode: string | null;
   shiftName: string | null;
+  shiftNameEn?: string | null;
   checkInTime: string | null;
   checkOutTime: string | null;
   source: AttendanceSource;
@@ -58,7 +61,9 @@ export interface MyAttendanceResponse {
     employeeCode: string;
     fullName: string;
     branchName: string;
+    branchNameEn?: string | null;
     departmentName: string;
+    departmentNameEn?: string | null;
   };
   year: number;
   month: number;
@@ -116,7 +121,9 @@ async function getSelfEmployee(userId: number) {
       'e.branch_id',
       'e.department_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'd.name as department_name',
+      'd.name_en as department_name_en',
     ])
     .where('e.user_id', '=', userId)
     .where('e.deleted_at', 'is', null)
@@ -136,7 +143,9 @@ async function getSelfEmployee(userId: number) {
     branchId: Number(emp.branch_id),
     departmentId: Number(emp.department_id),
     branchName: String(emp.branch_name),
+    branchNameEn: emp.branch_name_en ? String(emp.branch_name_en) : null,
     departmentName: String(emp.department_name),
+    departmentNameEn: emp.department_name_en ? String(emp.department_name_en) : null,
   };
 }
 
@@ -155,12 +164,15 @@ async function getAttendanceLogByIdInternal(id: number): Promise<AttendanceLogIt
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'e.department_id',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'al.work_date',
       'al.shift_id',
       'ws.code as shift_code',
       'ws.name as shift_name',
+      'ws.name_en as shift_name_en',
       'al.check_in_at',
       'al.check_out_at',
       'al.source',
@@ -188,12 +200,15 @@ function mapRowToAttendanceLogItem(row: {
   employee_name: string;
   branch_id: number | bigint;
   branch_name: string;
+  branch_name_en?: string | null;
   department_id: number | bigint;
   department_name: string;
+  department_name_en?: string | null;
   work_date: Date | string;
   shift_id: number | bigint | null;
   shift_code: string | null;
   shift_name: string | null;
+  shift_name_en?: string | null;
   check_in_at: Date | string | null;
   check_out_at: Date | string | null;
   source: AttendanceSource;
@@ -210,12 +225,15 @@ function mapRowToAttendanceLogItem(row: {
     employeeName: String(row.employee_name),
     branchId: Number(row.branch_id),
     branchName: String(row.branch_name),
+    branchNameEn: row.branch_name_en ? String(row.branch_name_en) : null,
     departmentId: Number(row.department_id),
     departmentName: String(row.department_name),
+    departmentNameEn: row.department_name_en ? String(row.department_name_en) : null,
     workDate: extractIsoDate(row.work_date) ?? '',
     shiftId: row.shift_id !== null ? Number(row.shift_id) : null,
     shiftCode: row.shift_code ? String(row.shift_code) : null,
     shiftName: row.shift_name ? String(row.shift_name) : null,
+    shiftNameEn: row.shift_name_en ? String(row.shift_name_en) : null,
     checkInTime: extractTimeHHmm(row.check_in_at),
     checkOutTime: extractTimeHHmm(row.check_out_at),
     source: row.source,
@@ -293,12 +311,15 @@ export async function getMyAttendance(
         'e.full_name as employee_name',
         'e.branch_id',
         'b.name as branch_name',
+        'b.name_en as branch_name_en',
         'e.department_id',
         'd.name as department_name',
+        'd.name_en as department_name_en',
         'al.work_date',
         'al.shift_id',
         'ws.code as shift_code',
         'ws.name as shift_name',
+        'ws.name_en as shift_name_en',
         'al.check_in_at',
         'al.check_out_at',
         'al.source',
@@ -327,12 +348,15 @@ export async function getMyAttendance(
         'e.full_name as employee_name',
         'e.branch_id',
         'b.name as branch_name',
+        'b.name_en as branch_name_en',
         'e.department_id',
         'd.name as department_name',
+        'd.name_en as department_name_en',
         'al.work_date',
         'al.shift_id',
         'ws.code as shift_code',
         'ws.name as shift_name',
+        'ws.name_en as shift_name_en',
         'al.check_in_at',
         'al.check_out_at',
         'al.source',
@@ -695,12 +719,15 @@ export async function listAttendanceLogs(
       'e.full_name as employee_name',
       'e.branch_id',
       'b.name as branch_name',
+      'b.name_en as branch_name_en',
       'e.department_id',
       'd.name as department_name',
+      'd.name_en as department_name_en',
       'al.work_date',
       'al.shift_id',
       'ws.code as shift_code',
       'ws.name as shift_name',
+      'ws.name_en as shift_name_en',
       'al.check_in_at',
       'al.check_out_at',
       'al.source',
@@ -1022,12 +1049,15 @@ export async function exportAttendanceLogsExcel(
           'e.full_name as employee_name',
           'e.branch_id',
           'b.name as branch_name',
+          'b.name_en as branch_name_en',
           'e.department_id',
           'd.name as department_name',
+          'd.name_en as department_name_en',
           'al.work_date',
           'al.shift_id',
           'ws.code as shift_code',
           'ws.name as shift_name',
+          'ws.name_en as shift_name_en',
           'al.check_in_at',
           'al.check_out_at',
           'al.source',
