@@ -106,9 +106,22 @@ export async function generatePayslipPdfBuffer(
     footnote: payslip.note
       ? `Ghi chú kế toán: ${payslip.note}. Phiếu lương được xuất tự động từ hệ thống Operon Hub — vui lòng bảo mật thông tin thu nhập cá nhân.`
       : 'Phiếu lương được xuất tự động từ hệ thống Operon Hub — vui lòng bảo mật thông tin thu nhập cá nhân.',
+    signatureSectionTitle: 'XÁC NHẬN PHIẾU LƯƠNG',
     signatures: [
-      { title: 'NGƯỜI LẬP BIỂU (C&B)', subtitle: '(Ký, ghi rõ họ tên)' },
-      { title: 'XÁC NHẬN CỦA NHÂN VIÊN', name: payslip.employeeName },
+      {
+        stepLabel: 'BỘ PHẬN C&B',
+        title: 'NGƯỜI LẬP BIỂU',
+        roleTitle: `Chi nhánh ${payslip.branchName}`,
+        subtitle: '(Ký, ghi rõ họ tên)',
+      },
+      {
+        stepLabel: 'NGƯỜI LAO ĐỘNG',
+        title: 'XÁC NHẬN CỦA NHÂN VIÊN',
+        roleTitle: `${payslip.positionName} • ${payslip.departmentName}`,
+        subtitle: '(Ký, ghi rõ họ tên)',
+        name: payslip.employeeName,
+        code: `Mã NV: ${payslip.employeeCode}`,
+      },
     ],
   });
 

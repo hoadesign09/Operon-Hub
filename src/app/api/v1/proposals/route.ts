@@ -15,6 +15,7 @@ export const GET = withAuth(
       priority: sp.get('priority'),
       branchId: sp.get('branchId'),
       departmentId: sp.get('departmentId'),
+      budgetId: sp.get('budgetId'),
       search: sp.get('search'),
       fromDate: sp.get('fromDate'),
       toDate: sp.get('toDate'),

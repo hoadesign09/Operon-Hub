@@ -174,7 +174,7 @@ export default function MyProfilePage() {
         : errorMessage;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="w-full space-y-6">
       {/* Account & Security Hero Hub (Always available for EVERY user account) */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#080E1A] via-[#0F172A] to-[#0C4A6E] p-6 text-white shadow-sm">
         <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-cyan-400/15 blur-3xl" />
@@ -191,11 +191,11 @@ export default function MyProfilePage() {
                 <h1 className="truncate text-xl font-bold tracking-tight text-white">
                   {displayName}
                 </h1>
-                {user && (
+                {/* {user && (
                   <span className="rounded-md bg-cyan-400/20 px-2 py-0.5 text-[11px] font-bold text-cyan-200 ring-1 ring-cyan-300/30">
                     {t('common.scope')}: {user.dataScope}
                   </span>
-                )}
+                )} */}
               </div>
 
               <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300">
@@ -217,8 +217,6 @@ export default function MyProfilePage() {
 
           {/* Account Security & Preferences Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <LanguageSwitcher variant="dark" />
-
             <button
               type="button"
               onClick={() => setIsPasswordModalOpen(true)}
@@ -226,16 +224,6 @@ export default function MyProfilePage() {
             >
               <IconKey size={16} />
               <span>{t('profile.changePassword')}</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={isLoggingOut}
-              onClick={() => void handleLogout()}
-              className="inline-flex h-9 items-center gap-2 rounded-xl border border-rose-400/40 bg-rose-500/15 px-4 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-60"
-            >
-              <IconLogout size={16} />
-              <span>{isLoggingOut ? t('common.loggingOutFull') : t('common.logout')}</span>
             </button>
           </div>
         </div>

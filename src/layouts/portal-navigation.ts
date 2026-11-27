@@ -142,7 +142,7 @@ export function buildDualRailGroups(
       {
         label: translateApp(locale, 'nav.item.servicesItRequests'),
         href: '/services/it-requests',
-        isComingSoon: true,
+        requiredPermission: 'it_requests.read',
       },
       {
         label: translateApp(locale, 'nav.item.servicesProposals'),
@@ -152,7 +152,7 @@ export function buildDualRailGroups(
       {
         label: translateApp(locale, 'nav.item.servicesPayments'),
         href: '/services/payments',
-        isComingSoon: true,
+        requiredPermission: 'payments.read',
       },
       {
         label: translateApp(locale, 'nav.item.servicesCarBooking'),

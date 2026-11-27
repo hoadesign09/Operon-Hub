@@ -400,13 +400,17 @@ export async function generateProjectStatusPdf(
     sections: [
       {
         title: '1. Tiến độ Các Cột mốc Trọng yếu (Milestones)',
+        labelHeader: 'Tên cột mốc',
         valueHeader: 'Trạng thái / Tiến độ',
+        noteHeader: 'Ghi chú',
+        valueAlignment: 'left',
+        columnWidths: ['38%', '24%', '38%'],
         rows:
           milestones.length > 0
             ? milestones.map((m) => ({
                 label: m.name,
-                note: `Hạn: ${formatDateVN(m.dueDate)}${m.ownerName ? ` • PT: ${m.ownerName}` : ''}`,
                 value: `${m.status} (${m.progressPercent}%)`,
+                note: `Hạn: ${formatDateVN(m.dueDate)}${m.ownerName ? ` • PT: ${m.ownerName}` : ''}`,
               }))
             : [{ label: 'Chưa thiết lập cột mốc dự án', value: '—' }],
       },
@@ -414,35 +418,44 @@ export async function generateProjectStatusPdf(
         ? [
             {
               title: '2. Tổng hợp Ngân sách & Chi phí (VNĐ)',
-              valueHeader: 'Thực tế / Kế hoạch',
+              labelHeader: 'Hạng mục chi phí',
+              valueHeader: 'Thực tế (VNĐ)',
+              noteHeader: 'Ghi chú',
+              valueAlignment: 'right' as const,
+              columnWidths: ['40%', '24%', '36%'] as [string, string, string],
               rows:
                 budget.items.length > 0
                   ? budget.items.slice(0, 12).map((b) => ({
                       label: `[${b.category}] ${b.title}`,
-                      note: `KH: ${formatVND(b.plannedAmount)} • ${b.status}`,
                       value: formatVND(b.actualAmount),
+                      note: `KH: ${formatVND(b.plannedAmount)} • ${b.status}`,
                     }))
                   : [
                       {
                         label: 'Chi phí nhân công từ Timesheet đã duyệt',
-                        note: 'Tự động tổng hợp',
                         value: formatVND(budget.approvedLaborCost),
+                        note: 'Tự động tổng hợp',
                       },
                     ],
-              totalLabel: 'Tổng Chi phí Thực tế / Ngân sách Kế hoạch',
-              totalValue: `${formatVND(budget.actualCost)} / ${formatVND(budget.plannedBudget)}`,
+              totalLabel: 'Tổng Chi phí Thực tế',
+              totalValue: formatVND(budget.actualCost),
+              totalNote: `Ngân sách KH: ${formatVND(budget.plannedBudget)}`,
             },
           ]
         : []),
       {
         title: budget ? '3. Rủi ro & Vấn đề Trọng yếu (RAID Register)' : '2. Rủi ro & Vấn đề Trọng yếu (RAID Register)',
+        labelHeader: 'Mã & Nội dung rủi ro',
         valueHeader: 'Mức độ (P×I)',
+        noteHeader: 'Ghi chú',
+        valueAlignment: 'right',
+        columnWidths: ['42%', '22%', '36%'],
         rows:
           risks.length > 0
             ? risks.slice(0, 10).map((r) => ({
                 label: `[${r.code}] ${r.title}`,
-                note: `${r.itemType} • ${r.status}${r.ownerName ? ` • ${r.ownerName}` : ''}`,
                 value: `${r.severityScore}/25 (${r.probability}×${r.impact})`,
+                note: `${r.itemType} • ${r.status}${r.ownerName ? ` • ${r.ownerName}` : ''}`,
                 isBold: r.severityScore >= 15,
               }))
             : [{ label: 'Không ghi nhận rủi ro/vấn đề tồn đọng', value: 'An toàn' }],
@@ -454,10 +467,28 @@ export async function generateProjectStatusPdf(
       value: `${Math.round(project.progressPercent)}%`,
     },
     footnote: 'Tài liệu được xuất tự động từ hệ thống Operon Hub Project Management.',
+    signatureSectionTitle: 'XÁC NHẬN BÁO CÁO DỰ ÁN',
     signatures: [
-      { title: 'Quản lý Dự án (PM)', name: project.managerName },
-      { title: 'Chủ sở hữu Dự án (Sponsor)', name: project.ownerName },
-      { title: 'Ban Giám đốc / PMO', subtitle: '(Phê duyệt & đóng dấu)' },
+      {
+        stepLabel: 'LẬP BÁO CÁO',
+        title: 'QUẢN LÝ DỰ ÁN (PM)',
+        roleTitle: project.branchName,
+        subtitle: '(Ký, ghi rõ họ tên)',
+        name: project.managerName,
+      },
+      {
+        stepLabel: 'BẢO TRỢ DỰ ÁN',
+        title: 'CHỦ SỞ HỮU DỰ ÁN (SPONSOR)',
+        roleTitle: project.departmentName ?? project.branchName,
+        subtitle: '(Ký, ghi rõ họ tên)',
+        name: project.ownerName,
+      },
+      {
+        stepLabel: 'PHÊ DUYỆT',
+        title: 'BAN GIÁM ĐỐC / PMO',
+        roleTitle: 'Kiểm duyệt & xác nhận',
+        subtitle: '(Ký duyệt & đóng dấu)',
+      },
     ],
   });
 

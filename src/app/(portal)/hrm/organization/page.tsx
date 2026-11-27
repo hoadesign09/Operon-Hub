@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   IconBriefcase,
+  IconBuilding,
   IconEdit,
   IconHierarchy2,
   IconInbox,
@@ -11,6 +12,8 @@ import {
   IconRefresh,
   IconSearch,
   IconTrash,
+  IconUserCheck,
+  IconUsers,
   IconX,
 } from '@tabler/icons-react';
 import {
@@ -20,6 +23,7 @@ import {
 } from '@/components/hrm/OrgChartTree';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { computeOrgTreeMetrics } from '@/lib/portable/org-chart-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface DepartmentRow {
@@ -35,6 +39,12 @@ interface DepartmentRow {
   name: string;
   nameEn?: string | null;
   description: string | null;
+  managerEmployeeId?: number | null;
+  managerName?: string | null;
+  managerCode?: string | null;
+  managerPosition?: string | null;
+  managerPositionEn?: string | null;
+  employeeCount?: number;
   sortOrder: number;
   isActive: boolean;
 }
@@ -47,6 +57,16 @@ interface PositionRow {
   level: number;
   description: string | null;
   isActive: boolean;
+}
+
+interface EmployeeOption {
+  id: number;
+  employeeCode: string;
+  fullName: string;
+  branchId: number;
+  departmentName?: string | null;
+  positionName?: string | null;
+  positionNameEn?: string | null;
 }
 
 type OrgTab = 'tree' | 'departments' | 'positions';
@@ -68,6 +88,7 @@ export default function HrmOrganizationPage() {
   const [orgTree, setOrgTree] = useState<BranchOrgTreeData[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
   const [positions, setPositions] = useState<PositionRow[]>([]);
+  const [employeeOptions, setEmployeeOptions] = useState<EmployeeOption[]>([]);
 
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -77,6 +98,7 @@ export default function HrmOrganizationPage() {
   const [editingDeptId, setEditingDeptId] = useState<number | null>(null);
   const [deptBranchId, setDeptBranchId] = useState('');
   const [deptParentId, setDeptParentId] = useState('');
+  const [deptManagerId, setDeptManagerId] = useState('');
   const [deptCode, setDeptCode] = useState('');
   const [deptName, setDeptName] = useState('');
   const [deptNameEn, setDeptNameEn] = useState('');
@@ -116,7 +138,7 @@ export default function HrmOrganizationPage() {
     const branchParam = selectedBranchId ? `&branchId=${selectedBranchId}` : '';
     const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : '';
 
-    Promise.all([
+    const requests: Promise<Response>[] = [
       fetch(`/api/v1/hrm/org/departments/tree?includeInactive=true${branchParam}`, {
         cache: 'no-store',
         signal: controller.signal,
@@ -129,15 +151,27 @@ export default function HrmOrganizationPage() {
         cache: 'no-store',
         signal: controller.signal,
       }),
-    ])
-      .then(async ([treeRes, deptRes, posRes]) => {
+    ];
+
+    if (canManage) {
+      requests.push(
+        fetch(`/api/v1/hrm/employees?limit=200${branchParam}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        }),
+      );
+    }
+
+    Promise.all(requests)
+      .then(async ([treeRes, deptRes, posRes, empRes]) => {
         if (controller.signal.aborted) {
           return;
         }
-        const [treeJson, deptJson, posJson] = await Promise.all([
+        const [treeJson, deptJson, posJson, empJson] = await Promise.all([
           treeRes.json().catch(() => null),
           deptRes.json().catch(() => null),
           posRes.json().catch(() => null),
+          empRes ? empRes.json().catch(() => null) : Promise.resolve(null),
         ]);
 
         if (!treeRes.ok || !treeJson?.success) {
@@ -155,6 +189,9 @@ export default function HrmOrganizationPage() {
         setOrgTree((treeJson.data ?? []) as BranchOrgTreeData[]);
         setDepartments((deptJson?.data ?? []) as DepartmentRow[]);
         setPositions((posJson?.data ?? []) as PositionRow[]);
+        if (empRes?.ok && empJson?.success && Array.isArray(empJson.data)) {
+          setEmployeeOptions(empJson.data as EmployeeOption[]);
+        }
         setErrorMessage('');
         setViewState('success');
       })
@@ -172,7 +209,32 @@ export default function HrmOrganizationPage() {
       });
 
     return () => controller.abort();
-  }, [selectedBranchId, debouncedSearch, reloadTick]);
+  }, [selectedBranchId, debouncedSearch, reloadTick, canManage]);
+
+  const orgKpis = useMemo(() => {
+    let totalDepartments = 0;
+    let activeDepartments = 0;
+    let totalStaff = 0;
+    let maxDepth = 0;
+
+    for (const branch of orgTree) {
+      const m = computeOrgTreeMetrics(branch.departments, (n) => n.employeeCount ?? 0);
+      totalDepartments += m.totalNodes;
+      activeDepartments += m.activeNodes;
+      totalStaff += m.totalHeadcount;
+      if (m.maxDepth > maxDepth) {
+        maxDepth = m.maxDepth;
+      }
+    }
+
+    return {
+      branches: orgTree.length,
+      totalDepartments,
+      activeDepartments,
+      totalStaff,
+      maxDepth,
+    };
+  }, [orgTree]);
 
   function triggerReload() {
     setViewState('loading');
@@ -184,6 +246,7 @@ export default function HrmOrganizationPage() {
     setEditingDeptId(null);
     setDeptBranchId(String(defaultBranch));
     setDeptParentId(prefillParentId ? String(prefillParentId) : '');
+    setDeptManagerId('');
     setDeptCode('');
     setDeptName('');
     setDeptNameEn('');
@@ -198,6 +261,7 @@ export default function HrmOrganizationPage() {
     setEditingDeptId(dept.id);
     setDeptBranchId(String(dept.branchId));
     setDeptParentId(dept.parentId ? String(dept.parentId) : '');
+    setDeptManagerId(dept.managerEmployeeId ? String(dept.managerEmployeeId) : '');
     setDeptCode(dept.code);
     setDeptName(dept.name);
     setDeptNameEn(dept.nameEn ?? '');
@@ -225,6 +289,7 @@ export default function HrmOrganizationPage() {
         body: JSON.stringify({
           branchId: Number(deptBranchId),
           parentId: deptParentId ? Number(deptParentId) : null,
+          managerEmployeeId: deptManagerId ? Number(deptManagerId) : null,
           code: deptCode.trim().toUpperCase(),
           name: deptName.trim(),
           nameEn: deptNameEn.trim() || null,
@@ -362,102 +427,164 @@ export default function HrmOrganizationPage() {
     (d) => String(d.branchId) === deptBranchId && d.id !== editingDeptId,
   );
 
-  return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">
-            {tr('Cơ cấu Tổ chức (HRM)', 'Organization Structure (HRM)')}
-          </h1>
-          <p className="text-sm text-slate-500">
-            {tr(
-              'Quản lý Sơ đồ Tổ chức, cây Phòng ban đa cấp theo Chi nhánh và Danh mục Chức danh.',
-              'Manage the organization chart, multi-level branch department tree, and position catalog.',
-            )}
-          </p>
-        </div>
+  const candidateManagers = employeeOptions.filter(
+    (emp) => !deptBranchId || String(emp.branchId) === deptBranchId,
+  );
 
-        {canManage && (
-          <div className="flex flex-wrap gap-2">
-            {activeTab === 'positions' ? (
-              <button
-                type="button"
-                onClick={openCreatePosition}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-              >
-                <IconPlus size={17} />
-                <span>{tr('Thêm chức danh', 'Add Position')}</span>
-              </button>
-            ) : (
+  return (
+    <div className="w-full space-y-5">
+      {/* Executive Midnight Hero Header */}
+      <section className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#080E1A] via-[#0F1C36] to-[#162C52] p-5 text-white shadow-lg sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-cyan-300 uppercase ring-1 ring-cyan-400/30">
+              <IconHierarchy2 size={14} />
+              <span>{tr('Sơ đồ Tổ chức Tương tác', 'Interactive Organization Chart')}</span>
+            </div>
+            <h1 className="mt-2.5 text-xl font-bold tracking-tight text-white sm:text-2xl">
+              {tr('Cơ cấu Tổ chức (HRM)', 'Organization Structure (HRM)')}
+            </h1>
+            <p className="mt-1 text-xs text-slate-300 sm:text-sm">
+              {tr(
+                'Trực quan hóa cơ cấu tổ chức đa góc nhìn (Sơ đồ dọc, Sơ đồ ngang, Lưới thẻ, Cột phân cấp, Danh sách cây) và quản lý Danh mục Phòng ban & Chức danh.',
+                'Visualize organization hierarchy across multiple layouts (Top-Down, Horizontal, Card Grid, Columns, Tree List) and manage Departments & Positions.',
+              )}
+            </p>
+          </div>
+
+          {canManage && (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => openCreateDepartment()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-blue-600/30 transition hover:bg-blue-500 sm:text-sm"
               >
-                <IconPlus size={17} />
+                <IconPlus size={16} />
                 <span>{tr('Thêm phòng ban', 'Add Department')}</span>
               </button>
-            )}
-          </div>
-        )}
-      </div>
+              <button
+                type="button"
+                onClick={openCreatePosition}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/20 sm:text-sm"
+              >
+                <IconBriefcase size={16} />
+                <span>{tr('Thêm chức danh', 'Add Position')}</span>
+              </button>
+            </div>
+          )}
+        </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-slate-200">
+        {/* Live Org KPI Strip */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xs">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-300">
+              <IconBuilding size={14} className="text-cyan-400" />
+              <span>{tr('Chi nhánh hiển thị', 'Visible Branches')}</span>
+            </div>
+            <div className="mt-1 text-xl font-bold text-white">{orgKpis.branches}</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xs">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-300">
+              <IconHierarchy2 size={14} className="text-blue-400" />
+              <span>{tr('Phòng ban hoạt động', 'Active Departments')}</span>
+            </div>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-xl font-bold text-white">{orgKpis.activeDepartments}</span>
+              {orgKpis.totalDepartments !== orgKpis.activeDepartments && (
+                <span className="text-xs text-slate-400">/ {orgKpis.totalDepartments}</span>
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xs">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-300">
+              <IconUsers size={14} className="text-emerald-400" />
+              <span>{tr('Nhân sự thuộc sơ đồ', 'Staff on Chart')}</span>
+            </div>
+            <div className="mt-1 text-xl font-bold text-white">{orgKpis.totalStaff}</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xs">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-300">
+              <IconBriefcase size={14} className="text-amber-400" />
+              <span>{tr('Cấp bậc / Chức danh', 'Depth / Positions')}</span>
+            </div>
+            <div className="mt-1 text-xl font-bold text-white">
+              L{orgKpis.maxDepth}{' '}
+              <span className="text-xs font-normal text-slate-300">
+                · {positions.length} {tr('chức danh', 'titles')}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Module Navigation Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200">
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveTab('tree')}
+            className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+              activeTab === 'tree'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <IconHierarchy2 size={17} />
+            <span>{tr('Sơ đồ Tổ chức (Org Chart)', 'Org Chart')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('departments')}
+            className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+              activeTab === 'departments'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <IconListDetails size={17} />
+            <span>
+              {tr('Danh sách Phòng ban', 'Departments')} ({departments.length})
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('positions')}
+            className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+              activeTab === 'positions'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <IconBriefcase size={17} />
+            <span>
+              {tr('Danh mục Chức danh', 'Positions')} ({positions.length})
+            </span>
+          </button>
+        </div>
+
         <button
           type="button"
-          onClick={() => setActiveTab('tree')}
-          className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium ${
-            activeTab === 'tree'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
+          onClick={triggerReload}
+          className="mb-1.5 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
         >
-          <IconHierarchy2 size={17} />
-          <span>{tr('Sơ đồ Tổ chức (Org Chart)', 'Org Chart')}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('departments')}
-          className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium ${
-            activeTab === 'departments'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <IconListDetails size={17} />
-          <span>
-            {tr('Phòng ban', 'Departments')} ({departments.length})
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('positions')}
-          className={`inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium ${
-            activeTab === 'positions'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <IconBriefcase size={17} />
-          <span>
-            {tr('Chức danh', 'Positions')} ({positions.length})
-          </span>
+          <IconRefresh size={14} />
+          <span>{tr('Làm mới', 'Refresh')}</span>
         </button>
       </div>
 
       {activeTab !== 'tree' && (
-        <div className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
           <IconSearch
             size={16}
-            className="pointer-events-none absolute left-7 top-1/2 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute top-1/2 left-7 -translate-y-1/2 text-slate-400"
           />
           <input
             type="text"
             placeholder={
               activeTab === 'departments'
                 ? tr(
-                    'Tìm theo mã hoặc tên phòng ban...',
-                    'Search by department code or name...',
+                    'Tìm theo mã, tên phòng ban hoặc trưởng bộ phận...',
+                    'Search by department code, name, or manager...',
                   )
                 : tr(
                     'Tìm theo mã hoặc tên chức danh...',
@@ -466,7 +593,7 @@ export default function HrmOrganizationPage() {
             }
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-xl border border-slate-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-blue-500"
           />
         </div>
       )}
@@ -474,7 +601,7 @@ export default function HrmOrganizationPage() {
       {viewState === 'loading' && (
         <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-100" />
           ))}
         </div>
       )}
@@ -508,6 +635,16 @@ export default function HrmOrganizationPage() {
             onAddRoot={(branchId) => openCreateDepartment(branchId)}
             onAddChild={(branchId, parentId) => openCreateDepartment(branchId, parentId)}
             onEdit={(node) => openEditDepartment(node)}
+            onDelete={
+              canManage
+                ? (node) =>
+                    setDeleteTarget({
+                      kind: 'department',
+                      id: node.id,
+                      label: `${ln(node.name, node.nameEn)} (${node.code})`,
+                    })
+                : undefined
+            }
           />
         )
       )}
@@ -531,15 +668,17 @@ export default function HrmOrganizationPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
                   <tr>
                     <th className="px-4 py-3">{tr('Mã', 'Code')}</th>
                     <th className="px-4 py-3">{tr('Tên phòng ban', 'Department Name')}</th>
                     <th className="px-4 py-3">{tr('Chi nhánh', 'Branch')}</th>
                     <th className="px-4 py-3">{tr('Trực thuộc', 'Parent Department')}</th>
+                    <th className="px-4 py-3">{tr('Trưởng bộ phận', 'Manager')}</th>
+                    <th className="px-4 py-3 text-center">{tr('Nhân sự', 'Staff')}</th>
                     <th className="px-4 py-3">{tr('Trạng thái', 'Status')}</th>
                     <th className="px-4 py-3 text-right">{tr('Thao tác', 'Actions')}</th>
                   </tr>
@@ -547,7 +686,7 @@ export default function HrmOrganizationPage() {
                 <tbody className="divide-y divide-slate-100">
                   {departments.map((d) => (
                     <tr key={d.id} className="hover:bg-slate-50/70">
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-slate-800">
+                      <td className="px-4 py-3 font-mono text-xs font-semibold whitespace-nowrap text-slate-800">
                         {d.code}
                       </td>
                       <td className="px-4 py-3">
@@ -556,13 +695,31 @@ export default function HrmOrganizationPage() {
                           <div className="text-xs text-slate-500">{d.description}</div>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700">
+                      <td className="px-4 py-3 text-xs whitespace-nowrap text-slate-700">
                         {ln(d.branchName, d.branchNameEn)} ({d.branchCode})
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
+                      <td className="px-4 py-3 text-xs whitespace-nowrap text-slate-600">
                         {d.parentName ? ln(d.parentName, d.parentNameEn) : tr('Cấp gốc', 'Root Level')}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
+                      <td className="px-4 py-3 text-xs whitespace-nowrap text-slate-700">
+                        {d.managerName ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <IconUserCheck size={14} className="text-blue-600" />
+                            <span className="font-medium text-slate-900">{d.managerName}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">
+                            {tr('Chưa gán', 'Unassigned')}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                          <IconUsers size={12} className="text-blue-500" />
+                          <span>{d.employeeCount ?? 0}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             d.isActive
@@ -573,7 +730,7 @@ export default function HrmOrganizationPage() {
                           {d.isActive ? tr('Hoạt động', 'Active') : tr('Tạm ngưng', 'Inactive')}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         {canManage && (
                           <div className="inline-flex gap-1.5">
                             <button
@@ -629,10 +786,10 @@ export default function HrmOrganizationPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
                   <tr>
                     <th className="px-4 py-3">{tr('Mã', 'Code')}</th>
                     <th className="px-4 py-3">{tr('Tên chức danh', 'Position Name')}</th>
@@ -644,7 +801,7 @@ export default function HrmOrganizationPage() {
                 <tbody className="divide-y divide-slate-100">
                   {positions.map((pos) => (
                     <tr key={pos.id} className="hover:bg-slate-50/70">
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-slate-800">
+                      <td className="px-4 py-3 font-mono text-xs font-semibold whitespace-nowrap text-slate-800">
                         {pos.code}
                       </td>
                       <td className="px-4 py-3">
@@ -653,12 +810,12 @@ export default function HrmOrganizationPage() {
                           <div className="text-xs text-slate-500">{pos.description}</div>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className="rounded-md bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
                           Level {pos.level}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             pos.isActive
@@ -669,7 +826,7 @@ export default function HrmOrganizationPage() {
                           {pos.isActive ? tr('Hoạt động', 'Active') : tr('Tạm ngưng', 'Inactive')}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         {canManage && (
                           <div className="inline-flex gap-1.5">
                             <button
@@ -804,17 +961,36 @@ export default function HrmOrganizationPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">
-                  {tr('Tên tiếng Anh', 'English Name')}
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sales Department"
-                  value={deptNameEn}
-                  onChange={(e) => setDeptNameEn(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Tên tiếng Anh', 'English Name')}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Sales Department"
+                    value={deptNameEn}
+                    onChange={(e) => setDeptNameEn(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    {tr('Trưởng bộ phận', 'Department Manager')}
+                  </label>
+                  <select
+                    value={deptManagerId}
+                    onChange={(e) => setDeptManagerId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">{tr('-- Chưa gán --', '-- Unassigned --')}</option>
+                    {candidateManagers.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.fullName} ({emp.employeeCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

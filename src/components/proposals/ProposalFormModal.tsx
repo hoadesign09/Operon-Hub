@@ -4,6 +4,8 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { IconPlus, IconSend, IconTrash, IconX } from '@tabler/icons-react';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { calculateProposalLineTotals } from '@/lib/portable/proposal-calculator';
+import { BudgetImpactPreview } from '@/components/payments/BudgetImpactPreview';
+import type { BudgetOptionDto } from '@/components/payments/budget-ui.helpers';
 import {
   PROPOSAL_PRIORITY_META,
   type ProposalCategoryOption,
@@ -32,6 +34,7 @@ export interface EditableProposalData {
   categoryId: number;
   branchId: number;
   departmentId: number | null;
+  budgetId?: number | null;
   title: string;
   summary: string | null;
   content: string;
@@ -58,6 +61,7 @@ interface ProposalFormModalProps {
   categories: ProposalCategoryOption[];
   branches: BranchOption[];
   departments: DepartmentOption[];
+  budgets?: BudgetOptionDto[];
   onClose: () => void;
   onSaved: (proposalId?: number) => void;
 }
@@ -79,6 +83,7 @@ export function ProposalFormModal({
   categories,
   branches,
   departments,
+  budgets = [],
   onClose,
   onSaved,
 }: ProposalFormModalProps) {
@@ -95,6 +100,9 @@ export function ProposalFormModal({
   );
   const [departmentId, setDepartmentId] = useState<string>(() =>
     editingProposal?.departmentId ? String(editingProposal.departmentId) : '',
+  );
+  const [budgetId, setBudgetId] = useState<string>(() =>
+    editingProposal?.budgetId ? String(editingProposal.budgetId) : '',
   );
   const [title, setTitle] = useState(editingProposal?.title ?? '');
   const [summary, setSummary] = useState(editingProposal?.summary ?? '');
@@ -136,6 +144,12 @@ export function ProposalFormModal({
     }
     return departments.filter((d) => String(d.branchId) === branchId);
   }, [departments, branchId]);
+
+  const selectedBudget = useMemo(() => {
+    const idNum = Number(budgetId);
+    if (!idNum) return null;
+    return budgets.find((b) => b.id === idNum) ?? null;
+  }, [budgetId, budgets]);
 
   const parsedLinesSummary = useMemo(() => {
     const valid = lines
@@ -207,6 +221,7 @@ export function ProposalFormModal({
         categoryId: Number(categoryId),
         branchId: branchId ? Number(branchId) : null,
         departmentId: departmentId ? Number(departmentId) : null,
+        budgetId: budgetId ? Number(budgetId) : null,
         title: title.trim(),
         summary: summary.trim() || null,
         content: content.trim(),
@@ -517,7 +532,33 @@ export function ProposalFormModal({
           </div>
 
           {/* Budget & Line Items Builder */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3.5">
+              <label className="block text-xs font-bold text-slate-700">
+                {tr('Nguồn Quỹ Ngân sách Sử dụng (từ Module Thanh toán)', 'Budget Fund Source (from Payments Module)')}
+              </label>
+              <select
+                value={budgetId}
+                onChange={(e) => setBudgetId(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-500"
+              >
+                <option value="">
+                  {tr('-- Không gắn quỹ ngân sách (hoặc đề xuất không phát sinh chi phí) --', '-- No budget fund assigned --')}
+                </option>
+                {budgets.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    [{b.code}] {ln(b.name, b.nameEn)} — {tr('Khả dụng', 'Avail')}: {formatVND(b.availableAmount)}
+                  </option>
+                ))}
+              </select>
+              {selectedBudget && (
+                <BudgetImpactPreview
+                  budget={selectedBudget}
+                  requestedAmount={effectiveBudget}
+                />
+              )}
+            </div>
+
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wide text-slate-700">

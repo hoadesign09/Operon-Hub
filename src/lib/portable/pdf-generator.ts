@@ -2,6 +2,10 @@
  * Tiện ích sinh file PDF tiếng Việt chuẩn Unicode (font Roboto nhúng sẵn, khổ A4/A5) dùng pdfmake (MIT).
  * Không phụ thuộc cấu hình hay nghiệp vụ dự án (Zero Business Coupling).
  *
+ * Quy chuẩn bảng biểu:
+ * - Cột "Ghi chú" (note) LUÔN nằm ở cột cuối cùng (cột 3) trên mọi bảng tài liệu.
+ * - Khối chân chữ ký được bọc `unbreakable: true`, bố cục dạng thẻ có đường ký, chức danh, trạng thái & thời điểm.
+ *
  * Dependencies: pdfmake (MIT)
  *
  * Input / Output:
@@ -14,7 +18,7 @@
  *   title: 'PHIẾU LƯƠNG THÁNG 11/2026',
  *   subtitle: 'Công ty TNHH Operon Hub',
  *   metadata: [{ label: 'Nhân viên', value: 'Nguyễn Văn A' }],
- *   sections: [{ title: 'Thu nhập', rows: [{ label: 'Lương cơ bản', value: '15.000.000 ₫' }] }],
+ *   sections: [{ title: 'Thu nhập', rows: [{ label: 'Lương cơ bản', value: '15.000.000 ₫', note: 'Theo HĐLĐ' }] }],
  * });
  * const pdfBuffer = await generatePdfBuffer(doc);
  * ```
@@ -22,6 +26,7 @@
 
 import PdfPrinter from 'pdfmake';
 import type {
+  Alignment,
   Content,
   PageOrientation,
   PageSize,
@@ -45,10 +50,15 @@ export interface PdfSectionRow {
 
 export interface PdfTableSection {
   title: string;
+  labelHeader?: string;
   valueHeader?: string;
+  noteHeader?: string;
+  valueAlignment?: Alignment;
+  columnWidths?: [string | number, string | number, string | number];
   rows: PdfSectionRow[];
   totalLabel?: string;
   totalValue?: string;
+  totalNote?: string;
 }
 
 export interface PdfHighlightBox {
@@ -57,10 +67,19 @@ export interface PdfHighlightBox {
   subtext?: string;
 }
 
+export type PdfSignatureStatusTone = 'approved' | 'pending' | 'rejected' | 'draft';
+
 export interface PdfSignatureSlot {
   title: string;
+  stepLabel?: string;
+  roleTitle?: string;
   subtitle?: string;
   name?: string;
+  code?: string;
+  statusText?: string;
+  statusTone?: PdfSignatureStatusTone;
+  signedAt?: string;
+  note?: string;
 }
 
 export interface StructuredPdfOptions {
@@ -74,12 +93,30 @@ export interface StructuredPdfOptions {
   sections: PdfTableSection[];
   highlight?: PdfHighlightBox;
   footnote?: string;
+  signatureSectionTitle?: string;
+  signatureHeader?: string;
   signatures?: PdfSignatureSlot[];
+  footerLeftText?: string;
 }
 
 interface VfsFontMap {
   [filename: string]: string;
 }
+
+interface SignatureTonePalette {
+  fill: string;
+  border: string;
+  text: string;
+}
+
+const SIGNATURE_TONE_STYLES: Record<PdfSignatureStatusTone, SignatureTonePalette> = {
+  approved: { fill: '#ecfdf5', border: '#6ee7b7', text: '#047857' },
+  pending: { fill: '#fffbeb', border: '#fcd34d', text: '#b45309' },
+  rejected: { fill: '#fef2f2', border: '#fca5a5', text: '#b91c1c' },
+  draft: { fill: '#f8fafc', border: '#cbd5e1', text: '#475569' },
+};
+
+const DEFAULT_TABLE_WIDTHS: [string, string, string] = ['40%', '26%', '34%'];
 
 let cachedPrinter: PdfPrinter | null = null;
 
@@ -186,6 +223,7 @@ function buildMetadataBlock(metadata: PdfMetadataField[]): Content {
     fillColor: '#f8fafc',
     table: {
       widths: ['18%', '32%', '18%', '32%'],
+      dontBreakRows: true,
       body: rows,
     },
     layout: {
@@ -199,30 +237,39 @@ function buildMetadataBlock(metadata: PdfMetadataField[]): Content {
   };
 }
 
+/**
+ * Quy chuẩn chung cho tất cả tài liệu PDF:
+ * Cột 1: Khoản mục (`label`)
+ * Cột 2: Giá trị / Số tiền / Nội dung (`value`)
+ * Cột 3 (LUÔN LÀ CỘT CUỐI CÙNG): Ghi chú (`note`)
+ */
 function buildSectionTable(section: PdfTableSection): Content[] {
+  const valueAlignment: Alignment = section.valueAlignment ?? 'right';
+  const widths = section.columnWidths ?? DEFAULT_TABLE_WIDTHS;
+
   const body: TableCell[][] = [
     [
-      { text: 'Khoản mục', style: 'tableHeader', fillColor: '#e2e8f0' },
-      { text: 'Ghi chú', style: 'tableHeader', fillColor: '#e2e8f0' },
+      { text: section.labelHeader ?? 'Khoản mục', style: 'tableHeader', fillColor: '#e2e8f0' },
       {
         text: section.valueHeader ?? 'Số tiền (VNĐ)',
         style: 'tableHeader',
-        alignment: 'right',
+        alignment: valueAlignment,
         fillColor: '#e2e8f0',
       },
+      { text: section.noteHeader ?? 'Ghi chú', style: 'tableHeader', fillColor: '#e2e8f0' },
     ],
   ];
 
   for (const row of section.rows) {
     body.push([
       { text: row.label, bold: Boolean(row.isBold), fontSize: 9.5 },
-      { text: row.note ?? '', fontSize: 8.5, color: '#64748b' },
       {
         text: row.value,
-        alignment: 'right',
+        alignment: valueAlignment,
         bold: Boolean(row.isBold),
         fontSize: 9.5,
       },
+      { text: row.note ?? '', fontSize: 8.5, color: '#64748b' },
     ]);
   }
 
@@ -230,18 +277,23 @@ function buildSectionTable(section: PdfTableSection): Content[] {
     body.push([
       {
         text: section.totalLabel,
-        colSpan: 2,
         bold: true,
         fillColor: '#f1f5f9',
-        fontSize: 10,
+        fontSize: 9.5,
       },
-      {},
       {
         text: section.totalValue,
-        alignment: 'right',
+        alignment: valueAlignment,
         bold: true,
         fillColor: '#f1f5f9',
-        fontSize: 10,
+        fontSize: 9.5,
+      },
+      {
+        text: section.totalNote ?? '',
+        fontSize: 8.5,
+        italics: true,
+        color: '#475569',
+        fillColor: '#f1f5f9',
       },
     ]);
   }
@@ -252,7 +304,8 @@ function buildSectionTable(section: PdfTableSection): Content[] {
       margin: [0, 0, 0, 6],
       table: {
         headerRows: 1,
-        widths: ['45%', '30%', '25%'],
+        dontBreakRows: true,
+        widths,
         body,
       },
       layout: {
@@ -265,6 +318,260 @@ function buildSectionTable(section: PdfTableSection): Content[] {
       },
     },
   ];
+}
+
+function buildSignatureStatusBadge(sig: PdfSignatureSlot): Content | null {
+  if (!sig.statusText) {
+    return null;
+  }
+
+  const tone: PdfSignatureStatusTone = sig.statusTone ?? 'draft';
+  const palette = SIGNATURE_TONE_STYLES[tone];
+  const isActed = tone === 'approved' || tone === 'rejected';
+
+  const badgeStack: Content[] = [
+    {
+      text: sig.statusText.toUpperCase(),
+      fontSize: 7.5,
+      bold: true,
+      color: palette.text,
+      alignment: 'center',
+    },
+  ];
+
+  if (isActed && sig.signedAt) {
+    badgeStack.push({
+      text: sig.signedAt,
+      fontSize: 7,
+      color: '#334155',
+      alignment: 'center',
+      margin: [0, 2, 0, 0],
+    });
+  }
+
+  if (isActed && sig.note) {
+    badgeStack.push({
+      text: `"${sig.note}"`,
+      fontSize: 7,
+      italics: true,
+      color: '#475569',
+      alignment: 'center',
+      margin: [0, 2, 0, 0],
+    });
+  }
+
+  return {
+    margin: [4, isActed ? 6 : 4, 4, isActed ? 8 : 22],
+    table: {
+      widths: ['*'],
+      body: [
+        [
+          {
+            stack: badgeStack,
+            fillColor: palette.fill,
+          },
+        ],
+      ],
+    },
+    layout: {
+      hLineWidth: () => 0.6,
+      vLineWidth: () => 0.6,
+      hLineColor: () => palette.border,
+      vLineColor: () => palette.border,
+      paddingTop: () => 4,
+      paddingBottom: () => 4,
+      paddingLeft: () => 5,
+      paddingRight: () => 5,
+    },
+  };
+}
+
+function buildSignatureCardCell(sig: PdfSignatureSlot): TableCell {
+  const stack: Content[] = [];
+
+  if (sig.stepLabel) {
+    stack.push({
+      text: sig.stepLabel.toUpperCase(),
+      fontSize: 7,
+      bold: true,
+      color: '#1d4ed8',
+      alignment: 'center',
+      margin: [0, 0, 0, 2],
+    });
+  }
+
+  stack.push({
+    text: sig.title.toUpperCase(),
+    bold: true,
+    fontSize: 8.5,
+    color: '#0f172a',
+    alignment: 'center',
+  });
+
+  if (sig.roleTitle) {
+    stack.push({
+      text: sig.roleTitle,
+      fontSize: 7.5,
+      color: '#475569',
+      alignment: 'center',
+      margin: [0, 1.5, 0, 0],
+    });
+  }
+
+  stack.push({
+    text: sig.subtitle ?? '(Ký, ghi rõ họ tên)',
+    italics: true,
+    fontSize: 7.5,
+    color: '#64748b',
+    alignment: 'center',
+    margin: [0, 1.5, 0, 4],
+  });
+
+  const badge = buildSignatureStatusBadge(sig);
+  if (badge) {
+    stack.push(badge);
+  } else {
+    stack.push({ text: ' ', fontSize: 8, margin: [0, 28, 0, 0] });
+  }
+
+  // Đường gạch chữ ký tự co giãn theo độ rộng cột (không phụ thuộc ký tự Unicode lạ)
+  stack.push({
+    margin: [10, 0, 10, 4],
+    table: {
+      widths: ['*'],
+      body: [[{ text: '', border: [false, false, false, true] }]],
+    },
+    layout: {
+      hLineWidth: (i) => (i === 1 ? 0.6 : 0),
+      vLineWidth: () => 0,
+      hLineColor: () => '#94a3b8',
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
+    },
+  });
+
+  if (sig.name) {
+    stack.push({
+      text: sig.name,
+      bold: true,
+      fontSize: 8.5,
+      color: '#0f172a',
+      alignment: 'center',
+    });
+  } else {
+    stack.push({
+      text: 'Họ và tên: ...................',
+      fontSize: 7.5,
+      color: '#64748b',
+      alignment: 'center',
+    });
+  }
+
+  if (sig.code) {
+    stack.push({
+      text: sig.code,
+      fontSize: 7,
+      color: '#64748b',
+      alignment: 'center',
+      margin: [0, 1, 0, 0],
+    });
+  }
+
+  const isDigitalSigned =
+    sig.statusTone === 'approved' || sig.statusTone === 'rejected';
+  if (sig.signedAt && !isDigitalSigned) {
+    stack.push({
+      text: `Ngày: ${sig.signedAt}`,
+      fontSize: 7,
+      color: '#475569',
+      alignment: 'center',
+      margin: [0, 2, 0, 0],
+    });
+  } else if (!sig.signedAt) {
+    stack.push({
+      text: 'Ngày ký: ..../..../20....',
+      fontSize: 7,
+      italics: true,
+      color: '#64748b',
+      alignment: 'center',
+      margin: [0, 2, 0, 0],
+    });
+  }
+
+  return {
+    stack,
+    fillColor: '#ffffff',
+  };
+}
+
+function buildSignatureBlock(
+  signatures: PdfSignatureSlot[],
+  signatureSectionTitle?: string,
+  signatureHeader?: string,
+): Content {
+  const blockStack: Content[] = [];
+
+  if (signatureSectionTitle || signatureHeader) {
+    blockStack.push({
+      margin: [0, 8, 0, 6],
+      columns: [
+        signatureSectionTitle
+          ? {
+              width: '*',
+              text: signatureSectionTitle.toUpperCase(),
+              style: 'sectionTitle',
+              fontSize: 9.5,
+              color: '#0f172a',
+            }
+          : { width: '*', text: '' },
+        signatureHeader
+          ? {
+              width: 'auto',
+              text: signatureHeader,
+              fontSize: 8.5,
+              italics: true,
+              color: '#475569',
+              alignment: 'right',
+            }
+          : { width: 'auto', text: '' },
+      ],
+    });
+  }
+
+  // Nếu có từ 5 chữ ký trở lên, tự động chia hàng tối đa 3 ô để đảm bảo rộng thoáng, dễ đọc
+  const maxPerRow = signatures.length <= 4 ? signatures.length : 3;
+  for (let start = 0; start < signatures.length; start += maxPerRow) {
+    const chunk = signatures.slice(start, start + maxPerRow);
+    const cells: TableCell[] = chunk.map((sig) => buildSignatureCardCell(sig));
+    while (cells.length < maxPerRow) {
+      cells.push({ text: '', border: [false, false, false, false] });
+    }
+
+    blockStack.push({
+      margin: [0, start === 0 ? 2 : 8, 0, 0],
+      table: {
+        widths: Array.from({ length: maxPerRow }, () => '*'),
+        dontBreakRows: true,
+        body: [cells],
+      },
+      layout: {
+        hLineWidth: () => 0.6,
+        vLineWidth: () => 0.6,
+        hLineColor: () => '#cbd5e1',
+        vLineColor: () => '#cbd5e1',
+        paddingTop: () => 8,
+        paddingBottom: () => 8,
+        paddingLeft: () => 6,
+        paddingRight: () => 6,
+      },
+    });
+  }
+
+  return {
+    unbreakable: true,
+    margin: [0, 6, 0, 0],
+    stack: blockStack,
+  };
 }
 
 /**
@@ -343,9 +650,11 @@ export function buildStructuredPdfDocument(
     ];
 
     content.push({
+      unbreakable: true,
       margin: [0, 10, 0, 10],
       table: {
         widths: ['58%', '42%'],
+        dontBreakRows: true,
         body: highlightRows,
       },
       layout: {
@@ -365,35 +674,44 @@ export function buildStructuredPdfDocument(
       fontSize: 8.5,
       italics: true,
       color: '#64748b',
-      margin: [0, 4, 0, 14],
+      margin: [0, 4, 0, 10],
     });
   }
 
   if (options.signatures && options.signatures.length > 0) {
-    content.push({
-      margin: [0, 10, 0, 0],
-      columns: options.signatures.map((sig) => ({
-        width: '*',
-        alignment: 'center',
-        stack: [
-          { text: sig.title, bold: true, fontSize: 9.5 },
-          {
-            text: sig.subtitle ?? '(Ký và ghi rõ họ tên)',
-            italics: true,
-            fontSize: 8.5,
-            color: '#64748b',
-            margin: [0, 2, 0, 36],
-          },
-          ...(sig.name ? [{ text: sig.name, bold: true, fontSize: 9.5 }] : []),
-        ],
-      })),
-    });
+    content.push(
+      buildSignatureBlock(
+        options.signatures,
+        options.signatureSectionTitle,
+        options.signatureHeader,
+      ),
+    );
   }
+
+  const footerLeft = options.footerLeftText ?? options.companyName ?? '';
 
   return {
     pageSize: options.pageSize ?? 'A4',
     pageOrientation: options.pageOrientation ?? 'portrait',
-    pageMargins: [36, 36, 36, 36],
+    pageMargins: [36, 36, 36, 44],
+    footer: (currentPage: number, pageCount: number): Content => ({
+      margin: [36, 10, 36, 0],
+      columns: [
+        {
+          width: '*',
+          text: footerLeft,
+          fontSize: 7.5,
+          color: '#94a3b8',
+        },
+        {
+          width: 'auto',
+          text: `Trang ${currentPage} / ${pageCount}`,
+          fontSize: 7.5,
+          color: '#64748b',
+          alignment: 'right',
+        },
+      ],
+    }),
     content,
     styles: {
       docTitle: {

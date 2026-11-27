@@ -29,7 +29,7 @@ interface WorkflowStepRow {
 
 interface WorkflowRow {
   id: number;
-  moduleCode: 'core' | 'hrm' | 'projects' | 'proposals' | 'crm';
+  moduleCode: 'core' | 'hrm' | 'projects' | 'proposals' | 'it_requests' | 'payments' | 'crm';
   requestType: string;
   branchId: number | null;
   branchName: string | null;
@@ -95,7 +95,9 @@ export default function WorkflowsSettingsPage() {
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowRow | null>(null);
   const [name, setName] = useState('');
   const [nameEn, setNameEn] = useState('');
-  const [moduleCode, setModuleCode] = useState<'core' | 'hrm' | 'projects' | 'proposals' | 'crm'>('hrm');
+  const [moduleCode, setModuleCode] = useState<
+    'core' | 'hrm' | 'projects' | 'proposals' | 'it_requests' | 'payments' | 'crm'
+  >('hrm');
   const [requestType, setRequestType] = useState('LEAVE');
   const [branchId, setBranchId] = useState('');
   const [description, setDescription] = useState('');
@@ -335,7 +337,7 @@ export default function WorkflowsSettingsPage() {
         : errorMessage;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">
@@ -360,6 +362,8 @@ export default function WorkflowsSettingsPage() {
             <option value="">{tr('Tất cả phân hệ', 'All modules')}</option>
             <option value="hrm">HRM</option>
             <option value="proposals">Proposals</option>
+            <option value="it_requests">IT Requests</option>
+            <option value="payments">Payments</option>
             <option value="projects">Projects</option>
             <option value="crm">CRM</option>
             <option value="core">Core</option>
@@ -580,13 +584,22 @@ export default function WorkflowsSettingsPage() {
                     value={moduleCode}
                     onChange={(e) =>
                       setModuleCode(
-                        e.target.value as 'core' | 'hrm' | 'projects' | 'proposals' | 'crm',
+                        e.target.value as
+                          | 'core'
+                          | 'hrm'
+                          | 'projects'
+                          | 'proposals'
+                          | 'it_requests'
+                          | 'payments'
+                          | 'crm',
                       )
                     }
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                   >
                     <option value="hrm">HRM</option>
                     <option value="proposals">Proposals</option>
+                    <option value="it_requests">IT Requests</option>
+                    <option value="payments">Payments</option>
                     <option value="projects">Projects</option>
                     <option value="crm">CRM</option>
                     <option value="core">Core</option>

@@ -212,7 +212,7 @@ export default function ApprovalsInboxPage() {
         : errorMessage;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">
@@ -466,6 +466,30 @@ export default function ApprovalsInboxPage() {
                 >
                   <IconEye size={14} />
                   <span>{tr('Mở hồ sơ Đề xuất chi tiết', 'Open Full Proposal Dossier')}</span>
+                </Link>
+              </div>
+            )}
+
+            {detail.request.entityType === 'it_requests' && detail.request.entityId > 0 && (
+              <div className="mt-3">
+                <Link
+                  href={`/services/it-requests/${detail.request.entityId}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                >
+                  <IconEye size={14} />
+                  <span>{tr('Mở hồ sơ Yêu cầu IT chi tiết', 'Open Full IT Ticket Dossier')}</span>
+                </Link>
+              </div>
+            )}
+
+            {detail.request.entityType === 'payments' && detail.request.entityId > 0 && (
+              <div className="mt-3">
+                <Link
+                  href={`/services/payments/${detail.request.entityId}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+                >
+                  <IconEye size={14} />
+                  <span>{tr('Mở hồ sơ Đề nghị Thanh toán chi tiết', 'Open Full Payment Voucher')}</span>
                 </Link>
               </div>
             )}

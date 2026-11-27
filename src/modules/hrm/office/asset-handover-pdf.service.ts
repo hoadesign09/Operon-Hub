@@ -43,7 +43,11 @@ export async function generateAssetHandoverPdf(
     sections: [
       {
         title: 'I. THÔNG TIN THIẾT BỊ / TÀI SẢN BÀN GIAO',
+        labelHeader: 'Thông tin tài sản',
         valueHeader: 'Thông số / Giá trị',
+        noteHeader: 'Ghi chú',
+        valueAlignment: 'left',
+        columnWidths: ['28%', '46%', '26%'],
         rows: [
           { label: 'Mã tài sản', value: record.assetCode, isBold: true },
           { label: 'Tên thiết bị', value: record.assetName, isBold: true },
@@ -58,7 +62,11 @@ export async function generateAssetHandoverPdf(
       },
       {
         title: 'II. TÌNH TRẠNG THIẾT BỊ & XÁC NHẬN',
-        valueHeader: 'Nội dung ghi nhận',
+        labelHeader: 'Nội dung kiểm tra',
+        valueHeader: 'Tình trạng ghi nhận',
+        noteHeader: 'Ghi chú',
+        valueAlignment: 'left',
+        columnWidths: ['28%', '44%', '28%'],
         rows: [
           {
             label: 'Tình trạng lúc bàn giao',
@@ -84,14 +92,22 @@ export async function generateAssetHandoverPdf(
     ],
     footnote:
       'Người nhận tài sản cam kết bảo quản, sử dụng thiết bị đúng mục đích công việc và bàn giao lại đầy đủ khi có yêu cầu hoặc khi kết thúc hợp đồng lao động.',
+    signatureSectionTitle: 'XÁC NHẬN BÀN GIAO TÀI SẢN',
     signatures: [
       {
-        title: 'ĐẠI DIỆN HÀNH CHÍNH (BÊN GIAO)',
+        stepLabel: 'BÊN GIAO',
+        title: 'ĐẠI DIỆN HÀNH CHÍNH',
+        roleTitle: `Chi nhánh ${record.branchName}`,
+        subtitle: '(Ký, ghi rõ họ tên)',
         name: record.assignedByName ?? undefined,
       },
       {
-        title: 'NHÂN VIÊN TIẾP NHẬN (BÊN NHẬN)',
+        stepLabel: 'BÊN NHẬN',
+        title: 'NHÂN VIÊN TIẾP NHẬN',
+        roleTitle: `${record.positionName} • ${record.departmentName}`,
+        subtitle: '(Ký, ghi rõ họ tên)',
         name: record.employeeName,
+        code: `Mã NV: ${record.employeeCode}`,
       },
     ],
   });

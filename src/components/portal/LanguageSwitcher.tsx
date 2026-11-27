@@ -21,20 +21,13 @@ export function LanguageSwitcher({
     variant === 'dark'
       ? 'inline-flex h-9 items-center gap-1 rounded-xl border border-white/15 bg-white/8 p-1 backdrop-blur-xs'
       : 'inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1';
-
-  const iconCls = variant === 'dark' ? 'text-cyan-300' : 'text-slate-500';
-
+      
   return (
     <div
       role="group"
       aria-label={t('common.switchLanguageAria')}
       className={`${containerCls} ${className}`.trim()}
     >
-      {showIcon && (
-        <span className={`hidden pl-1.5 sm:inline-flex ${iconCls}`} aria-hidden="true">
-          <IconWorld size={15} />
-        </span>
-      )}
       {SUPPORTED_LOCALES.map((code) => {
         const isActive = locale === code;
         const meta = LOCALE_LABELS[code];

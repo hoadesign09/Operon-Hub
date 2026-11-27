@@ -110,6 +110,68 @@ export type ProposalStatus =
   | 'COMPLETED'
   | 'CANCELLED';
 export type ProposalCommentType = 'GENERAL' | 'REVISION_REQUEST' | 'EXECUTION_UPDATE';
+export type ItRequestKind =
+  | 'INCIDENT'
+  | 'SERVICE_REQUEST'
+  | 'ACCESS_REQUEST'
+  | 'HARDWARE_PROVISION';
+export type ItRequestPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type ItRequestStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'OPEN'
+  | 'IN_PROGRESS'
+  | 'WAITING_USER'
+  | 'RESOLVED'
+  | 'CLOSED'
+  | 'REJECTED'
+  | 'CANCELLED';
+export type ItRequestCommentVisibility = 'PUBLIC' | 'INTERNAL_NOTE';
+export type ItRequestCommentType = 'COMMENT' | 'RESOLUTION' | 'STATUS_NOTE' | 'SYSTEM';
+export type PaymentType =
+  | 'CASH_ADVANCE'
+  | 'REIMBURSEMENT'
+  | 'VENDOR_PAYMENT'
+  | 'ADVANCE_SETTLEMENT';
+export type PaymentPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type PaymentStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'NEEDS_REVISION'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'CANCELLED';
+export type PaymentMethod = 'BANK_TRANSFER' | 'CASH';
+export type PaymentBeneficiaryType = 'EMPLOYEE' | 'VENDOR';
+export type PaymentDisbursementDirection = 'OUTGOING' | 'INCOMING_REFUND';
+export type PaymentCommentType = 'GENERAL' | 'REVISION_REQUEST' | 'FINANCE_NOTE' | 'SYSTEM';
+export type PaymentAttachmentKind =
+  | 'INVOICE'
+  | 'RECEIPT'
+  | 'CONTRACT'
+  | 'UNC_RECEIPT'
+  | 'OTHER';
+export type BudgetPeriodType = 'ANNUAL' | 'QUARTERLY' | 'MONTHLY' | 'CUSTOM';
+export type BudgetEnforcementMode = 'HARD_BLOCK' | 'SOFT_WARN';
+export type BudgetStatus = 'DRAFT' | 'ACTIVE' | 'FROZEN' | 'CLOSED';
+export type BudgetTxType =
+  | 'ALLOCATE'
+  | 'TOP_UP'
+  | 'REDUCE'
+  | 'TRANSFER_OUT'
+  | 'TRANSFER_IN'
+  | 'RESERVE'
+  | 'RELEASE'
+  | 'CONSUME'
+  | 'REFUND';
+export type BudgetSourceType =
+  | 'MANUAL'
+  | 'TRANSFER'
+  | 'PROPOSAL'
+  | 'PAYMENT'
+  | 'DISBURSEMENT';
 
 export interface SchemaMigrationsTable {
   id: Generated<number>;
@@ -1187,6 +1249,7 @@ export interface ProposalsTable {
   category_id: number;
   branch_id: number;
   department_id: number | null;
+  budget_id: number | null;
   requester_employee_id: number | null;
   requester_user_id: number;
   title: string;
@@ -1197,6 +1260,8 @@ export interface ProposalsTable {
   status: ProposalStatus;
   estimated_budget: number | string;
   approved_budget: number | string | null;
+  budget_reserved_amount: number | string;
+  is_over_budget: number;
   currency: string;
   needed_by_date: Date | string | null;
   effective_from: Date | string | null;
@@ -1271,6 +1336,312 @@ export interface ProposalActivitiesTable {
   created_at: Generated<Date>;
 }
 
+export interface ItRequestCategoriesTable {
+  id: Generated<number>;
+  code: string;
+  name: string;
+  name_en: OptionalNullableString;
+  description: string | null;
+  request_kind: ItRequestKind;
+  requires_approval: number;
+  default_priority: ItRequestPriority;
+  sla_response_hours: number;
+  sla_resolution_hours: number;
+  color: string;
+  sort_order: number;
+  is_active: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ItRequestsTable {
+  id: Generated<number>;
+  code: string;
+  category_id: number;
+  request_kind: ItRequestKind;
+  title: string;
+  description: string;
+  priority: ItRequestPriority;
+  status: ItRequestStatus;
+  requester_user_id: number;
+  requester_employee_id: number | null;
+  branch_id: number | null;
+  department_id: number | null;
+  asset_id: number | null;
+  assigned_to_user_id: number | null;
+  estimated_cost: number | string;
+  location_detail: string | null;
+  contact_phone: string | null;
+  approval_request_id: number | null;
+  sla_response_due_at: Date | null;
+  sla_resolution_due_at: Date | null;
+  first_responded_at: Date | null;
+  sla_paused_at: Date | null;
+  sla_paused_minutes: number;
+  submitted_at: Date | null;
+  resolved_at: Date | null;
+  closed_at: Date | null;
+  resolution_summary: string | null;
+  rejection_reason: string | null;
+  satisfaction_rating: number | null;
+  satisfaction_feedback: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ItRequestChecklistItemsTable {
+  id: Generated<number>;
+  it_request_id: number;
+  title: string;
+  note: string | null;
+  is_done: number;
+  done_by_user_id: number | null;
+  done_at: Date | null;
+  sort_order: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface ItRequestCommentsTable {
+  id: Generated<number>;
+  it_request_id: number;
+  author_user_id: number;
+  visibility: ItRequestCommentVisibility;
+  comment_type: ItRequestCommentType;
+  content: string;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ItRequestAttachmentsTable {
+  id: Generated<number>;
+  it_request_id: number;
+  uploaded_by_user_id: number;
+  file_name: string;
+  stored_path: string;
+  mime_type: string;
+  file_size: number | string;
+  checksum_sha256: string;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface ItRequestActivitiesTable {
+  id: Generated<number>;
+  it_request_id: number;
+  actor_user_id: number | null;
+  action: string;
+  summary: string;
+  metadata_json: string | Record<string, unknown> | null;
+  created_at: Generated<Date>;
+}
+
+export interface PaymentCategoriesTable {
+  id: Generated<number>;
+  code: string;
+  name: string;
+  name_en: OptionalNullableString;
+  description: string | null;
+  default_payment_type: PaymentType;
+  requires_receipt: number;
+  color: string;
+  sort_order: number;
+  is_active: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface PaymentRequestsTable {
+  id: Generated<number>;
+  code: string;
+  payment_type: PaymentType;
+  category_id: number;
+  title: string;
+  description: string;
+  priority: PaymentPriority;
+  status: PaymentStatus;
+  requester_user_id: number;
+  requester_employee_id: number | null;
+  branch_id: number | null;
+  department_id: number | null;
+  budget_id: number | null;
+  proposal_id: number | null;
+  project_id: number | null;
+  linked_advance_id: number | null;
+  is_settled: number;
+  settled_by_payment_id: number | null;
+  payment_method: PaymentMethod;
+  beneficiary_type: PaymentBeneficiaryType;
+  beneficiary_name: string;
+  beneficiary_tax_code: string | null;
+  bank_name: string | null;
+  bank_account_no: string | null;
+  bank_branch: string | null;
+  currency: string;
+  subtotal_amount: number | string;
+  tax_amount: number | string;
+  total_amount: number | string;
+  advance_amount: number | string;
+  net_settlement_amount: number | string;
+  payable_amount: number | string;
+  approved_amount: number | string | null;
+  disbursed_amount: number | string;
+  budget_reserved_amount: number | string;
+  budget_spent_amount: number | string;
+  proposal_reserve_used: number | string;
+  is_over_budget: number;
+  due_date: Date | string | null;
+  advance_due_date: Date | string | null;
+  approval_request_id: number | null;
+  submitted_at: Date | null;
+  approved_at: Date | null;
+  paid_at: Date | null;
+  rejection_reason: string | null;
+  revision_note: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface PaymentRequestItemsTable {
+  id: Generated<number>;
+  payment_request_id: number;
+  description: string;
+  invoice_no: string | null;
+  invoice_date: Date | string | null;
+  quantity: number | string;
+  unit_price: number | string;
+  tax_rate: number | string;
+  subtotal_amount: number | string;
+  tax_amount: number | string;
+  line_total: number | string;
+  note: string | null;
+  sort_order: number;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface PaymentDisbursementsTable {
+  id: Generated<number>;
+  payment_request_id: number;
+  direction: PaymentDisbursementDirection;
+  disbursement_date: Date | string;
+  amount: number | string;
+  payment_method: PaymentMethod;
+  bank_transaction_ref: string | null;
+  source_account: string | null;
+  note: string | null;
+  disbursed_by_user_id: number;
+  created_at: Generated<Date>;
+}
+
+export interface PaymentCommentsTable {
+  id: Generated<number>;
+  payment_request_id: number;
+  author_user_id: number;
+  comment_type: PaymentCommentType;
+  content: string;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface PaymentAttachmentsTable {
+  id: Generated<number>;
+  payment_request_id: number;
+  attachment_kind: PaymentAttachmentKind;
+  file_name: string;
+  stored_path: string;
+  mime_type: string;
+  file_size: number | string;
+  checksum_sha256: string;
+  uploaded_by_user_id: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface PaymentActivitiesTable {
+  id: Generated<number>;
+  payment_request_id: number;
+  actor_user_id: number | null;
+  action: string;
+  summary: string;
+  metadata_json: string | Record<string, unknown> | null;
+  created_at: Generated<Date>;
+}
+
+export interface PaymentBudgetsTable {
+  id: Generated<number>;
+  code: string;
+  name: string;
+  name_en: OptionalNullableString;
+  description: string | null;
+  fiscal_year: number;
+  period_type: BudgetPeriodType;
+  period_label: string;
+  start_date: Date | string;
+  end_date: Date | string;
+  branch_id: number | null;
+  department_id: number | null;
+  category_id: number | null;
+  project_id: number | null;
+  owner_user_id: number | null;
+  currency: string;
+  allocated_amount: number | string;
+  reserved_amount: number | string;
+  spent_amount: number | string;
+  warning_threshold_percent: number | string;
+  enforcement_mode: BudgetEnforcementMode;
+  status: BudgetStatus;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface PaymentBudgetTransactionsTable {
+  id: Generated<number>;
+  budget_id: number;
+  tx_type: BudgetTxType;
+  source_type: BudgetSourceType;
+  source_id: number | null;
+  source_code: string | null;
+  related_budget_id: number | null;
+  allocated_delta: number | string;
+  reserved_delta: number | string;
+  spent_delta: number | string;
+  balance_allocated_after: number | string;
+  balance_reserved_after: number | string;
+  balance_spent_after: number | string;
+  balance_available_after: number | string;
+  note: string | null;
+  actor_user_id: number | null;
+  created_at: Generated<Date>;
+}
+
 export interface DatabaseSchema {
   schema_migrations: SchemaMigrationsTable;
   settings: SettingsTable;
@@ -1339,6 +1710,21 @@ export interface DatabaseSchema {
   proposal_comments: ProposalCommentsTable;
   proposal_attachments: ProposalAttachmentsTable;
   proposal_activities: ProposalActivitiesTable;
+  it_request_categories: ItRequestCategoriesTable;
+  it_requests: ItRequestsTable;
+  it_request_checklist_items: ItRequestChecklistItemsTable;
+  it_request_comments: ItRequestCommentsTable;
+  it_request_attachments: ItRequestAttachmentsTable;
+  it_request_activities: ItRequestActivitiesTable;
+  payment_categories: PaymentCategoriesTable;
+  payment_requests: PaymentRequestsTable;
+  payment_request_items: PaymentRequestItemsTable;
+  payment_disbursements: PaymentDisbursementsTable;
+  payment_comments: PaymentCommentsTable;
+  payment_attachments: PaymentAttachmentsTable;
+  payment_activities: PaymentActivitiesTable;
+  payment_budgets: PaymentBudgetsTable;
+  payment_budget_transactions: PaymentBudgetTransactionsTable;
 }
 
 export interface DatabasePingResult {

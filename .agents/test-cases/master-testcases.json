@@ -2329,6 +2329,366 @@
       ],
       "status": "PASS",
       "priority": "P1"
+    },
+    {
+      "tc_id": "TC-ITR-001",
+      "module": "it_requests",
+      "task_id": "TASK-20261126-03",
+      "title": "Migration 000022 UP/DOWN & 6 bilingual IT categories with SLA validation",
+      "target_files": [
+        "database/migrations/20261126_000022_init_it_requests_module.sql",
+        "src/modules/it-requests/it-requests.schema.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-ITR-002",
+      "module": "it_requests",
+      "task_id": "TASK-20261126-03",
+      "title": "Portable SLA calculator priority multipliers, pause shift & health status evaluation",
+      "target_files": [
+        "src/lib/portable/sla-calculator.ts",
+        "tests/portable/sla-calculator.test.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-ITR-003",
+      "module": "it_requests",
+      "task_id": "TASK-20261126-03",
+      "title": "Approval-required IT ticket routes via Core Approval Engine and auto-opens with SLA on approval",
+      "target_files": [
+        "src/modules/it-requests/it-request-approval-hook.ts",
+        "src/modules/it-requests/it-requests.service.ts",
+        "src/modules/approvals/register-module-hooks.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-ITR-004",
+      "module": "it_requests",
+      "task_id": "TASK-20261126-03",
+      "title": "ITIL ticket lifecycle transitions, SLA pause/resume on WAITING_USER & CSAT close rating",
+      "target_files": [
+        "src/modules/it-requests/it-requests.service.ts",
+        "src/app/api/v1/it-requests/[id]/status/route.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-ITR-005",
+      "module": "it_requests",
+      "task_id": "TASK-20261126-03",
+      "title": "Collaboration lock on terminal IT statuses (409), internal notes RBAC & attachment MIME/size guard",
+      "target_files": [
+        "src/modules/it-requests/it-requests-collab.service.ts",
+        "tests/unit/it-requests.test.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-ITR-006",
+      "module": "it_requests",
+      "task_id": "TASK-20261126-03",
+      "title": "Export IT tickets Excel (.xlsx) & IT Service Report PDF (.pdf) with Ghi chu last column and multi-level signatures",
+      "target_files": [
+        "src/modules/it-requests/it-requests-reports.service.ts",
+        "src/lib/portable/pdf-generator.ts"
+      ],
+      "status": "PASS",
+      "priority": "P1"
+    },
+    {
+      "tc_id": "TC-ITR-007",
+      "module": "it_requests",
+      "task_id": "TASK-20261126-03",
+      "title": "IT Requests list & detail UI with full-width bottom Approval section and Services Hub/Sidebar activation",
+      "target_files": [
+        "src/app/(portal)/services/it-requests/page.tsx",
+        "src/app/(portal)/services/it-requests/[id]/page.tsx",
+        "src/layouts/portal-navigation.ts"
+      ],
+      "status": "PASS",
+      "priority": "P1"
+    },
+    {
+      "tc_id": "TC-ITR-008",
+      "module": "it_requests",
+      "task_id": "TASK-20261126-03",
+      "title": "Bilingual VI/EN AST zero-leak audit across IT Request pages and modals",
+      "target_files": [
+        "tests/unit/i18n.test.ts",
+        "src/components/it-requests/ItRequestFormModal.tsx",
+        "src/components/it-requests/ItCategoryModal.tsx"
+      ],
+      "status": "PASS",
+      "priority": "P1"
+    },
+    {
+      "tc_id": "TC-ORG-001",
+      "module": "hrm_organization",
+      "task_id": "TASK-20261126-04",
+      "title": "Portable org-chart-utils computes tree metrics, ancestor-preserving filter, breadcrumbs, flatten & avatar initials",
+      "target_files": [
+        "src/lib/portable/org-chart-utils.ts",
+        "tests/portable/org-chart-utils.test.ts"
+      ],
+      "status": "PASS",
+      "priority": "P1"
+    },
+    {
+      "tc_id": "TC-ORG-002",
+      "module": "hrm_organization",
+      "task_id": "TASK-20261126-04",
+      "title": "Global Portal Full-Width compliance: zero mx-auto max-w-* page wrappers across all portal routes",
+      "target_files": [
+        "src/layouts/PortalShell.tsx",
+        "tests/unit/organization-orgchart.test.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-ORG-003",
+      "module": "hrm_organization",
+      "task_id": "TASK-20261126-04",
+      "title": "Organization Tree API returns enriched branch totals, recursive employee headcount, manager profile & members list",
+      "target_files": [
+        "src/modules/hrm/organization/departments.service.ts",
+        "src/app/api/v1/hrm/org/departments/tree/route.ts"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-ORG-004",
+      "module": "hrm_organization",
+      "task_id": "TASK-20261126-04",
+      "title": "Department create/update supports managerEmployeeId assignment and rejects non-existent employee (400 INVALID_MANAGER_EMPLOYEE)",
+      "target_files": [
+        "src/modules/hrm/organization/organization.schema.ts",
+        "src/modules/hrm/organization/departments.service.ts"
+      ],
+      "status": "PASS",
+      "priority": "P1"
+    },
+    {
+      "tc_id": "TC-ORG-005",
+      "module": "hrm_organization",
+      "task_id": "TASK-20261126-04",
+      "title": "Multi-view Org Chart UI renders 5 switchable layouts (Top-Down, Horizontal, Card Grid, Columns, Tree List) with Inspector Drawer & zoom/pan/search",
+      "target_files": [
+        "src/components/hrm/OrgChartTree.tsx",
+        "src/components/hrm/OrgChartViews.tsx",
+        "src/components/hrm/OrgDepartmentDrawer.tsx",
+        "src/app/(portal)/hrm/organization/page.tsx"
+      ],
+      "status": "PASS",
+      "priority": "P0"
+    },
+    {
+      "tc_id": "TC-ORG-006",
+      "module": "hrm_organization",
+      "task_id": "TASK-20261126-04",
+      "title": "Bilingual VI/EN AST zero-leak audit passes across new Org Chart components and upgraded HRM Organization page",
+      "target_files": [
+        "tests/unit/i18n.test.ts",
+        "src/components/hrm/OrgChartViews.tsx",
+        "src/components/hrm/OrgDepartmentDrawer.tsx"
+      ],
+      "status": "PASS",
+      "priority": "P1"
+    },
+    {
+      "tc_id": "TC-PAY-001",
+      "module": "payments",
+      "title": "Migration 000023 UP/DOWN (7 tables) & seed FINANCE_ACCOUNTANT role, 6 bilingual categories and 2 workflows",
+      "type": "integration",
+      "priority": "P0",
+      "status": "PASS",
+      "target_files": [
+        "database/migrations/20261126_000023_init_payments_module.sql",
+        "database/seed-core.ts",
+        "src/config/database.ts"
+      ]
+    },
+    {
+      "tc_id": "TC-PAY-002",
+      "module": "payments",
+      "title": "Portable payment-calculator VAT line items, advance settlement reconciliation & VI/EN amount-in-words",
+      "type": "unit",
+      "priority": "P0",
+      "status": "PASS",
+      "target_files": [
+        "src/lib/portable/payment-calculator.ts",
+        "tests/portable/payment-calculator.test.ts"
+      ]
+    },
+    {
+      "tc_id": "TC-PAY-003",
+      "module": "payments",
+      "title": "Anti-duplicate VAT invoice guard blocks duplicate invoice numbers with 409 DUPLICATE_INVOICE_NUMBER",
+      "type": "integration",
+      "priority": "P0",
+      "status": "PASS",
+      "target_files": [
+        "src/modules/payments/payments.service.ts"
+      ]
+    },
+    {
+      "tc_id": "TC-PAY-004",
+      "module": "payments",
+      "title": "High-value payment (>= 20M VND) routes 3-step Core Approval workflow and hook auto-transitions to APPROVED",
+      "type": "integration",
+      "priority": "P0",
+      "status": "PASS",
+      "target_files": [
+        "src/modules/payments/payments.service.ts",
+        "src/modules/payments/payment-approval-hook.ts",
+        "src/modules/approvals/register-module-hooks.ts"
+      ]
+    },
+    {
+      "tc_id": "TC-PAY-005",
+      "module": "payments",
+      "title": "Collaboration lock rejects comments/primary attachments after APPROVED (409 PAYMENT_COLLAB_LOCKED) while allowing UNC receipts",
+      "type": "integration",
+      "priority": "P0",
+      "status": "PASS",
+      "target_files": [
+        "src/modules/payments/payments-collab.service.ts",
+        "tests/unit/payments.test.ts"
+      ]
+    },
+    {
+      "tc_id": "TC-PAY-006",
+      "module": "payments",
+      "title": "Multi-tranche disbursement with forUpdate lock transitions APPROVED -> PARTIALLY_PAID -> PAID and blocks overpayment",
+      "type": "integration",
+      "priority": "P0",
+      "status": "PASS",
+      "target_files": [
+        "src/modules/payments/payments-disbursement.service.ts"
+      ]
+    },
+    {
+      "tc_id": "TC-PAY-007",
+      "module": "payments",
+      "title": "Export Payments Excel (.xlsx) and Payment Voucher PDF (.pdf) with Ghi chu last column, amount-in-words and executive signatures",
+      "type": "integration",
+      "priority": "P0",
+      "status": "PASS",
+      "target_files": [
+        "src/modules/payments/payments-reports.service.ts",
+        "src/app/api/v1/payments/[id]/pdf/route.ts",
+        "src/app/api/v1/payments/export/excel/route.ts"
+      ]
+    },
+    {
+      "tc_id": "TC-PAY-008",
+      "module": "payments",
+      "title": "Full-width Payments UI, bottom full-width Approval section, Services Hub activation & VI/EN AST zero-leak audit",
+      "type": "e2e",
+      "priority": "P0",
+      "status": "PASS",
+      "target_files": [
+        "src/app/(portal)/services/payments/page.tsx",
+        "src/app/(portal)/services/payments/[id]/page.tsx",
+        "src/components/payments/PaymentFormModal.tsx",
+        "tests/unit/i18n.test.ts",
+        "tests/unit/organization-orgchart.test.ts"
+      ]
+    },
+    {
+      "tc_id": "TC-BUD-001",
+      "module": "payments",
+      "title": "Migration 000024 UP/DOWN (payment_budgets, payment_budget_transactions, proposals & payment_requests columns) & 5 FY2026 bilingual budgets seed",
+      "priority": "HIGH",
+      "type": "DATABASE",
+      "status": "PASS",
+      "target_files": [
+        "database/migrations/20261126_000024_init_payment_budgets_module.sql",
+        "src/config/database.ts",
+        "database/seed-core.ts"
+      ],
+      "last_run_id": "RUN-20261126-06"
+    },
+    {
+      "tc_id": "TC-BUD-002",
+      "module": "payments",
+      "title": "Portable budget-calculator snapshot, HARD_BLOCK/SOFT_WARN impact, anti-double-counting transfer & disbursement/refund mutations",
+      "priority": "HIGH",
+      "type": "UNIT",
+      "status": "PASS",
+      "target_files": [
+        "src/lib/portable/budget-calculator.ts",
+        "tests/portable/budget-calculator.test.ts"
+      ],
+      "last_run_id": "RUN-20261126-06"
+    },
+    {
+      "tc_id": "TC-BUD-003",
+      "module": "payments",
+      "title": "Budget CRUD, TOP_UP/REDUCE guards (409 BUDGET_REDUCE_BELOW_USED), deadlock-safe TRANSFER & status lifecycle (409 BUDGET_HAS_PENDING_ITEMS)",
+      "priority": "HIGH",
+      "type": "INTEGRATION",
+      "status": "PASS",
+      "target_files": [
+        "src/modules/payments/budgets.service.ts",
+        "src/app/api/v1/payments/budgets/route.ts",
+        "src/app/api/v1/payments/budgets/transfer/route.ts"
+      ],
+      "last_run_id": "RUN-20261126-06"
+    },
+    {
+      "tc_id": "TC-BUD-004",
+      "module": "payments",
+      "title": "Anti-double-counting E2E: Proposal reserves budget -> Linked Payment inherits & transfers reserve -> Disbursement moves reserved to spent -> Proposal COMPLETE releases unused reserve",
+      "priority": "CRITICAL",
+      "type": "E2E",
+      "status": "PASS",
+      "target_files": [
+        "src/modules/payments/budget-ledger.service.ts",
+        "src/modules/proposals/proposals.service.ts",
+        "src/modules/payments/payments.service.ts",
+        "src/modules/payments/payments-disbursement.service.ts"
+      ],
+      "last_run_id": "RUN-20261126-06"
+    },
+    {
+      "tc_id": "TC-BUD-005",
+      "module": "payments",
+      "title": "Advance Settlement INCOMING_REFUND reduces Budget Spent and Cancelled Payment restores reserve back to active Proposal",
+      "priority": "HIGH",
+      "type": "E2E",
+      "status": "PASS",
+      "target_files": [
+        "src/modules/payments/budget-ledger.service.ts",
+        "src/modules/payments/payments-disbursement.service.ts",
+        "src/modules/payments/payment-approval-hook.ts"
+      ],
+      "last_run_id": "RUN-20261126-06"
+    },
+    {
+      "tc_id": "TC-BUD-006",
+      "module": "payments",
+      "title": "Payments Budget Management tab, Ledger detail page, live BudgetImpactPreview on Proposal/Payment modals, Excel/PDF reports & VI/EN Full-Width audit",
+      "priority": "HIGH",
+      "type": "UI",
+      "status": "PASS",
+      "target_files": [
+        "src/components/payments/BudgetsManagementPanel.tsx",
+        "src/components/payments/BudgetImpactPreview.tsx",
+        "src/app/(portal)/services/payments/budgets/[id]/page.tsx",
+        "src/app/(portal)/services/payments/page.tsx",
+        "src/components/proposals/ProposalFormModal.tsx"
+      ],
+      "last_run_id": "RUN-20261126-06"
     }
   ],
   "runs": [
@@ -2663,6 +3023,51 @@
       "regression_passed": 6,
       "status": "PASS",
       "notes": "Full pipeline Proposals module: 70/70 Vitest files (194/194 tests), Live DB E2E PASS, next build PASS"
+    },
+    {
+      "run_id": "RUN-20261126-03",
+      "task_id": "TASK-20261126-03",
+      "module": "it_requests",
+      "executed_at": "2026-11-26T11:12:00+07:00",
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "regression_passed": 15,
+      "status": "PASS",
+      "notes": "Full pipeline IT Requests module: 72/72 Vitest files (208/208 tests), Live DB Excel & 6 PDFs PASS, next build PASS"
+    },
+    {
+      "run_id": "RUN-20261126-04",
+      "task_id": "TASK-20261126-04",
+      "module": "hrm_organization",
+      "executed_at": "2026-11-26T11:51:00+07:00",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "regression_passed": 209,
+      "status": "PASS",
+      "notes": "Multi-view Org Chart (5 layouts) + Global Portal Full-Width: 74/74 Vitest files (215/215 tests), Live DB & HTTP E2E PASS, next build PASS"
+    },
+    {
+      "run_id": "RUN-20261126-05",
+      "task_id": "TASK-20261126-05",
+      "date": "2026-11-26",
+      "module": "payments",
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "status": "PASS",
+      "notes": "Full Payments module verified: typecheck/lint/223 tests/build/live DB & HTTP E2E PASS."
+    },
+    {
+      "run_id": "RUN-20261126-06",
+      "task_id": "TASK-20261126-06",
+      "date": "2026-11-26",
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "status": "PASS",
+      "notes": "6 new Budget Management E2E/Unit/UI cases + 14 matched regression cases (TC-PROP-002..008, TC-PAY-002..008) all PASS; 78/78 vitest files (231/231 tests), live MySQL E2E (6/6), live HTTP E2E (12/12), production build PASS."
     }
   ]
 }

@@ -126,6 +126,8 @@ describe('Operon Hub VI/EN Bilingual Dictionaries & Formatters', () => {
       ...walk(path.join(root, 'src/components/hrm')),
       ...walk(path.join(root, 'src/components/projects')),
       ...walk(path.join(root, 'src/components/proposals')),
+      ...walk(path.join(root, 'src/components/it-requests')),
+      ...walk(path.join(root, 'src/components/payments')),
       ...walk(path.join(root, 'src/components/system')),
       ...walk(path.join(root, 'src/components/ui')),
       ...walk(path.join(root, 'src/layouts')),

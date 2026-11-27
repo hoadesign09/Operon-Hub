@@ -90,7 +90,8 @@ const SERVICE_CATALOG: readonly ServiceCatalogCard[] = [
       en: 'Submit IT tickets for accounts, VPN access, software installation, and hardware/network troubleshooting with SLA tracking.',
     },
     category: { vi: 'CNTT & Helpdesk', en: 'IT & Helpdesk' },
-    status: 'COMING_SOON',
+    status: 'ACTIVE',
+    requiredPermission: 'it_requests.read',
     icon: IconHeadset,
     accentBg: 'bg-indigo-50',
     accentText: 'text-indigo-600',
@@ -119,7 +120,8 @@ const SERVICE_CATALOG: readonly ServiceCatalogCard[] = [
       en: 'Submit cash advances, expense reimbursements, and vendor payment requests with supporting receipts.',
     },
     category: { vi: 'Tài chính & Kế toán', en: 'Finance' },
-    status: 'COMING_SOON',
+    status: 'ACTIVE',
+    requiredPermission: 'payments.read',
     icon: IconCreditCard,
     accentBg: 'bg-amber-50',
     accentText: 'text-amber-600',
@@ -171,7 +173,7 @@ export default function ServicesHubPage() {
   const plannedServices = visibleServices.filter((s) => s.status === 'COMING_SOON');
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
+    <div className="w-full space-y-6">
       {/* Midnight Command Service Hub Hero */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#080E1A] via-[#0F172A] to-[#0C4A6E] p-6 text-white shadow-sm">
         <div className="pointer-events-none absolute -top-16 -right-16 h-60 w-60 rounded-full bg-cyan-400/15 blur-3xl" />

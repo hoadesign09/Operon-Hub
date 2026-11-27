@@ -157,7 +157,7 @@ export default function DashboardPage() {
         : errorMessage;
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-6">
+    <div className="w-full space-y-6">
       {/* Midnight Command Hero Banner */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#080E1A] via-[#0F172A] to-[#0C4A6E] p-6 text-white shadow-sm">
         <div className="pointer-events-none absolute -top-20 -right-16 h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl" />

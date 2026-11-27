@@ -5,6 +5,7 @@ const ORG_CODE_REGEX = /^[A-Z0-9_-]{2,30}$/;
 export const createDepartmentSchema = z.object({
   branchId: z.coerce.number().int().positive('Vui lòng chọn chi nhánh hợp lệ'),
   parentId: z.coerce.number().int().positive().nullable().optional(),
+  managerEmployeeId: z.coerce.number().int().positive().nullable().optional(),
   code: z
     .string()
     .trim()
@@ -20,6 +21,7 @@ export const createDepartmentSchema = z.object({
 export const updateDepartmentSchema = z.object({
   branchId: z.coerce.number().int().positive().optional(),
   parentId: z.coerce.number().int().positive().nullable().optional(),
+  managerEmployeeId: z.coerce.number().int().positive().nullable().optional(),
   code: z
     .string()
     .trim()

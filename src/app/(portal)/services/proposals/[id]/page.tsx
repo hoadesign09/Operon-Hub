@@ -7,9 +7,12 @@ import {
   IconArrowLeft,
   IconCheck,
   IconCircleCheck,
+  IconCoins,
+  IconCreditCard,
   IconDownload,
   IconEdit,
   IconFileTypePdf,
+  IconLock,
   IconMessageCircle,
   IconPaperclip,
   IconPlayerPlay,
@@ -21,6 +24,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import type { BudgetOptionDto } from '@/components/payments/budget-ui.helpers';
 import {
   ProposalFormModal,
   type EditableProposalData,
@@ -47,6 +51,14 @@ interface ProposalDetailResponse extends EditableProposalData {
   branchNameEn: string | null;
   departmentName: string | null;
   departmentNameEn: string | null;
+  budgetId: number | null;
+  budgetCode: string | null;
+  budgetName: string | null;
+  budgetNameEn: string | null;
+  budgetReservedAmount: number;
+  budgetAllocatedAmount: number | null;
+  budgetAvailableAmount: number | null;
+  isOverBudget: boolean;
   requesterUserId: number;
   requesterName: string;
   status: ProposalStatusKey;
@@ -105,6 +117,8 @@ interface ProposalDetailResponse extends EditableProposalData {
     canCancel: boolean;
     canStartExecution: boolean;
     canComplete: boolean;
+    canComment: boolean;
+    canUploadAttachment: boolean;
   };
 }
 
@@ -178,6 +192,7 @@ export default function ProposalDetailPage() {
   const [categories, setCategories] = useState<ProposalCategoryOption[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [budgetOptions, setBudgetOptions] = useState<BudgetOptionDto[]>([]);
   const [reloadTick, setReloadTick] = useState(0);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -222,16 +237,21 @@ export default function ProposalDetailPage() {
         cache: 'no-store',
         signal: controller.signal,
       }),
+      fetch('/api/v1/payments/budgets/options', {
+        cache: 'no-store',
+        signal: controller.signal,
+      }),
     ])
-      .then(async ([dRes, cRes, aRes, catRes, brRes, deptRes]) => {
+      .then(async ([dRes, cRes, aRes, catRes, brRes, deptRes, budRes]) => {
         if (controller.signal.aborted) return;
-        const [dJson, cJson, aJson, catJson, brJson, deptJson] = await Promise.all([
+        const [dJson, cJson, aJson, catJson, brJson, deptJson, budJson] = await Promise.all([
           dRes.json().catch(() => null),
           cRes.json().catch(() => null),
           aRes.json().catch(() => null),
           catRes.json().catch(() => null),
           brRes.json().catch(() => null),
           deptRes.json().catch(() => null),
+          budRes.json().catch(() => null),
         ]);
 
         if (!dRes.ok || !dJson?.success || !dJson.data) {
@@ -250,6 +270,9 @@ export default function ProposalDetailPage() {
         if (brRes.ok && brJson?.success) setBranches((brJson.data ?? []) as BranchOption[]);
         if (deptRes.ok && deptJson?.success) {
           setDepartments((deptJson.data ?? []) as DepartmentOption[]);
+        }
+        if (budRes.ok && budJson?.success) {
+          setBudgetOptions((budJson.data ?? []) as BudgetOptionDto[]);
         }
         setErrorMessage('');
         setViewState('success');
@@ -374,7 +397,8 @@ export default function ProposalDetailPage() {
 
   async function handlePostComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!detail || newComment.trim().length === 0) return;
+    if (!detail || detail.status !== 'PENDING_APPROVAL' || newComment.trim().length === 0) return;
+    setActionError('');
     setIsPostingComment(true);
     try {
       const res = await fetch(`/api/v1/proposals/${detail.id}/comments`, {
@@ -385,8 +409,14 @@ export default function ProposalDetailPage() {
       const json = (await res.json().catch(() => null)) as {
         success?: boolean;
         data?: ProposalCommentRow[];
+        error?: { message?: string };
       } | null;
-      if (res.ok && json?.success && json.data) {
+      if (!res.ok || !json?.success) {
+        setActionError(
+          json?.error?.message ??
+            tr('Không thể gửi bình luận trên đề xuất này.', 'Unable to post comment on this proposal.'),
+        );
+      } else if (json.data) {
         setComments(json.data);
         setNewComment('');
       }
@@ -463,7 +493,7 @@ export default function ProposalDetailPage() {
 
   if (viewState === 'loading') {
     return (
-      <div className="mx-auto max-w-6xl space-y-4">
+      <div className="w-full space-y-4">
         <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="h-80 animate-pulse rounded-2xl bg-slate-100 lg:col-span-2" />
@@ -475,7 +505,7 @@ export default function ProposalDetailPage() {
 
   if (viewState === 'error' || !detail) {
     return (
-      <div className="mx-auto max-w-3xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
+      <div className="w-full rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
         <p className="text-sm font-semibold text-rose-700">
           {errorMessage === 'INVALID_PROPOSAL_ID'
             ? tr('Mã đề xuất không hợp lệ.', 'Invalid proposal ID.')
@@ -508,9 +538,12 @@ export default function ProposalDetailPage() {
 
   const statusMeta = PROPOSAL_STATUS_META[detail.status];
   const priorityMeta = PROPOSAL_PRIORITY_META[detail.priority as ProposalPriorityKey];
+  const isPendingApproval = detail.status === 'PENDING_APPROVAL';
+  const canComment = isPendingApproval && detail.actions.canComment;
+  const canUploadAttachment = isPendingApproval && detail.actions.canUploadAttachment;
 
   return (
-    <div className="mx-auto max-w-[1360px] space-y-5">
+    <div className="w-full space-y-5">
       {/* Breadcrumb & Top Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -562,6 +595,16 @@ export default function ProposalDetailPage() {
               </span>
             </button>
           )}
+          {(detail.status === 'APPROVED' || detail.status === 'IN_EXECUTION') &&
+            hasPermission('payments.create') && (
+              <Link
+                href={`/services/payments?createFromProposal=${detail.id}`}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400"
+              >
+                <IconCreditCard size={15} />
+                <span>{tr('Lập Đề nghị Thanh toán', 'Create Payment Request')}</span>
+              </Link>
+            )}
           {detail.actions.canStartExecution && (
             <button
               type="button"
@@ -626,6 +669,43 @@ export default function ProposalDetailPage() {
             {tr('Ưu tiên', 'Priority')}: {locale === 'en' ? priorityMeta.en : priorityMeta.vi}
           </span>
         </div>
+
+        {detail.budgetId && detail.budgetCode && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-2.5 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <IconCoins size={16} className="text-emerald-700" />
+              <span className="font-semibold text-emerald-900">
+                {tr('Nguồn quỹ ngân sách', 'Budget Fund')}:
+              </span>
+              <Link
+                href={`/services/payments/budgets/${detail.budgetId}`}
+                className="rounded bg-emerald-700 px-2 py-0.5 font-mono text-[11px] font-bold text-white hover:bg-emerald-800"
+              >
+                {detail.budgetCode}
+              </Link>
+              <span className="font-bold text-slate-800">
+                {ln(detail.budgetName ?? '', detail.budgetNameEn)}
+              </span>
+              {detail.isOverBudget && (
+                <span className="rounded bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                  {tr('Vượt hạn mức (Cảnh báo mềm)', 'Over Budget (Soft Warn)')}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
+              <span className="text-amber-800">
+                {tr('Đang giữ chỗ', 'Held Reserve')}:{' '}
+                <strong className="tabular-nums">{formatVND(detail.budgetReservedAmount)}</strong>
+              </span>
+              {detail.budgetAvailableAmount !== null && (
+                <span className="text-emerald-800">
+                  {tr('Khả dụng quỹ', 'Fund Available')}:{' '}
+                  <strong className="tabular-nums">{formatVND(detail.budgetAvailableAmount)}</strong>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         <h1 className="mt-3 text-xl font-bold text-slate-900">{detail.title}</h1>
         {detail.summary && <p className="mt-1.5 text-sm text-slate-600">{detail.summary}</p>}
@@ -765,27 +845,48 @@ export default function ProposalDetailPage() {
                   {tr('Tài liệu & Báo giá Đính kèm', 'Attachments & Quotes')} ({attachments.length})
                 </span>
               </h2>
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
-                <IconUpload size={14} />
-                <span>
-                  {isUploading ? tr('Đang tải lên...', 'Uploading...') : tr('Tải tệp lên', 'Upload File')}
-                </span>
-                <input
-                  type="file"
-                  disabled={isUploading}
-                  onChange={(e) => void handleUploadFile(e)}
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.xlsx,.csv,.txt"
-                  className="hidden"
-                />
-              </label>
+              {canUploadAttachment ? (
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
+                  <IconUpload size={14} />
+                  <span>
+                    {isUploading
+                      ? tr('Đang tải lên...', 'Uploading...')
+                      : tr('Tải tệp lên', 'Upload File')}
+                  </span>
+                  <input
+                    type="file"
+                    disabled={isUploading}
+                    onChange={(e) => void handleUploadFile(e)}
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.xlsx,.csv,.txt"
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                !isPendingApproval && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                    <IconLock size={12} />
+                    <span>
+                      {tr(
+                        'Chỉ cho phép tải tệp khi Chờ phê duyệt',
+                        'Uploads allowed only while Pending Approval',
+                      )}
+                    </span>
+                  </span>
+                )
+              )}
             </div>
 
             {attachments.length === 0 ? (
               <p className="mt-3 text-xs text-slate-500">
-                {tr(
-                  'Chưa có tệp đính kèm nào (hỗ trợ PDF, ảnh, DOCX, XLSX tối đa 10MB).',
-                  'No attachments uploaded yet (supports PDF, images, DOCX, XLSX up to 10MB).',
-                )}
+                {isPendingApproval
+                  ? tr(
+                      'Chưa có tệp đính kèm nào (hỗ trợ PDF, ảnh, DOCX, XLSX tối đa 10MB).',
+                      'No attachments uploaded yet (supports PDF, images, DOCX, XLSX up to 10MB).',
+                    )
+                  : tr(
+                      'Không có tệp đính kèm nào trên đề xuất này.',
+                      'No attachments on this proposal.',
+                    )}
               </p>
             ) : (
               <ul className="mt-3 divide-y divide-slate-100">
@@ -806,7 +907,7 @@ export default function ProposalDetailPage() {
                         <IconDownload size={13} />
                         <span>{tr('Tải xuống', 'Download')}</span>
                       </a>
-                      {att.canDelete && (
+                      {isPendingApproval && att.canDelete && (
                         <button
                           type="button"
                           onClick={() => void handleDeleteAttachment(att.id)}
@@ -825,12 +926,25 @@ export default function ProposalDetailPage() {
 
           {/* Comments */}
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs">
-            <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
-              <IconMessageCircle size={16} className="text-slate-500" />
-              <span>
-                {tr('Thảo luận & Trao đổi', 'Discussion & Comments')} ({comments.length})
-              </span>
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                <IconMessageCircle size={16} className="text-slate-500" />
+                <span>
+                  {tr('Thảo luận & Trao đổi', 'Discussion & Comments')} ({comments.length})
+                </span>
+              </h2>
+              {!isPendingApproval && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                  <IconLock size={12} />
+                  <span>
+                    {tr(
+                      'Chỉ cho phép bình luận khi Chờ phê duyệt',
+                      'Comments allowed only while Pending Approval',
+                    )}
+                  </span>
+                </span>
+              )}
+            </div>
 
             <div className="mt-4 space-y-3">
               {comments.length === 0 ? (
@@ -859,23 +973,35 @@ export default function ProposalDetailPage() {
               )}
             </div>
 
-            <form onSubmit={(e) => void handlePostComment(e)} className="mt-4 flex gap-2">
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder={tr('Nhập bình luận trao đổi...', 'Write a comment...')}
-                className="flex-1 rounded-xl border border-slate-300 px-3.5 py-2 text-xs outline-none focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={isPostingComment || newComment.trim().length === 0}
-                className="inline-flex items-center gap-1 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                <IconSend size={14} />
-                <span>{tr('Gửi', 'Post')}</span>
-              </button>
-            </form>
+            {canComment ? (
+              <form onSubmit={(e) => void handlePostComment(e)} className="mt-4 flex gap-2">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder={tr('Nhập bình luận trao đổi...', 'Write a comment...')}
+                  className="flex-1 rounded-xl border border-slate-300 px-3.5 py-2 text-xs outline-none focus:border-blue-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isPostingComment || newComment.trim().length === 0}
+                  className="inline-flex items-center gap-1 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  <IconSend size={14} />
+                  <span>{tr('Gửi', 'Post')}</span>
+                </button>
+              </form>
+            ) : (
+              <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500">
+                <IconLock size={14} className="shrink-0 text-slate-400" />
+                <span>
+                  {tr(
+                    'Chức năng bình luận đã khóa — chỉ cho phép trao đổi khi đề xuất đang ở trạng thái Chờ phê duyệt.',
+                    'Commenting is locked — discussions are only allowed while the proposal is Pending Approval.',
+                  )}
+                </span>
+              </div>
+            )}
           </section>
         </div>
 
@@ -945,118 +1071,6 @@ export default function ProposalDetailPage() {
             </dl>
           </section>
 
-          {/* Approval Box */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-              {tr('Luồng Phê duyệt (Core Approval Engine)', 'Approval Workflow')}
-            </h2>
-
-            {detail.approval ? (
-              <div className="mt-3 space-y-4">
-                <div className="rounded-xl bg-slate-50 p-3 text-xs">
-                  <div className="font-semibold text-slate-800">
-                    {tr('Tiến độ hiện tại', 'Current Progress')}: {tr('Bước', 'Step')}{' '}
-                    {detail.approval.request.currentStep}/{detail.approval.request.totalSteps}
-                  </div>
-                  {detail.approval.request.currentApproverRoleName &&
-                    detail.approval.request.status === 'PENDING' && (
-                      <div className="mt-0.5 text-slate-600">
-                        {tr('Cấp đang duyệt', 'Current Approver')}:{' '}
-                        <span className="font-semibold text-blue-700">
-                          {ln(
-                            detail.approval.request.currentApproverRoleName,
-                            detail.approval.request.currentApproverRoleNameEn,
-                          )}
-                        </span>
-                      </div>
-                    )}
-                </div>
-
-                {(detail.approval.canApproveOrReject || detail.actions.canRequestRevision) && (
-                  <div className="space-y-2.5 rounded-xl border border-blue-200 bg-blue-50/40 p-3.5">
-                    <label className="block text-xs font-semibold text-slate-700">
-                      {tr(
-                        'Nhận xét / Lý do (bắt buộc khi Từ chối hoặc Yêu cầu sửa)',
-                        'Comment / Reason (required for Reject or Revision)',
-                      )}
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={approvalComment}
-                      onChange={(e) => setApprovalComment(e.target.value)}
-                      placeholder={tr('Nhập nhận xét phê duyệt...', 'Enter approval note...')}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      {detail.approval.canApproveOrReject && (
-                        <>
-                          <button
-                            type="button"
-                            disabled={isActing}
-                            onClick={() => void handleApprovalDecision('APPROVE')}
-                            className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-                          >
-                            <IconCheck size={14} />
-                            <span>{tr('Phê duyệt', 'Approve')}</span>
-                          </button>
-                          <button
-                            type="button"
-                            disabled={isActing}
-                            onClick={() => void handleApprovalDecision('REJECT')}
-                            className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
-                          >
-                            <IconX size={14} />
-                            <span>{tr('Từ chối', 'Reject')}</span>
-                          </button>
-                        </>
-                      )}
-                      {detail.actions.canRequestRevision && (
-                        <button
-                          type="button"
-                          disabled={isActing}
-                          onClick={() =>
-                            void handleStatusAction('REQUEST_REVISION', {
-                              comment: approvalComment,
-                            })
-                          }
-                          className="inline-flex w-full items-center justify-center gap-1 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
-                        >
-                          <IconRotate2 size={14} />
-                          <span>{tr('Trả về yêu cầu chỉnh sửa', 'Request Revision')}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <ol className="space-y-2.5 border-l-2 border-slate-200 pl-3.5 text-xs">
-                  {detail.approval.histories.map((h) => (
-                    <li key={h.id}>
-                      <div className="font-semibold text-slate-800">
-                        {h.actorName ?? tr('Hệ thống', 'System')} —{' '}
-                        {locale === 'en'
-                          ? APPROVAL_ACTION_LABELS[h.action].en
-                          : APPROVAL_ACTION_LABELS[h.action].vi}{' '}
-                        ({tr('Bước', 'Step')} {h.stepOrder})
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        {formatDateTimeVN(h.actedAt)}
-                      </div>
-                      {h.comment && <p className="mt-0.5 text-slate-600">{h.comment}</p>}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ) : (
-              <p className="mt-3 text-xs text-slate-500">
-                {tr(
-                  'Đề xuất chưa gửi sang luồng phê duyệt hoặc đã hoàn tất ngoài hộp thư.',
-                  'This proposal has not been routed through approval yet.',
-                )}
-              </p>
-            )}
-          </section>
-
           {/* Activity Log */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
             <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -1086,6 +1100,157 @@ export default function ProposalDetailPage() {
         </div>
       </div>
 
+      {/* Full-Width Approval Workflow Section (Bottom) */}
+      <section className="w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">
+              {tr('Luồng Phê duyệt (Core Approval Engine)', 'Approval Workflow')}
+            </h2>
+            {detail.approval && (
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                <span className="font-semibold text-slate-800">
+                  {tr('Tiến độ hiện tại', 'Current Progress')}: {tr('Bước', 'Step')}{' '}
+                  {detail.approval.request.currentStep}/{detail.approval.request.totalSteps}
+                </span>
+                {detail.approval.request.currentApproverRoleName &&
+                  detail.approval.request.status === 'PENDING' && (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <span>
+                        {tr('Cấp đang duyệt', 'Current Approver')}:{' '}
+                        <span className="font-semibold text-blue-700">
+                          {ln(
+                            detail.approval.request.currentApproverRoleName,
+                            detail.approval.request.currentApproverRoleNameEn,
+                          )}
+                        </span>
+                      </span>
+                    </>
+                  )}
+              </div>
+            )}
+          </div>
+
+          {detail.approval && (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusMeta.cls}`}>
+              {locale === 'en' ? statusMeta.en : statusMeta.vi}
+            </span>
+          )}
+        </div>
+
+        {detail.approval ? (
+          <div className="mt-5 space-y-5">
+            {(detail.approval.canApproveOrReject || detail.actions.canRequestRevision) && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                <label className="block text-xs font-semibold text-slate-700">
+                  {tr(
+                    'Nhận xét / Lý do (bắt buộc khi Từ chối hoặc Yêu cầu sửa)',
+                    'Comment / Reason (required for Reject or Revision)',
+                  )}
+                </label>
+                <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-start">
+                  <textarea
+                    rows={2}
+                    value={approvalComment}
+                    onChange={(e) => setApprovalComment(e.target.value)}
+                    placeholder={tr('Nhập nhận xét phê duyệt...', 'Enter approval note...')}
+                    className="w-full flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs outline-none focus:border-blue-500"
+                  />
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {detail.approval.canApproveOrReject && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isActing}
+                          onClick={() => void handleApprovalDecision('APPROVE')}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          <IconCheck size={14} />
+                          <span>{tr('Phê duyệt', 'Approve')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isActing}
+                          onClick={() => void handleApprovalDecision('REJECT')}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+                        >
+                          <IconX size={14} />
+                          <span>{tr('Từ chối', 'Reject')}</span>
+                        </button>
+                      </>
+                    )}
+                    {detail.actions.canRequestRevision && (
+                      <button
+                        type="button"
+                        disabled={isActing}
+                        onClick={() =>
+                          void handleStatusAction('REQUEST_REVISION', {
+                            comment: approvalComment,
+                          })
+                        }
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                      >
+                        <IconRotate2 size={14} />
+                        <span>{tr('Trả về yêu cầu chỉnh sửa', 'Request Revision')}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <ol className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {detail.approval.histories.map((h) => (
+                <li
+                  key={h.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-xs"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-md bg-white px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 ring-1 ring-slate-200">
+                      {tr('Bước', 'Step')} {h.stepOrder}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                        h.action === 'APPROVE'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : h.action === 'REJECT'
+                            ? 'bg-rose-100 text-rose-800'
+                            : h.action === 'CANCEL'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-blue-100 text-blue-800'
+                      }`}
+                    >
+                      {locale === 'en'
+                        ? APPROVAL_ACTION_LABELS[h.action].en
+                        : APPROVAL_ACTION_LABELS[h.action].vi}
+                    </span>
+                  </div>
+                  <div className="mt-2 font-semibold text-slate-900">
+                    {h.actorName ?? tr('Hệ thống', 'System')}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-slate-400">
+                    {formatDateTimeVN(h.actedAt)}
+                  </div>
+                  {h.comment && (
+                    <p className="mt-2 rounded-lg bg-white px-2.5 py-2 text-slate-600 ring-1 ring-slate-100">
+                      {h.comment}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : (
+          <p className="mt-4 text-xs text-slate-500">
+            {tr(
+              'Đề xuất chưa gửi sang luồng phê duyệt hoặc đã hoàn tất ngoài hộp thư.',
+              'This proposal has not been routed through approval yet.',
+            )}
+          </p>
+        )}
+      </section>
+
       {/* Edit Modal */}
       {isEditOpen && (
         <ProposalFormModal
@@ -1094,6 +1259,7 @@ export default function ProposalDetailPage() {
           categories={categories}
           branches={branches}
           departments={departments}
+          budgets={budgetOptions}
           onClose={() => setIsEditOpen(false)}
           onSaved={() => {
             setIsEditOpen(false);

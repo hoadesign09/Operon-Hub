@@ -37,7 +37,7 @@ const workflowConditionsSchema = z
   .optional();
 
 export const createWorkflowSchema = z.object({
-  moduleCode: z.enum(['core', 'hrm', 'projects', 'proposals', 'crm']),
+  moduleCode: z.enum(['core', 'hrm', 'projects', 'proposals', 'it_requests', 'payments', 'crm']),
   requestType: z
     .string()
     .trim()
@@ -56,7 +56,9 @@ export const createWorkflowSchema = z.object({
 });
 
 export const updateWorkflowSchema = z.object({
-  moduleCode: z.enum(['core', 'hrm', 'projects', 'proposals', 'crm']).optional(),
+  moduleCode: z
+    .enum(['core', 'hrm', 'projects', 'proposals', 'it_requests', 'payments', 'crm'])
+    .optional(),
   requestType: z
     .string()
     .trim()

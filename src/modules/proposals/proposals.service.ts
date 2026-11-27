@@ -31,6 +31,12 @@ import type { AuthContext } from '@/modules/auth/auth.service';
 import { resolveEmployeeAccessScope } from '@/modules/hrm/employees/employees.scope';
 import { createNotification } from '@/modules/notifications/notifications.service';
 import {
+  notifyBudgetAlertIfNeeded,
+  releaseProposalBudgetReserve,
+  reserveBudgetForProposal,
+  type BudgetAlertInfo,
+} from '@/modules/payments/budget-ledger.service';
+import {
   PROPOSAL_DEFAULT_REQUEST_TYPE,
   PROPOSAL_ENTITY_TYPE,
   PROPOSAL_MODULE_CODE,
@@ -95,6 +101,12 @@ export interface ProposalListItem {
   departmentId: number | null;
   departmentName: string | null;
   departmentNameEn: string | null;
+  budgetId: number | null;
+  budgetCode: string | null;
+  budgetName: string | null;
+  budgetNameEn: string | null;
+  budgetReservedAmount: number;
+  isOverBudget: boolean;
   requesterUserId: number;
   requesterName: string;
   title: string;
@@ -119,6 +131,9 @@ export interface ProposalListItem {
 }
 
 export interface ProposalDetailView extends ProposalListItem {
+  budgetAllocatedAmount: number | null;
+  budgetAvailableAmount: number | null;
+  budgetEnforcementMode: 'HARD_BLOCK' | 'SOFT_WARN' | null;
   content: string;
   expectedOutcome: string | null;
   effectiveFrom: string | null;
@@ -141,6 +156,8 @@ export interface ProposalDetailView extends ProposalListItem {
     canCancel: boolean;
     canStartExecution: boolean;
     canComplete: boolean;
+    canComment: boolean;
+    canUploadAttachment: boolean;
   };
 }
 
@@ -547,6 +564,8 @@ export async function assertProposalViewAccess(
   requesterUserId: number;
   branchId: number;
   departmentId: number | null;
+  budgetId: number | null;
+  budgetReservedAmount: number;
   status: ProposalStatus;
   approvalRequestId: number | null;
   estimatedBudget: number;
@@ -562,6 +581,8 @@ export async function assertProposalViewAccess(
       'requester_user_id',
       'branch_id',
       'department_id',
+      'budget_id',
+      'budget_reserved_amount',
       'status',
       'approval_request_id',
       'estimated_budget',
@@ -582,6 +603,8 @@ export async function assertProposalViewAccess(
     requesterUserId: Number(row.requester_user_id),
     branchId: Number(row.branch_id),
     departmentId: row.department_id !== null ? Number(row.department_id) : null,
+    budgetId: row.budget_id !== null ? Number(row.budget_id) : null,
+    budgetReservedAmount: Number(row.budget_reserved_amount ?? 0),
     status: row.status,
     approvalRequestId:
       row.approval_request_id !== null ? Number(row.approval_request_id) : null,
@@ -656,6 +679,7 @@ export interface ListProposalsQuery {
   priority?: string | null;
   branchId?: string | null;
   departmentId?: string | null;
+  budgetId?: string | null;
   search?: string | null;
   fromDate?: string | null;
   toDate?: string | null;
@@ -682,6 +706,7 @@ export async function listProposals(
     .innerJoin('proposal_categories as c', 'c.id', 'p.category_id')
     .innerJoin('branches as b', 'b.id', 'p.branch_id')
     .leftJoin('departments as d', 'd.id', 'p.department_id')
+    .leftJoin('payment_budgets as bud', 'bud.id', 'p.budget_id')
     .innerJoin('users as u', 'u.id', 'p.requester_user_id')
     .leftJoin('approval_requests as ar', 'ar.id', 'p.approval_request_id')
     .leftJoin('roles as apr_role', 'apr_role.id', 'ar.current_approver_role_id')
@@ -735,6 +760,9 @@ export async function listProposals(
   if (query.departmentId && Number(query.departmentId) > 0) {
     baseQuery = baseQuery.where('p.department_id', '=', Number(query.departmentId));
   }
+  if (query.budgetId && Number(query.budgetId) > 0) {
+    baseQuery = baseQuery.where('p.budget_id', '=', Number(query.budgetId));
+  }
   if (query.fromDate && /^\d{4}-\d{2}-\d{2}$/.test(query.fromDate)) {
     baseQuery = baseQuery.where('p.created_at', '>=', new Date(`${query.fromDate}T00:00:00Z`));
   }
@@ -774,6 +802,12 @@ export async function listProposals(
       'p.department_id',
       'd.name as department_name',
       'd.name_en as department_name_en',
+      'p.budget_id',
+      'bud.code as budget_code',
+      'bud.name as budget_name',
+      'bud.name_en as budget_name_en',
+      'p.budget_reserved_amount',
+      'p.is_over_budget',
       'p.requester_user_id',
       'u.full_name as requester_name',
       'p.title',
@@ -816,6 +850,12 @@ export async function listProposals(
     departmentId: row.department_id !== null ? Number(row.department_id) : null,
     departmentName: row.department_name ?? null,
     departmentNameEn: row.department_name_en ?? null,
+    budgetId: row.budget_id !== null ? Number(row.budget_id) : null,
+    budgetCode: row.budget_code ?? null,
+    budgetName: row.budget_name ?? null,
+    budgetNameEn: row.budget_name_en ?? null,
+    budgetReservedAmount: Number(row.budget_reserved_amount ?? 0),
+    isOverBudget: Number(row.is_over_budget ?? 0) === 1,
     requesterUserId: Number(row.requester_user_id),
     requesterName: row.requester_name,
     title: row.title,
@@ -912,6 +952,7 @@ export async function getProposalDetail(
     .innerJoin('proposal_categories as c', 'c.id', 'p.category_id')
     .innerJoin('branches as b', 'b.id', 'p.branch_id')
     .leftJoin('departments as d', 'd.id', 'p.department_id')
+    .leftJoin('payment_budgets as bud', 'bud.id', 'p.budget_id')
     .innerJoin('users as u', 'u.id', 'p.requester_user_id')
     .leftJoin('approval_requests as ar', 'ar.id', 'p.approval_request_id')
     .leftJoin('roles as apr_role', 'apr_role.id', 'ar.current_approver_role_id')
@@ -929,6 +970,16 @@ export async function getProposalDetail(
       'p.department_id',
       'd.name as department_name',
       'd.name_en as department_name_en',
+      'p.budget_id',
+      'bud.code as budget_code',
+      'bud.name as budget_name',
+      'bud.name_en as budget_name_en',
+      'p.budget_reserved_amount',
+      'p.is_over_budget',
+      'bud.allocated_amount as budget_allocated_amount',
+      'bud.reserved_amount as budget_total_reserved',
+      'bud.spent_amount as budget_total_spent',
+      'bud.enforcement_mode as budget_enforcement_mode',
       'p.requester_user_id',
       'u.full_name as requester_name',
       'p.title',
@@ -1015,6 +1066,7 @@ export async function getProposalDetail(
 
   const isOwner = Number(row.requester_user_id) === auth.userId;
   const isManager = hasManagePermission(auth);
+  const isPendingApproval = row.status === 'PENDING_APPROVAL';
   const canEdit =
     (isOwner || isManager) &&
     (row.status === 'DRAFT' || row.status === 'NEEDS_REVISION');
@@ -1025,18 +1077,20 @@ export async function getProposalDetail(
     (isOwner || isManager) &&
     (row.status === 'DRAFT' || row.status === 'NEEDS_REVISION');
   const canRequestRevision =
-    row.status === 'PENDING_APPROVAL' &&
+    isPendingApproval &&
     (Boolean(approvalDetail?.canApproveOrReject) || isManager);
   const canCancel =
     (isOwner || isManager) &&
     (row.status === 'DRAFT' ||
-      row.status === 'PENDING_APPROVAL' ||
+      isPendingApproval ||
       row.status === 'NEEDS_REVISION');
   const canStartExecution =
     (isManager || isOwner) && row.status === 'APPROVED';
   const canComplete =
     (isManager || isOwner) &&
     (row.status === 'APPROVED' || row.status === 'IN_EXECUTION');
+  const canComment = isPendingApproval;
+  const canUploadAttachment = isPendingApproval && (isOwner || isManager);
 
   return {
     id: Number(row.id),
@@ -1052,6 +1106,25 @@ export async function getProposalDetail(
     departmentId: row.department_id !== null ? Number(row.department_id) : null,
     departmentName: row.department_name ?? null,
     departmentNameEn: row.department_name_en ?? null,
+    budgetId: row.budget_id !== null ? Number(row.budget_id) : null,
+    budgetCode: row.budget_code ?? null,
+    budgetName: row.budget_name ?? null,
+    budgetNameEn: row.budget_name_en ?? null,
+    budgetReservedAmount: Number(row.budget_reserved_amount ?? 0),
+    isOverBudget: Number(row.is_over_budget ?? 0) === 1,
+    budgetAllocatedAmount:
+      row.budget_allocated_amount !== null && row.budget_allocated_amount !== undefined
+        ? Number(row.budget_allocated_amount)
+        : null,
+    budgetAvailableAmount:
+      row.budget_allocated_amount !== null && row.budget_allocated_amount !== undefined
+        ? roundCurrency(
+            Number(row.budget_allocated_amount) -
+              Number(row.budget_total_reserved ?? 0) -
+              Number(row.budget_total_spent ?? 0),
+          )
+        : null,
+    budgetEnforcementMode: row.budget_enforcement_mode ?? null,
     requesterUserId: Number(row.requester_user_id),
     requesterName: row.requester_name,
     title: row.title,
@@ -1110,6 +1183,8 @@ export async function getProposalDetail(
       canCancel,
       canStartExecution,
       canComplete,
+      canComment,
+      canUploadAttachment,
     },
   };
 }
@@ -1151,6 +1226,26 @@ export async function createProposal(
   const resolvedBranchId = branchId;
 
   const departmentId = input.departmentId !== undefined ? input.departmentId : empCtx.departmentId;
+  let resolvedBudgetId: number | null = input.budgetId ?? null;
+  if (resolvedBudgetId) {
+    const budget = await db
+      .selectFrom('payment_budgets')
+      .select(['id', 'status'])
+      .where('id', '=', resolvedBudgetId)
+      .where('deleted_at', 'is', null)
+      .executeTakeFirst();
+    if (!budget) {
+      throw new AppError('INVALID_BUDGET', 'Quỹ ngân sách được chọn không tồn tại.', 400);
+    }
+    if (budget.status !== 'ACTIVE') {
+      throw new AppError(
+        'BUDGET_NOT_ACTIVE',
+        'Chỉ có thể chọn quỹ ngân sách đang hiệu lực (ACTIVE).',
+        409,
+      );
+    }
+    resolvedBudgetId = Number(budget.id);
+  }
   const items = input.items ?? [];
   const calculated = calculateProposalLineTotals(items);
   const estimatedBudget =
@@ -1166,6 +1261,7 @@ export async function createProposal(
         category_id: input.categoryId,
         branch_id: resolvedBranchId,
         department_id: departmentId ?? null,
+        budget_id: resolvedBudgetId,
         requester_employee_id: empCtx.employeeId,
         requester_user_id: auth.userId,
         title: input.title,
@@ -1176,6 +1272,8 @@ export async function createProposal(
         status: 'DRAFT',
         estimated_budget: estimatedBudget,
         approved_budget: null,
+        budget_reserved_amount: 0,
+        is_over_budget: 0,
         currency: 'VND',
         needed_by_date: input.neededByDate ?? null,
         effective_from: input.effectiveFrom ?? null,
@@ -1264,6 +1362,25 @@ export async function updateProposal(
     }
   }
 
+  if (input.budgetId !== undefined && input.budgetId !== null) {
+    const budget = await db
+      .selectFrom('payment_budgets')
+      .select(['id', 'status'])
+      .where('id', '=', input.budgetId)
+      .where('deleted_at', 'is', null)
+      .executeTakeFirst();
+    if (!budget) {
+      throw new AppError('INVALID_BUDGET', 'Quỹ ngân sách được chọn không tồn tại.', 400);
+    }
+    if (budget.status !== 'ACTIVE' && input.budgetId !== existing.budgetId) {
+      throw new AppError(
+        'BUDGET_NOT_ACTIVE',
+        'Chỉ có thể chuyển sang quỹ ngân sách đang hiệu lực (ACTIVE).',
+        409,
+      );
+    }
+  }
+
   await db.transaction().execute(async (trx) => {
     let nextBudget =
       input.estimatedBudget !== undefined
@@ -1283,6 +1400,7 @@ export async function updateProposal(
         ...(input.categoryId !== undefined ? { category_id: input.categoryId } : {}),
         ...(input.branchId !== undefined ? { branch_id: input.branchId } : {}),
         ...(input.departmentId !== undefined ? { department_id: input.departmentId } : {}),
+        ...(input.budgetId !== undefined ? { budget_id: input.budgetId } : {}),
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.summary !== undefined ? { summary: input.summary?.trim() || null } : {}),
         ...(input.content !== undefined ? { content: input.content } : {}),
@@ -1394,7 +1512,21 @@ export async function submitProposalForApproval(
   const requestType = category?.default_request_type || PROPOSAL_DEFAULT_REQUEST_TYPE;
   const isResubmit = existing.status === 'NEEDS_REVISION';
 
+  let budgetAlert: BudgetAlertInfo | null = null;
+
   const approvalResult = await db.transaction().execute(async (trx) => {
+    if (existing.budgetId && existing.estimatedBudget > 0) {
+      const reserveRes = await reserveBudgetForProposal(trx, {
+        budgetId: existing.budgetId,
+        proposalId,
+        proposalCode: existing.proposalCode,
+        amount: existing.estimatedBudget,
+        branchId: existing.branchId,
+        actorUserId: auth.userId,
+      });
+      budgetAlert = reserveRes.alert;
+    }
+
     const createdApproval = await createApprovalRequest(
       {
         moduleCode: PROPOSAL_MODULE_CODE,
@@ -1433,6 +1565,7 @@ export async function submitProposalForApproval(
           approvalRequestId: createdApproval.approvalRequestId,
           totalSteps: createdApproval.totalSteps,
           estimatedBudget: existing.estimatedBudget,
+          budgetId: existing.budgetId,
         }),
       })
       .execute();
@@ -1441,6 +1574,7 @@ export async function submitProposalForApproval(
   });
 
   await notifyApprovalRequestCreated(approvalResult.approvalRequestId);
+  await notifyBudgetAlertIfNeeded(budgetAlert, auth.userId);
 
   await recordAuditLog({
     userId: auth.userId,
@@ -1532,6 +1666,13 @@ export async function transitionProposalStatus(
           .execute();
       }
 
+      await releaseProposalBudgetReserve(trx, {
+        proposalId,
+        proposalCode: existing.proposalCode,
+        actorUserId: auth.userId,
+        reason: `Hoàn trả giữ chỗ do yêu cầu chỉnh sửa Đề xuất ${existing.proposalCode}`,
+      });
+
       await trx
         .updateTable('proposals')
         .set({
@@ -1613,6 +1754,13 @@ export async function transitionProposalStatus(
           .execute();
       }
 
+      await releaseProposalBudgetReserve(trx, {
+        proposalId,
+        proposalCode: existing.proposalCode,
+        actorUserId: auth.userId,
+        reason: `Hoàn trả giữ chỗ do hủy Đề xuất ${existing.proposalCode}`,
+      });
+
       await trx
         .updateTable('proposals')
         .set({
@@ -1646,6 +1794,16 @@ export async function transitionProposalStatus(
     }
 
     await db.transaction().execute(async (trx) => {
+      if (input.approvedBudget !== undefined && input.approvedBudget !== null) {
+        await releaseProposalBudgetReserve(trx, {
+          proposalId,
+          proposalCode: existing.proposalCode,
+          actorUserId: auth.userId,
+          reason: `Điều chỉnh giảm giữ chỗ theo ngân sách duyệt mới của Đề xuất ${existing.proposalCode}`,
+          targetRemainingReserve: roundCurrency(input.approvedBudget),
+        });
+      }
+
       await trx
         .updateTable('proposals')
         .set({
@@ -1684,6 +1842,13 @@ export async function transitionProposalStatus(
     }
 
     await db.transaction().execute(async (trx) => {
+      await releaseProposalBudgetReserve(trx, {
+        proposalId,
+        proposalCode: existing.proposalCode,
+        actorUserId: auth.userId,
+        reason: `Hoàn trả phần dự toán chưa sử dụng khi hoàn tất Đề xuất ${existing.proposalCode}`,
+      });
+
       await trx
         .updateTable('proposals')
         .set({

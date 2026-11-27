@@ -373,12 +373,12 @@ export function PortalShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-            <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 xl:inline-flex">
+            {/* <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 xl:inline-flex">
               {t('common.scope')}: <strong className="ml-1 text-slate-900">{user.dataScope}</strong>
-            </span>
+            </span> */}
 
             <label className="flex items-center gap-2 text-xs text-slate-600">
-              <span className="hidden md:inline">{t('common.branch')}:</span>
+              {/* <span className="hidden md:inline">{t('common.branch')}:</span> */}
               <select
                 value={selectedBranchId ?? ''}
                 onChange={(e) => {
@@ -421,7 +421,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-7">{children}</main>
+        <main className="w-full min-w-0 flex-1 p-4 sm:p-6 lg:p-7">{children}</main>
       </div>
     </div>
   );

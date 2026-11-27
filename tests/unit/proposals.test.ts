@@ -7,7 +7,10 @@ import {
   formatProposalCode,
 } from '@/lib/portable/proposal-calculator';
 import { handleProposalApprovalCompletion } from '@/modules/proposals/proposal-approval-hook';
-import { validateProposalAttachmentFile } from '@/modules/proposals/proposals-collab.service';
+import {
+  canCollaborateOnProposalStatus,
+  validateProposalAttachmentFile,
+} from '@/modules/proposals/proposals-collab.service';
 import {
   createProposalCategorySchema,
   createProposalSchema,
@@ -125,6 +128,17 @@ describe('Proposals Zod Validation & Attachment Guards', () => {
         size: 12 * 1024 * 1024,
       }),
     ).toThrow(/10MB/);
+  });
+
+  it('allows commenting and file upload ONLY when proposal status is PENDING_APPROVAL', () => {
+    expect(canCollaborateOnProposalStatus('PENDING_APPROVAL')).toBe(true);
+    expect(canCollaborateOnProposalStatus('DRAFT')).toBe(false);
+    expect(canCollaborateOnProposalStatus('NEEDS_REVISION')).toBe(false);
+    expect(canCollaborateOnProposalStatus('APPROVED')).toBe(false);
+    expect(canCollaborateOnProposalStatus('REJECTED')).toBe(false);
+    expect(canCollaborateOnProposalStatus('IN_EXECUTION')).toBe(false);
+    expect(canCollaborateOnProposalStatus('COMPLETED')).toBe(false);
+    expect(canCollaborateOnProposalStatus('CANCELLED')).toBe(false);
   });
 });
 

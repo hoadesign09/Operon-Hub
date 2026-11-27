@@ -13,6 +13,19 @@ import type {
 } from '@/modules/hrm/organization/organization.schema';
 import { AppError } from '@/shared/api-response';
 
+export interface DepartmentMemberSummary {
+  id: number;
+  employeeCode: string;
+  fullName: string;
+  workEmail: string;
+  phone: string | null;
+  positionName: string;
+  positionNameEn: string | null;
+  positionLevel: number;
+  employmentStatus: string;
+  isDepartmentManager: boolean;
+}
+
 export interface DepartmentItem {
   id: number;
   branchId: number;
@@ -27,6 +40,14 @@ export interface DepartmentItem {
   nameEn: string | null;
   description: string | null;
   managerEmployeeId: number | null;
+  managerName: string | null;
+  managerCode: string | null;
+  managerPosition: string | null;
+  managerPositionEn: string | null;
+  managerEmail: string | null;
+  employeeCount: number;
+  totalEmployeeCount: number;
+  members: DepartmentMemberSummary[];
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -38,6 +59,8 @@ export interface BranchOrgTree {
   branchName: string;
   branchNameEn: string | null;
   isHeadquarters: boolean;
+  totalDepartments: number;
+  totalEmployees: number;
   departments: TreeNode<DepartmentItem>[];
 }
 
@@ -50,6 +73,37 @@ function assertBranchAllowed(auth: AuthContext, branchId: number): void {
       'BRANCH_ACCESS_DENIED',
       'Bạn không có quyền thao tác dữ liệu của chi nhánh này.',
       403,
+    );
+  }
+}
+
+function computeRecursiveEmployeeCounts(nodes: TreeNode<DepartmentItem>[]): number {
+  let sum = 0;
+  for (const node of nodes) {
+    const childTotal = computeRecursiveEmployeeCounts(node.children);
+    node.totalEmployeeCount = node.employeeCount + childTotal;
+    sum += node.totalEmployeeCount;
+  }
+  return sum;
+}
+
+async function validateManagerEmployee(managerEmployeeId: number | null | undefined): Promise<void> {
+  if (!managerEmployeeId) {
+    return;
+  }
+  const db = getDb();
+  const emp = await db
+    .selectFrom('employees')
+    .select(['id'])
+    .where('id', '=', managerEmployeeId)
+    .where('deleted_at', 'is', null)
+    .executeTakeFirst();
+
+  if (!emp) {
+    throw new AppError(
+      'INVALID_MANAGER_EMPLOYEE',
+      'Nhân sự trưởng phòng ban được chọn không tồn tại.',
+      400,
     );
   }
 }
@@ -74,6 +128,10 @@ export async function listDepartments(
     .selectFrom('departments as d')
     .innerJoin('branches as b', 'b.id', 'd.branch_id')
     .leftJoin('departments as p', 'p.id', 'd.parent_id')
+    .leftJoin('employees as mgr', (join) =>
+      join.onRef('mgr.id', '=', 'd.manager_employee_id').on('mgr.deleted_at', 'is', null),
+    )
+    .leftJoin('positions as mgr_pos', 'mgr_pos.id', 'mgr.position_id')
     .where('d.deleted_at', 'is', null)
     .where('b.deleted_at', 'is', null);
 
@@ -95,7 +153,12 @@ export async function listDepartments(
   if (query.search && query.search.trim().length > 0) {
     const keyword = `%${query.search.trim()}%`;
     baseQuery = baseQuery.where((eb) =>
-      eb.or([eb('d.code', 'like', keyword), eb('d.name', 'like', keyword), eb('d.name_en', 'like', keyword)]),
+      eb.or([
+        eb('d.code', 'like', keyword),
+        eb('d.name', 'like', keyword),
+        eb('d.name_en', 'like', keyword),
+        eb('mgr.full_name', 'like', keyword),
+      ]),
     );
   }
 
@@ -125,6 +188,11 @@ export async function listDepartments(
       'd.name_en',
       'd.description',
       'd.manager_employee_id',
+      'mgr.full_name as manager_name',
+      'mgr.employee_code as manager_code',
+      'mgr.work_email as manager_email',
+      'mgr_pos.name as manager_position',
+      'mgr_pos.name_en as manager_position_en',
       'd.sort_order',
       'd.is_active',
       'd.created_at',
@@ -136,24 +204,53 @@ export async function listDepartments(
     .offset(pagination.offset)
     .execute();
 
-  const items: DepartmentItem[] = rows.map((row) => ({
-    id: Number(row.id),
-    branchId: Number(row.branch_id),
-    branchCode: row.branch_code,
-    branchName: row.branch_name,
-    branchNameEn: row.branch_name_en ?? null,
-    parentId: row.parent_id !== null ? Number(row.parent_id) : null,
-    parentName: row.parent_name ?? null,
-    parentNameEn: row.parent_name_en ?? null,
-    code: row.code,
-    name: row.name,
-    nameEn: row.name_en ?? null,
-    description: row.description,
-    managerEmployeeId: row.manager_employee_id !== null ? Number(row.manager_employee_id) : null,
-    sortOrder: Number(row.sort_order),
-    isActive: Boolean(row.is_active),
-    createdAt: new Date(row.created_at).toISOString(),
-  }));
+  const deptIds = rows.map((row) => Number(row.id));
+  const countByDept = new Map<number, number>();
+  if (deptIds.length > 0) {
+    const empCounts = await db
+      .selectFrom('employees')
+      .select(['department_id', (eb) => eb.fn.count<number>('id').as('cnt')])
+      .where('deleted_at', 'is', null)
+      .where('employment_status', 'in', ['PROBATION', 'ACTIVE', 'ON_LEAVE'])
+      .where('department_id', 'in', deptIds)
+      .groupBy('department_id')
+      .execute();
+
+    for (const row of empCounts) {
+      countByDept.set(Number(row.department_id), Number(row.cnt));
+    }
+  }
+
+  const items: DepartmentItem[] = rows.map((row) => {
+    const id = Number(row.id);
+    const empCount = countByDept.get(id) ?? 0;
+    return {
+      id,
+      branchId: Number(row.branch_id),
+      branchCode: row.branch_code,
+      branchName: row.branch_name,
+      branchNameEn: row.branch_name_en ?? null,
+      parentId: row.parent_id !== null ? Number(row.parent_id) : null,
+      parentName: row.parent_name ?? null,
+      parentNameEn: row.parent_name_en ?? null,
+      code: row.code,
+      name: row.name,
+      nameEn: row.name_en ?? null,
+      description: row.description,
+      managerEmployeeId: row.manager_employee_id !== null ? Number(row.manager_employee_id) : null,
+      managerName: row.manager_name ?? null,
+      managerCode: row.manager_code ?? null,
+      managerPosition: row.manager_position ?? null,
+      managerPositionEn: row.manager_position_en ?? null,
+      managerEmail: row.manager_email ?? null,
+      employeeCount: empCount,
+      totalEmployeeCount: empCount,
+      members: [],
+      sortOrder: Number(row.sort_order),
+      isActive: Boolean(row.is_active),
+      createdAt: new Date(row.created_at).toISOString(),
+    };
+  });
 
   return {
     items,
@@ -200,6 +297,10 @@ export async function getOrganizationTree(
     .selectFrom('departments as d')
     .innerJoin('branches as b', 'b.id', 'd.branch_id')
     .leftJoin('departments as p', 'p.id', 'd.parent_id')
+    .leftJoin('employees as mgr', (join) =>
+      join.onRef('mgr.id', '=', 'd.manager_employee_id').on('mgr.deleted_at', 'is', null),
+    )
+    .leftJoin('positions as mgr_pos', 'mgr_pos.id', 'mgr.position_id')
     .select([
       'd.id',
       'd.branch_id',
@@ -214,6 +315,11 @@ export async function getOrganizationTree(
       'd.name_en',
       'd.description',
       'd.manager_employee_id',
+      'mgr.full_name as manager_name',
+      'mgr.employee_code as manager_code',
+      'mgr.work_email as manager_email',
+      'mgr_pos.name as manager_position',
+      'mgr_pos.name_en as manager_position_en',
       'd.sort_order',
       'd.is_active',
       'd.created_at',
@@ -227,14 +333,80 @@ export async function getOrganizationTree(
     deptQuery = deptQuery.where('d.is_active', '=', 1);
   }
 
-  const deptRows = await deptQuery.execute();
+  const [deptRows, empRows] = await Promise.all([
+    deptQuery.execute(),
+    db
+      .selectFrom('employees as e')
+      .innerJoin('positions as pos', 'pos.id', 'e.position_id')
+      .select([
+        'e.id',
+        'e.department_id',
+        'e.employee_code',
+        'e.full_name',
+        'e.work_email',
+        'e.phone',
+        'e.employment_status',
+        'pos.name as position_name',
+        'pos.name_en as position_name_en',
+        'pos.level as position_level',
+      ])
+      .where('e.deleted_at', 'is', null)
+      .where('e.branch_id', 'in', branchIds)
+      .where('e.employment_status', 'in', ['PROBATION', 'ACTIVE', 'ON_LEAVE'])
+      .orderBy('pos.level', 'desc')
+      .orderBy('e.full_name', 'asc')
+      .execute(),
+  ]);
+
+  const managerIdByDept = new Map<number, number | null>();
+  for (const row of deptRows) {
+    managerIdByDept.set(
+      Number(row.id),
+      row.manager_employee_id !== null ? Number(row.manager_employee_id) : null,
+    );
+  }
+
+  const membersByDept = new Map<number, DepartmentMemberSummary[]>();
+  for (const emp of empRows) {
+    const deptId = Number(emp.department_id);
+    const empId = Number(emp.id);
+    const list = membersByDept.get(deptId) ?? [];
+    list.push({
+      id: empId,
+      employeeCode: emp.employee_code,
+      fullName: emp.full_name,
+      workEmail: emp.work_email,
+      phone: emp.phone ?? null,
+      positionName: emp.position_name,
+      positionNameEn: emp.position_name_en ?? null,
+      positionLevel: Number(emp.position_level),
+      employmentStatus: emp.employment_status,
+      isDepartmentManager: managerIdByDept.get(deptId) === empId,
+    });
+    membersByDept.set(deptId, list);
+  }
+
   const byBranch = new Map<number, DepartmentItem[]>();
 
   for (const row of deptRows) {
+    const deptId = Number(row.id);
     const bid = Number(row.branch_id);
+    const members = membersByDept.get(deptId) ?? [];
+    // Sort manager first, then by positionLevel desc
+    members.sort((a, b) => {
+      if (a.isDepartmentManager !== b.isDepartmentManager) {
+        return a.isDepartmentManager ? -1 : 1;
+      }
+      if (a.positionLevel !== b.positionLevel) {
+        return b.positionLevel - a.positionLevel;
+      }
+      return a.fullName.localeCompare(b.fullName);
+    });
+
+    // If manager_employee_id isn't explicitly set, infer lead display only from explicit manager_employee_id
     const list = byBranch.get(bid) ?? [];
     list.push({
-      id: Number(row.id),
+      id: deptId,
       branchId: bid,
       branchCode: row.branch_code,
       branchName: row.branch_name,
@@ -247,6 +419,14 @@ export async function getOrganizationTree(
       nameEn: row.name_en ?? null,
       description: row.description,
       managerEmployeeId: row.manager_employee_id !== null ? Number(row.manager_employee_id) : null,
+      managerName: row.manager_name ?? null,
+      managerCode: row.manager_code ?? null,
+      managerPosition: row.manager_position ?? null,
+      managerPositionEn: row.manager_position_en ?? null,
+      managerEmail: row.manager_email ?? null,
+      employeeCount: members.length,
+      totalEmployeeCount: members.length,
+      members,
       sortOrder: Number(row.sort_order),
       isActive: Boolean(row.is_active),
       createdAt: new Date(row.created_at).toISOString(),
@@ -256,13 +436,18 @@ export async function getOrganizationTree(
 
   return branches.map((branch) => {
     const bid = Number(branch.id);
+    const flatDepts = byBranch.get(bid) ?? [];
+    const tree = buildTree(flatDepts);
+    const totalEmployees = computeRecursiveEmployeeCounts(tree);
     return {
       branchId: bid,
       branchCode: branch.code,
       branchName: branch.name,
       branchNameEn: branch.name_en ?? null,
       isHeadquarters: Boolean(branch.is_headquarters),
-      departments: buildTree(byBranch.get(bid) ?? []),
+      totalDepartments: flatDepts.length,
+      totalEmployees,
+      departments: tree,
     };
   });
 }
@@ -354,12 +539,14 @@ export async function createDepartment(
   }
 
   await validateBranchAndParent(input.branchId, input.parentId);
+  await validateManagerEmployee(input.managerEmployeeId);
 
   const inserted = await db
     .insertInto('departments')
     .values({
       branch_id: input.branchId,
       parent_id: input.parentId ?? null,
+      manager_employee_id: input.managerEmployeeId ?? null,
       code: input.code,
       name: input.name,
       name_en: input.nameEn?.trim() || null,
@@ -378,7 +565,12 @@ export async function createDepartment(
     action: 'HRM_DEPARTMENT_CREATE',
     entityType: 'departments',
     entityId: createdId,
-    newValues: { code: input.code, name: input.name, branchId: input.branchId },
+    newValues: {
+      code: input.code,
+      name: input.name,
+      branchId: input.branchId,
+      managerEmployeeId: input.managerEmployeeId ?? null,
+    },
     ipAddress,
   });
 
@@ -404,6 +596,7 @@ export async function updateDepartment(
       'id',
       'branch_id',
       'parent_id',
+      'manager_employee_id',
       'code',
       'name',
       'name_en',
@@ -446,13 +639,22 @@ export async function updateDepartment(
         ? Number(existing.parent_id)
         : null;
 
+  const nextManagerEmployeeId =
+    input.managerEmployeeId !== undefined
+      ? input.managerEmployeeId
+      : existing.manager_employee_id !== null
+        ? Number(existing.manager_employee_id)
+        : null;
+
   await validateBranchAndParent(nextBranchId, nextParentId, departmentId);
+  await validateManagerEmployee(nextManagerEmployeeId);
 
   await db
     .updateTable('departments')
     .set({
       branch_id: nextBranchId,
       parent_id: nextParentId,
+      manager_employee_id: nextManagerEmployeeId,
       code: input.code ?? existing.code,
       name: input.name ?? existing.name,
       name_en: input.nameEn !== undefined ? input.nameEn?.trim() || null : existing.name_en,
@@ -471,8 +673,18 @@ export async function updateDepartment(
     action: 'HRM_DEPARTMENT_UPDATE',
     entityType: 'departments',
     entityId: departmentId,
-    oldValues: { code: existing.code, name: existing.name, parentId: existing.parent_id },
-    newValues: { code: input.code ?? existing.code, name: input.name ?? existing.name, parentId: nextParentId },
+    oldValues: {
+      code: existing.code,
+      name: existing.name,
+      parentId: existing.parent_id,
+      managerEmployeeId: existing.manager_employee_id,
+    },
+    newValues: {
+      code: input.code ?? existing.code,
+      name: input.name ?? existing.name,
+      parentId: nextParentId,
+      managerEmployeeId: nextManagerEmployeeId,
+    },
     ipAddress,
   });
 

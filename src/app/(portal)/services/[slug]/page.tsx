@@ -7,7 +7,6 @@ import {
   IconCalendarTime,
   IconCar,
   IconCheck,
-  IconCreditCard,
   IconHeadset,
   IconSparkles,
 } from '@tabler/icons-react';
@@ -26,56 +25,6 @@ interface PlannedServiceMeta {
 }
 
 const PLANNED_SERVICES: Record<string, PlannedServiceMeta> = {
-  'it-requests': {
-    title: {
-      vi: 'Yêu cầu Hỗ trợ IT (IT Request)',
-      en: 'IT Helpdesk Request',
-    },
-    subtitle: {
-      vi: 'Quản lý ticket hỗ trợ kỹ thuật, cấp tài khoản, phân quyền VPN và xử lý sự cố thiết bị tập trung.',
-      en: 'Centralized technical support ticketing for account provisioning, VPN access, software setup, and device troubleshooting.',
-    },
-    icon: IconHeadset,
-    highlights: [
-      {
-        vi: 'Phân loại ticket theo mức độ ưu tiên (Low / Medium / High / Urgent) & tự động tính SLA',
-        en: 'Priority-based ticket routing (Low / Medium / High / Urgent) with automated SLA tracking',
-      },
-      {
-        vi: 'Tích hợp phê duyệt đa cấp với Core Approval Engine cho yêu cầu cấp phần mềm / thiết bị mới',
-        en: 'Integrated with Core Approval Engine for software licenses and hardware requests',
-      },
-      {
-        vi: 'Liên kết trực tiếp với Kho tài sản (Assets) và Hồ sơ Nhân viên 360°',
-        en: 'Directly linked with Company Assets inventory and 360° Employee Profiles',
-      },
-    ],
-  },
-  payments: {
-    title: {
-      vi: 'Đề nghị Thanh toán & Tạm ứng (Payment)',
-      en: 'Payment & Reimbursement Requests',
-    },
-    subtitle: {
-      vi: 'Quy trình tạm ứng, hoàn ứng công tác phí và thanh toán nhà cung cấp minh bạch, chống trùng chứng từ.',
-      en: 'Transparent workflow for cash advances, business trip reimbursements, and vendor invoice payments.',
-    },
-    icon: IconCreditCard,
-    highlights: [
-      {
-        vi: 'Hỗ trợ nhiều loại chứng từ: Tạm ứng, Hoàn ứng, Thanh toán hóa đơn VAT / nhà cung cấp',
-        en: 'Supports Cash Advance, Expense Reimbursement, and Vendor Invoice payments',
-      },
-      {
-        vi: 'Phê duyệt tuần tự: Quản lý trực tiếp → Kế toán kiểm tra chứng từ → Giám đốc duyệt chi',
-        en: 'Sequential approval chain: Line Manager → Finance Verification → Executive Sign-off',
-      },
-      {
-        vi: 'Theo dõi trạng thái chi trả (Chờ duyệt → Đã duyệt → Đã chuyển khoản) và xuất bảng kê Excel',
-        en: 'Real-time disbursement status tracking and Excel accounting exports',
-      },
-    ],
-  },
   'car-booking': {
     title: {
       vi: 'Đặt xe Công tác (Car Booking)',
@@ -111,7 +60,7 @@ export default function PlannedServiceDetailPage() {
 
   if (!service) {
     return (
-      <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+      <div className="w-full rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
         <h1 className="text-lg font-bold text-slate-900">
           {tr('Không tìm thấy dịch vụ', 'Service Not Found')}
         </h1>
@@ -137,7 +86,7 @@ export default function PlannedServiceDetailPage() {
   const subtitle = locale === 'en' ? service.subtitle.en : service.subtitle.vi;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="w-full space-y-6">
       <Link
         href="/services"
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600"

@@ -23,6 +23,14 @@ import {
   handleProposalApprovalCompletion,
   PROPOSAL_ENTITY_TYPE,
 } from '@/modules/proposals/proposal-approval-hook';
+import {
+  handleItRequestApprovalCompletion,
+  IT_REQUEST_ENTITY_TYPE,
+} from '@/modules/it-requests/it-request-approval-hook';
+import {
+  handlePaymentApprovalCompletion,
+  PAYMENT_ENTITY_TYPE,
+} from '@/modules/payments/payment-approval-hook';
 
 let hooksRegistered = false;
 
@@ -55,6 +63,14 @@ export function ensureApprovalHooksRegistered(): void {
   registerApprovalCompletionHook(
     PROPOSAL_ENTITY_TYPE,
     handleProposalApprovalCompletion,
+  );
+  registerApprovalCompletionHook(
+    IT_REQUEST_ENTITY_TYPE,
+    handleItRequestApprovalCompletion,
+  );
+  registerApprovalCompletionHook(
+    PAYMENT_ENTITY_TYPE,
+    handlePaymentApprovalCompletion,
   );
   hooksRegistered = true;
 }

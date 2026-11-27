@@ -19,6 +19,7 @@ import {
   IconUser,
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import type { BudgetOptionDto } from '@/components/payments/budget-ui.helpers';
 import { ProposalCategoryModal } from '@/components/proposals/ProposalCategoryModal';
 import {
   ProposalFormModal,
@@ -51,6 +52,12 @@ interface ProposalRow {
   departmentId: number | null;
   departmentName: string | null;
   departmentNameEn: string | null;
+  budgetId: number | null;
+  budgetCode: string | null;
+  budgetName: string | null;
+  budgetNameEn: string | null;
+  budgetReservedAmount: number;
+  isOverBudget: boolean;
   requesterUserId: number;
   requesterName: string;
   title: string;
@@ -127,6 +134,7 @@ export default function ProposalsPage() {
   const [categories, setCategories] = useState<ProposalCategoryOption[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [budgetOptions, setBudgetOptions] = useState<BudgetOptionDto[]>([]);
 
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [editingProposal, setEditingProposal] = useState<EditableProposalData | null>(null);
@@ -162,15 +170,20 @@ export default function ProposalsPage() {
         cache: 'no-store',
         signal: controller.signal,
       }),
+      fetch('/api/v1/payments/budgets/options', {
+        cache: 'no-store',
+        signal: controller.signal,
+      }),
     ])
-      .then(async ([catRes, brRes, deptRes]) => {
+      .then(async ([catRes, brRes, deptRes, budRes]) => {
         if (controller.signal.aborted) {
           return;
         }
-        const [catJson, brJson, deptJson] = await Promise.all([
+        const [catJson, brJson, deptJson, budJson] = await Promise.all([
           catRes.json().catch(() => null),
           brRes.json().catch(() => null),
           deptRes.json().catch(() => null),
+          budRes.json().catch(() => null),
         ]);
         if (catRes.ok && catJson?.success) {
           setCategories((catJson.data ?? []) as ProposalCategoryOption[]);
@@ -180,6 +193,9 @@ export default function ProposalsPage() {
         }
         if (deptRes.ok && deptJson?.success) {
           setDepartments((deptJson.data ?? []) as DepartmentOption[]);
+        }
+        if (budRes.ok && budJson?.success) {
+          setBudgetOptions((budJson.data ?? []) as BudgetOptionDto[]);
         }
       })
       .catch(() => undefined);
@@ -388,7 +404,7 @@ export default function ProposalsPage() {
         : errorMessage;
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-5">
+    <div className="w-full space-y-5">
       {/* Hero Banner */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#080E1A] via-[#0F172A] to-[#1E3A8A] p-6 text-white shadow-sm">
         <div className="pointer-events-none absolute -top-16 -right-16 h-60 w-60 rounded-full bg-violet-400/15 blur-3xl" />
@@ -847,12 +863,17 @@ export default function ProposalsPage() {
                             >
                               {item.title}
                             </Link>
-                            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">
+                            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                               <span className="font-mono font-semibold text-blue-700">
                                 {item.proposalCode}
                               </span>
                               <span>•</span>
                               <span>{ln(item.branchName, item.branchNameEn)}</span>
+                              {item.budgetCode && (
+                                <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-700">
+                                  {item.budgetCode}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
@@ -1001,6 +1022,7 @@ export default function ProposalsPage() {
           categories={categories}
           branches={branches}
           departments={departments}
+          budgets={budgetOptions}
           onClose={() => setIsProposalModalOpen(false)}
           onSaved={(savedId) => {
             setIsProposalModalOpen(false);

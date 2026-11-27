@@ -1,7 +1,11 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getDb, type ProposalCommentType } from '@/config/database';
+import {
+  getDb,
+  type ProposalCommentType,
+  type ProposalStatus,
+} from '@/config/database';
 import type { AuthContext } from '@/modules/auth/auth.service';
 import { createNotification } from '@/modules/notifications/notifications.service';
 import {
@@ -36,6 +40,26 @@ export interface ProposalAttachmentView {
 }
 
 const PROPOSAL_UPLOAD_ROOT = path.resolve(process.cwd(), 'uploads', 'proposals');
+
+/**
+ * Chỉ cho phép bình luận và tải/gỡ tệp đính kèm khi đề xuất đang ở trạng thái Chờ phê duyệt (PENDING_APPROVAL).
+ */
+export function canCollaborateOnProposalStatus(status: ProposalStatus): boolean {
+  return status === 'PENDING_APPROVAL';
+}
+
+function assertProposalPendingForCollaboration(
+  status: ProposalStatus,
+  actionLabel: string,
+): void {
+  if (!canCollaborateOnProposalStatus(status)) {
+    throw new AppError(
+      'PROPOSAL_COLLAB_LOCKED',
+      `Chỉ cho phép ${actionLabel} khi đề xuất đang ở trạng thái Chờ phê duyệt.`,
+      409,
+    );
+  }
+}
 
 function resolveSafeProposalStoragePath(relativeKey: string): string {
   const normalized = path.normalize(relativeKey).replace(/^(\.\.(\/|\\|$))+/, '');
@@ -126,6 +150,7 @@ export async function createProposalComment(
   input: CreateProposalCommentInput,
 ): Promise<ProposalCommentView[]> {
   const proposal = await assertProposalViewAccess(auth, proposalId);
+  assertProposalPendingForCollaboration(proposal.status, 'bình luận');
   const db = getDb();
 
   await db.transaction().execute(async (trx) => {
@@ -170,9 +195,10 @@ export async function listProposalAttachments(
   auth: AuthContext,
   proposalId: number,
 ): Promise<ProposalAttachmentView[]> {
-  await assertProposalViewAccess(auth, proposalId);
+  const proposal = await assertProposalViewAccess(auth, proposalId);
   const db = getDb();
   const isManager = auth.isSuperAdmin || auth.permissions.includes('proposals.manage');
+  const canMutateAttachments = canCollaborateOnProposalStatus(proposal.status);
 
   const rows = await db
     .selectFrom('proposal_attachments as a')
@@ -201,7 +227,8 @@ export async function listProposalAttachments(
     mimeType: r.mime_type,
     fileSizeBytes: Number(r.file_size_bytes),
     createdAt: new Date(r.created_at).toISOString(),
-    canDelete: isManager || Number(r.uploaded_by_user_id) === auth.userId,
+    canDelete:
+      canMutateAttachments && (isManager || Number(r.uploaded_by_user_id) === auth.userId),
   }));
 }
 
@@ -211,6 +238,7 @@ export async function uploadProposalAttachment(
   file: File,
 ): Promise<ProposalAttachmentView[]> {
   const proposal = await assertProposalViewAccess(auth, proposalId);
+  assertProposalPendingForCollaboration(proposal.status, 'tải tệp đính kèm');
   const isManager = auth.isSuperAdmin || auth.permissions.includes('proposals.manage');
   if (proposal.requesterUserId !== auth.userId && !isManager) {
     throw new AppError('FORBIDDEN', 'Bạn không có quyền tải tệp đính kèm lên đề xuất này.', 403);
@@ -296,7 +324,8 @@ export async function softDeleteProposalAttachment(
   proposalId: number,
   attachmentId: number,
 ): Promise<ProposalAttachmentView[]> {
-  await assertProposalViewAccess(auth, proposalId);
+  const proposal = await assertProposalViewAccess(auth, proposalId);
+  assertProposalPendingForCollaboration(proposal.status, 'gỡ tệp đính kèm');
   const db = getDb();
 
   const row = await db
