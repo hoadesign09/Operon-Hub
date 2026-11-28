@@ -21,6 +21,7 @@ import {
 } from '@/components/hrm/ContractFormModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -477,11 +478,7 @@ export default function ContractsPage() {
           </button>
         </div>
       ) : isLoading ? (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-          ))}
-        </div>
+        <SkeletonTable rows={6} columns={7} showToolbar={false} showPagination />
       ) : contracts.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
           <IconFileCertificate size={38} className="mx-auto text-slate-300" />

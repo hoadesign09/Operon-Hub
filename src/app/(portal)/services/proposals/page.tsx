@@ -33,6 +33,7 @@ import {
   type ProposalStatusKey,
 } from '@/components/proposals/proposal-ui.constants';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Skeleton, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import type { PaginationMeta } from '@/lib/portable/pagination';
@@ -166,7 +167,7 @@ export default function ProposalsPage() {
         cache: 'no-store',
         signal: controller.signal,
       }),
-      fetch('/api/v1/hrm/departments?limit=200', {
+      fetch('/api/v1/hrm/org/departments?limit=200', {
         cache: 'no-store',
         signal: controller.signal,
       }),
@@ -459,41 +460,61 @@ export default function ProposalsPage() {
             <div className="text-[11px] font-medium text-slate-300">
               {tr('Tổng số đề xuất', 'Total Proposals')}
             </div>
-            <div className="mt-1 text-xl font-bold text-white">{summary?.total ?? 0}</div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-6 w-12" />
+            ) : (
+              <div className="mt-1 text-xl font-bold text-white">{summary?.total ?? 0}</div>
+            )}
           </div>
           <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3">
             <div className="text-[11px] font-medium text-amber-200">
               {tr('Chờ tôi phê duyệt', 'Pending My Approval')}
             </div>
-            <div className="mt-1 text-xl font-bold text-amber-300">
-              {summary?.pendingMyApprovalCount ?? 0}
-            </div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-6 w-12" />
+            ) : (
+              <div className="mt-1 text-xl font-bold text-amber-300">
+                {summary?.pendingMyApprovalCount ?? 0}
+              </div>
+            )}
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
             <div className="text-[11px] font-medium text-slate-300">
               {tr('Đang chờ duyệt', 'In Approval')}
             </div>
-            <div className="mt-1 text-xl font-bold text-cyan-300">
-              {summary?.pendingCount ?? 0}
-            </div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-6 w-12" />
+            ) : (
+              <div className="mt-1 text-xl font-bold text-cyan-300">
+                {summary?.pendingCount ?? 0}
+              </div>
+            )}
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
             <div className="text-[11px] font-medium text-slate-300">
               {tr('Đã duyệt / Đang thực thi', 'Approved / Executing')}
             </div>
-            <div className="mt-1 text-xl font-bold text-emerald-300">
-              {(summary?.approvedCount ?? 0) +
-                (summary?.inExecutionCount ?? 0) +
-                (summary?.completedCount ?? 0)}
-            </div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-6 w-12" />
+            ) : (
+              <div className="mt-1 text-xl font-bold text-emerald-300">
+                {(summary?.approvedCount ?? 0) +
+                  (summary?.inExecutionCount ?? 0) +
+                  (summary?.completedCount ?? 0)}
+              </div>
+            )}
           </div>
           <div className="col-span-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 lg:col-span-1">
             <div className="text-[11px] font-medium text-slate-300">
               {tr('Ngân sách đã duyệt', 'Approved Budget')}
             </div>
-            <div className="mt-1 truncate text-base font-bold text-white">
-              {formatVND(summary?.totalApprovedBudget ?? 0)}
-            </div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-6 w-28" />
+            ) : (
+              <div className="mt-1 truncate text-base font-bold text-white">
+                {formatVND(summary?.totalApprovedBudget ?? 0)}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -782,11 +803,7 @@ export default function ProposalsPage() {
 
           {/* 4 Mandatory States */}
           {viewState === 'loading' && (
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
-              ))}
-            </div>
+            <SkeletonTable rows={6} columns={7} showToolbar={false} showPagination={false} />
           )}
 
           {viewState === 'error' && (

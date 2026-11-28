@@ -85,13 +85,13 @@ export function QuickTimerWidget() {
 
   return (
     <div
-      className={`inline-flex items-center gap-2 rounded-xl border px-2.5 py-1 text-xs font-semibold shadow-xs ${
+      className={`inline-flex h-8 items-center gap-2 rounded border px-2 text-xs font-semibold ${
         activeTimer.exceededWarningHours
-          ? 'border-rose-300 bg-rose-50 text-rose-800'
-          : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          ? 'border-red-300 bg-red-50 text-red-800'
+          : 'border-emerald-300 bg-emerald-50 text-emerald-800'
       }`}
     >
-      <IconStopwatch size={15} className="animate-pulse" />
+      <IconStopwatch size={14} className="animate-pulse" />
       <Link
         href={`/projects/${activeTimer.projectCode}?taskId=${activeTimer.taskId}`}
         className="max-w-[120px] truncate hover:underline"
@@ -99,20 +99,22 @@ export function QuickTimerWidget() {
       >
         {activeTimer.taskKey}
       </Link>
-      <span className="font-mono text-[11px]">{formatElapsed(activeTimer.startedAt, nowMs)}</span>
+      <span className="font-mono text-[11px] tabular-nums">
+        {formatElapsed(activeTimer.startedAt, nowMs)}
+      </span>
       {activeTimer.exceededWarningHours && (
         <span title={tr('Timer đã chạy quá 12 giờ', 'Timer running over 12 hours')}>
-          <IconAlertTriangle size={14} className="text-rose-600" />
+          <IconAlertTriangle size={13} className="text-red-600" />
         </span>
       )}
       <button
         type="button"
         disabled={stopping}
         onClick={() => void handleStop()}
-        className="inline-flex items-center gap-0.5 rounded-lg bg-rose-600 px-1.5 py-0.5 text-[11px] font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+        className="inline-flex items-center gap-0.5 rounded-xs bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-red-700 disabled:opacity-50"
         title={tr('Dừng bấm giờ', 'Stop timer')}
       >
-        <IconPlayerStop size={12} />
+        <IconPlayerStop size={11} />
         {tr('Dừng', 'Stop')}
       </button>
     </div>

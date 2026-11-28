@@ -20,6 +20,7 @@ import { PayrollPeriodFormModal } from '@/components/hrm/PayrollPeriodFormModal'
 import { PayslipDetailModal } from '@/components/hrm/PayslipDetailModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonFormFields, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import type { PayrollConfig } from '@/modules/hrm/payroll/payroll-calculator';
 import type {
@@ -539,10 +540,13 @@ export default function HrmPayrollPage() {
           {/* Periods List */}
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {isLoadingPeriods ? (
-              <div className="space-y-3 p-6">
-                <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
-                <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
-              </div>
+              <SkeletonTable
+                rows={4}
+                columns={8}
+                showToolbar={false}
+                showPagination={false}
+                className="rounded-none border-0"
+              />
             ) : periodsError ? (
               <div className="p-6 text-center">
                 <p className="text-sm text-rose-700">{periodsError}</p>
@@ -870,10 +874,7 @@ export default function HrmPayrollPage() {
               </div>
 
               {isLoadingDetail ? (
-                <div className="space-y-2 py-4">
-                  <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
-                  <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
-                </div>
+                <SkeletonTable rows={6} columns={9} showToolbar={false} showPagination={false} />
               ) : detailError ? (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center">
                   <p className="text-sm text-rose-700">{detailError}</p>
@@ -986,10 +987,7 @@ export default function HrmPayrollPage() {
         /* Tab 2: Config BH & Tax */
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           {isLoadingConfig ? (
-            <div className="space-y-3">
-              <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
-              <div className="h-24 animate-pulse rounded-lg bg-slate-100" />
-            </div>
+            <SkeletonFormFields fields={6} columns={2} showActions={canManage} />
           ) : configError && !config ? (
             <div className="p-4 text-center">
               <p className="text-sm text-rose-700">{configError}</p>

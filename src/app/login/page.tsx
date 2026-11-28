@@ -13,6 +13,7 @@ import {
   IconUsersGroup,
 } from '@tabler/icons-react';
 import { LanguageSwitcher } from '@/components/portal/LanguageSwitcher';
+import { ThemeToggle } from '@/components/portal/ThemeToggle';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
 export default function LoginPage() {
@@ -56,32 +57,29 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen grid-cols-1 bg-[#EEF2F6] lg:grid-cols-12">
-      {/* Left Brand Panel — Midnight Command Identity */}
-      <section className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-[#080E1A] via-[#0F172A] to-[#0C4A6E] p-12 text-white lg:col-span-6 lg:flex xl:col-span-7">
-        <div className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-cyan-500/15 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-blue-600/20 blur-3xl" />
-
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/30">
-            <IconBuildingSkyscraper size={24} />
+    <main className="portal-precision-grid grid min-h-screen grid-cols-1 bg-[#EFF1F4] lg:grid-cols-12">
+      {/* Left Panel — Precision Grid Classic Steel Identity (Zero flashy gradients/blur orbs) */}
+      <section className="hidden flex-col justify-between border-r border-[#CFD6DF] bg-[#1D4E89] p-10 text-white lg:col-span-6 lg:flex xl:col-span-7">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded border border-white/25 bg-white/10 text-white">
+            <IconBuildingSkyscraper size={22} />
           </div>
           <div>
-            <p className="text-[11px] font-semibold tracking-widest text-cyan-300 uppercase">
+            <p className="text-[10px] font-bold tracking-widest text-white/75 uppercase">
               {t('app.commandBrand')}
             </p>
             <p className="text-lg font-bold tracking-tight text-white">Operon Hub</p>
           </div>
         </div>
 
-        <div className="relative z-10 max-w-xl space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3.5 py-1 text-xs font-semibold text-cyan-300">
+        <div className="max-w-xl space-y-5">
+          <div className="inline-flex items-center gap-2 rounded-xs border border-white/25 bg-white/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white uppercase">
             {t('login.badge')}
           </div>
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-white">
+          <h1 className="text-3xl font-bold leading-snug tracking-tight text-white">
             {t('login.heroTitle')}
           </h1>
-          <p className="text-sm leading-relaxed text-slate-300">{t('login.heroDesc')}</p>
+          <p className="text-sm leading-relaxed text-white/80">{t('login.heroDesc')}</p>
 
           <div className="grid grid-cols-3 gap-3 pt-2">
             {[
@@ -105,47 +103,53 @@ export default function LoginPage() {
               return (
                 <div
                   key={item.title}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xs"
+                  className="rounded border border-white/20 bg-[#163D6B] p-3.5"
                 >
-                  <Icon size={20} className="text-cyan-300" />
-                  <p className="mt-2.5 text-xs font-bold text-white">{item.title}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">{item.desc}</p>
+                  <Icon size={18} className="text-white/90" />
+                  <p className="mt-2 text-xs font-bold text-white">{item.title}</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-white/75">{item.desc}</p>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="relative z-10 text-xs text-slate-400">{t('login.footer')}</div>
+        <div className="border-t border-white/15 pt-4 text-xs text-white/70">
+          {t('login.footer')}
+        </div>
       </section>
 
-      {/* Right Login Form Panel */}
-      <section className="relative flex flex-col items-center justify-center px-4 py-12 sm:px-8 lg:col-span-6 xl:col-span-5">
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+      {/* Right Panel — Crisp Bordered Precision Grid Login Card */}
+      <section className="relative flex flex-col items-center justify-center px-4 py-10 sm:px-8 lg:col-span-6 xl:col-span-5">
+        <div className="absolute top-4 right-4 flex items-center gap-2 sm:top-6 sm:right-6">
+          <ThemeToggle variant="light" />
           <LanguageSwitcher variant="light" />
         </div>
 
-        <div className="w-full max-w-md rounded-2xl border border-slate-200/90 bg-white p-8 shadow-sm">
-          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/20 lg:hidden">
-              <IconBuildingSkyscraper size={24} />
+        <div className="w-full max-w-md rounded border border-[#CFD6DF] bg-white">
+          <div className="border-b border-[#DCE2EA] bg-[#F8F9FB] px-6 py-4">
+            <div className="flex items-center gap-2.5 lg:hidden">
+              <div className="flex h-8 w-8 items-center justify-center rounded bg-[#1D4E89] text-white">
+                <IconBuildingSkyscraper size={18} />
+              </div>
+              <span className="text-sm font-bold text-slate-900">Operon Hub</span>
             </div>
-            <span className="mt-3 text-[11px] font-bold tracking-widest text-blue-600 uppercase lg:mt-0">
+            <span className="mt-2 block text-[10px] font-bold tracking-widest text-[#1D4E89] uppercase lg:mt-0">
               {t('login.eyebrow')}
             </span>
-            <h2 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900">
+            <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-900">
               {t('login.welcome')}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">{t('login.subtitle')}</p>
+            <p className="mt-0.5 text-xs text-slate-500">{t('login.subtitle')}</p>
           </div>
 
-          <form onSubmit={(e) => void handleSubmit(e)} className="mt-7 space-y-4">
+          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 p-6">
             {errorMessage && (
               <div
                 role="alert"
-                className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm text-rose-700"
+                className="flex items-start gap-2 rounded border border-red-300 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-800"
               >
-                <IconAlertCircle size={18} className="mt-0.5 shrink-0" />
+                <IconAlertCircle size={16} className="mt-0.5 shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}
@@ -153,7 +157,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="login-email"
-                className="mb-1.5 block text-xs font-semibold text-slate-700"
+                className="mb-1 block text-[11px] font-semibold text-slate-700"
               >
                 {t('login.emailLabel')}
               </label>
@@ -165,14 +169,14 @@ export default function LoginPage() {
                 placeholder="admin@operonhub.local"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded border border-[#BFC8D4] bg-white px-3 py-2 text-xs text-slate-900 outline-none transition focus:border-[#1D4E89]"
               />
             </div>
 
             <div>
               <label
                 htmlFor="login-password"
-                className="mb-1.5 block text-xs font-semibold text-slate-700"
+                className="mb-1 block text-[11px] font-semibold text-slate-700"
               >
                 {t('login.passwordLabel')}
               </label>
@@ -185,15 +189,15 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50/50 py-2.5 pr-10 pl-3.5 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded border border-[#BFC8D4] bg-white py-2 pr-9 pl-3 text-xs text-slate-900 outline-none transition focus:border-[#1D4E89]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
-                  className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-slate-700"
+                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700"
                 >
-                  {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                  {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
               </div>
             </div>
@@ -201,9 +205,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F172A] via-blue-700 to-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded bg-[#1D4E89] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#163D6B] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <IconLogin size={18} />
+              <IconLogin size={16} />
               <span>{isSubmitting ? t('login.submitting') : t('login.submit')}</span>
             </button>
           </form>

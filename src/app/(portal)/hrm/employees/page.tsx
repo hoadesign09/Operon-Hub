@@ -22,6 +22,7 @@ import {
 } from '@/components/hrm/EmployeeFormModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -486,11 +487,7 @@ export default function EmployeesPage() {
           </button>
         </div>
       ) : isLoading ? (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-          ))}
-        </div>
+        <SkeletonTable rows={6} columns={7} showToolbar={false} showPagination />
       ) : employees.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
           <IconIdBadge2 size={38} className="mx-auto text-slate-300" />

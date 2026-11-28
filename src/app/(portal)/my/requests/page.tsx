@@ -32,6 +32,7 @@ import {
   type EditableOvertimeRequest,
 } from '@/components/hrm/OvertimeRequestFormModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonCardGrid, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -431,14 +432,11 @@ export default function MyRequestsPage() {
           </h2>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((idx) => (
-                <div
-                  key={idx}
-                  className="h-32 animate-pulse rounded-2xl border border-slate-200 bg-white p-5"
-                />
-              ))}
-            </div>
+            <SkeletonCardGrid
+              count={3}
+              columnsClass="grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              lines={1}
+            />
           ) : balances.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
               {tr(
@@ -594,11 +592,13 @@ export default function MyRequestsPage() {
         </div>
 
         {isLoading ? (
-          <div className="space-y-3 p-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-            ))}
-          </div>
+          <SkeletonTable
+            rows={5}
+            columns={7}
+            showToolbar={false}
+            showPagination={false}
+            className="rounded-none border-0"
+          />
         ) : errorMsg ? (
           <div className="p-8 text-center">
             <IconAlertCircle size={32} className="mx-auto text-rose-500" />

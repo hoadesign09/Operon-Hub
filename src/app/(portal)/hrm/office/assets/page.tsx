@@ -18,6 +18,7 @@ import { AssetDetailModal } from '@/components/hrm/AssetDetailModal';
 import { AssetFormModal } from '@/components/hrm/AssetFormModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import type {
   AssetInventoryStats,
@@ -371,11 +372,13 @@ export default function HrmAssetsPage() {
       {/* Assets Table */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="space-y-3 p-6">
-            <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
-            <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
-            <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
-          </div>
+          <SkeletonTable
+            rows={6}
+            columns={7}
+            showToolbar={false}
+            showPagination={false}
+            className="rounded-none border-0"
+          />
         ) : errorMessage ? (
           <div className="p-8 text-center">
             <p className="text-sm text-rose-700">{errorMessage}</p>

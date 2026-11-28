@@ -193,6 +193,13 @@ export async function createEmployeeWorkHistory(
   const targetPositionId = toPositionId ?? emp.positionId;
 
   if (toBranchId !== null) {
+    if (!auth.isSuperAdmin && !auth.hasAllBranches && !auth.branchIds.includes(toBranchId)) {
+      throw new AppError(
+        'FORBIDDEN',
+        'Bạn không có quyền điều chuyển nhân viên sang chi nhánh ngoài phạm vi quản lý.',
+        403,
+      );
+    }
     const branch = await db
       .selectFrom('branches')
       .select(['id'])

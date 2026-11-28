@@ -827,6 +827,7 @@ export async function assignAsset(
   if (!employee) {
     throw new AppError('EMPLOYEE_NOT_FOUND', 'Không tìm thấy nhân viên tiếp nhận.', 404);
   }
+  assertBranchWriteAllowed(auth, Number(employee.branch_id));
   if (
     employee.employment_status === 'RESIGNED' ||
     employee.employment_status === 'TERMINATED'

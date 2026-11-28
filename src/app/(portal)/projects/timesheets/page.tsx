@@ -12,6 +12,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonTableRows } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import type { TaskListItem } from '@/modules/projects/tasks.service';
 import type { TimeLogItemView } from '@/modules/projects/timelogs.service';
@@ -331,91 +332,89 @@ export default function ProjectTimesheetsPage() {
             {tr('Tổng tuần', 'Week Total')}: {totalHours}h
           </span>
         </div>
-        {loading ? (
-          <div className="h-48 animate-pulse bg-slate-50" />
-        ) : (
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600">
+            <tr>
+              <th className="px-4 py-2.5">{tr('Ngày', 'Date')}</th>
+              <th className="px-4 py-2.5">{tr('Nhân viên', 'Employee')}</th>
+              <th className="px-4 py-2.5">{tr('Công việc', 'Task')}</th>
+              <th className="px-4 py-2.5 text-right">{tr('Thời lượng', 'Duration')}</th>
+              <th className="px-4 py-2.5 text-right">{tr('Chi phí', 'Est. Cost')}</th>
+              <th className="px-4 py-2.5">{tr('Trạng thái', 'Status')}</th>
+              <th className="px-4 py-2.5 text-right">{tr('Duyệt', 'Action')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <SkeletonTableRows rows={6} columns={7} />
+            ) : logs.length === 0 ? (
               <tr>
-                <th className="px-4 py-2.5">{tr('Ngày', 'Date')}</th>
-                <th className="px-4 py-2.5">{tr('Nhân viên', 'Employee')}</th>
-                <th className="px-4 py-2.5">{tr('Công việc', 'Task')}</th>
-                <th className="px-4 py-2.5 text-right">{tr('Thời lượng', 'Duration')}</th>
-                <th className="px-4 py-2.5 text-right">{tr('Chi phí', 'Est. Cost')}</th>
-                <th className="px-4 py-2.5">{tr('Trạng thái', 'Status')}</th>
-                <th className="px-4 py-2.5 text-right">{tr('Duyệt', 'Action')}</th>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  {tr('Chưa có bản ghi giờ công nào trong tuần này.', 'No time logs recorded this week.')}
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {logs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                    {tr('Chưa có bản ghi giờ công nào trong tuần này.', 'No time logs recorded this week.')}
+            ) : (
+              logs.map((l) => (
+                <tr key={l.id}>
+                  <td className="px-4 py-2.5 font-mono text-slate-600">
+                    {dayjs(l.loggedDate).format('DD/MM/YYYY')}
+                  </td>
+                  <td className="px-4 py-2.5 font-medium text-slate-800">{l.employeeName}</td>
+                  <td className="px-4 py-2.5">
+                    <span className="mr-1.5 font-mono font-bold text-slate-500">{l.taskKey}</span>
+                    <span className="text-slate-900">{l.taskTitle}</span>
+                    {l.description && (
+                      <p className="text-[11px] text-slate-500">{l.description}</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-bold text-slate-900">
+                    {Math.round((l.durationMinutes / 60) * 100) / 100}h
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-slate-600">
+                    {formatVND(l.estimatedCost)}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        l.approvalStatus === 'APPROVED'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : l.approvalStatus === 'REJECTED'
+                            ? 'bg-rose-100 text-rose-700'
+                            : l.approvalStatus === 'SUBMITTED'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {l.approvalStatus}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    {canApprove && l.approvalStatus === 'SUBMITTED' && (
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => void handleReview([l.id], 'APPROVED')}
+                          className="rounded-lg bg-emerald-600 p-1 text-white hover:bg-emerald-700"
+                          title={tr('Phê duyệt', 'Approve')}
+                        >
+                          <IconCheck size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleReview([l.id], 'REJECTED')}
+                          className="rounded-lg bg-rose-600 p-1 text-white hover:bg-rose-700"
+                          title={tr('Từ chối', 'Reject')}
+                        >
+                          <IconX size={13} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ) : (
-                logs.map((l) => (
-                  <tr key={l.id}>
-                    <td className="px-4 py-2.5 font-mono text-slate-600">
-                      {dayjs(l.loggedDate).format('DD/MM/YYYY')}
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-slate-800">{l.employeeName}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="mr-1.5 font-mono font-bold text-slate-500">{l.taskKey}</span>
-                      <span className="text-slate-900">{l.taskTitle}</span>
-                      {l.description && (
-                        <p className="text-[11px] text-slate-500">{l.description}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-bold text-slate-900">
-                      {Math.round((l.durationMinutes / 60) * 100) / 100}h
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-slate-600">
-                      {formatVND(l.estimatedCost)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          l.approvalStatus === 'APPROVED'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : l.approvalStatus === 'REJECTED'
-                              ? 'bg-rose-100 text-rose-700'
-                              : l.approvalStatus === 'SUBMITTED'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {l.approvalStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      {canApprove && l.approvalStatus === 'SUBMITTED' && (
-                        <div className="inline-flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => void handleReview([l.id], 'APPROVED')}
-                            className="rounded-lg bg-emerald-600 p-1 text-white hover:bg-emerald-700"
-                            title={tr('Phê duyệt', 'Approve')}
-                          >
-                            <IconCheck size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleReview([l.id], 'REJECTED')}
-                            className="rounded-lg bg-rose-600 p-1 text-white hover:bg-rose-700"
-                            title={tr('Từ chối', 'Reject')}
-                          >
-                            <IconX size={13} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

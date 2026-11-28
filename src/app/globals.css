@@ -1,13 +1,55 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   color-scheme: light;
-  --midnight-rail: #080e1a;
-  --midnight-panel: #0f172a;
-  --midnight-surface: #1e293b;
-  --midnight-canvas: #eef2f6;
-  --midnight-accent: #2563eb;
-  --midnight-cyan: #0ea5e9;
+  /* Precision Grid (#5) — Classic Modern High-Density ERP Tokens (Light) */
+  --pg-canvas: #eff1f4;
+  --pg-surface: #ffffff;
+  --pg-surface-muted: #f8f9fb;
+  --pg-surface-elevated: #f1f4f8;
+  --pg-table-head: #f1f4f8;
+  --pg-table-zebra: #fafbfd;
+  --pg-table-hover: #edf3fa;
+  --pg-border: #cfd6df;
+  --pg-border-subtle: #e2e7ee;
+  --pg-border-cell: #edf0f4;
+  --pg-border-input: #bfc8d4;
+  --pg-primary: #1d4e89;
+  --pg-primary-hover: #163d6b;
+  --pg-primary-text: #1d4e89;
+  --pg-primary-soft: #e6eef8;
+  --pg-primary-border: #bdd2ec;
+  --pg-text: #0f172a;
+  --pg-text-secondary: #334155;
+  --pg-text-muted: #475569;
+  --pg-text-subtle: #64748b;
+  --pg-radius: 0.25rem;
+}
+
+html.dark {
+  color-scheme: dark;
+  /* Precision Grid (#5) — Classic Modern High-Density ERP Tokens (Dark) */
+  --pg-canvas: #0d1117;
+  --pg-surface: #161b22;
+  --pg-surface-muted: #12171f;
+  --pg-surface-elevated: #1c232e;
+  --pg-table-head: #1a222d;
+  --pg-table-zebra: #131820;
+  --pg-table-hover: #1d283a;
+  --pg-border: #2c3543;
+  --pg-border-subtle: #222a36;
+  --pg-border-cell: #1e2632;
+  --pg-border-input: #384454;
+  --pg-primary: #2362a8;
+  --pg-primary-hover: #1b4f8a;
+  --pg-primary-text: #6ea8fe;
+  --pg-primary-soft: rgba(56, 139, 253, 0.16);
+  --pg-primary-border: rgba(88, 166, 255, 0.36);
+  --pg-text: #e6edf3;
+  --pg-text-secondary: #c9d1d9;
+  --pg-text-muted: #8b949e;
+  --pg-text-subtle: #7d8590;
 }
 
 @layer base {
@@ -25,27 +67,745 @@
   select:disabled {
     cursor: not-allowed;
   }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--pg-primary);
+  }
 }
 
 body {
-  background-color: var(--midnight-canvas);
+  background-color: var(--pg-canvas);
+  color: var(--pg-text);
 }
 
-/* Subtle dark scrollbar for Midnight Command navigation panels */
-.midnight-scroll::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+/* Precision Grid slim classic scrollbar */
+.precision-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.midnight-scroll::-webkit-scrollbar-track {
+.precision-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.midnight-scroll::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.22);
-  border-radius: 9999px;
+.precision-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.28);
+  border-radius: 3px;
 }
 
-.midnight-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+.precision-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.48);
+}
+
+html.dark .precision-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.26);
+}
+
+html.dark .precision-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+/* ============================================================================
+   PRECISION GRID (#5) GLOBAL PORTAL DESIGN SYSTEM
+   Scoped to .portal-precision-grid so /design-studio previews remain isolated.
+   ============================================================================ */
+
+/* 1. Crisp 4px ERP Corner Geometry (preserves rounded-full avatars/dots/switches) */
+.portal-precision-grid .rounded-3xl,
+.portal-precision-grid .rounded-2xl,
+.portal-precision-grid .rounded-xl,
+.portal-precision-grid .rounded-lg {
+  border-radius: var(--pg-radius);
+}
+
+/* 2. Structured Crisp Borders & Flat Surface Discipline */
+.portal-precision-grid .border-slate-200,
+.portal-precision-grid .border-slate-200\/90,
+.portal-precision-grid .border-slate-200\/80,
+.portal-precision-grid .border-slate-200\/70 {
+  border-color: var(--pg-border);
+}
+
+.portal-precision-grid .border-slate-300 {
+  border-color: var(--pg-border-input);
+}
+
+.portal-precision-grid .shadow-sm,
+.portal-precision-grid .shadow-xs,
+.portal-precision-grid .shadow-md {
+  box-shadow: none;
+}
+
+/* Keep crisp elevation strictly on overlays, dropdowns, modals & drawers */
+.portal-precision-grid [role="dialog"],
+.portal-precision-grid .fixed .bg-white,
+.portal-precision-grid .absolute.bg-white {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+html.dark .portal-precision-grid [role="dialog"],
+html.dark .portal-precision-grid .fixed .bg-white,
+html.dark .portal-precision-grid .absolute.bg-white {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+/* 3. Classic Steel Primary Harmonization (Zero flashy neon blue/indigo) */
+.portal-precision-grid .bg-blue-600,
+.portal-precision-grid .bg-indigo-600 {
+  background-color: var(--pg-primary);
+}
+
+.portal-precision-grid .hover\:bg-blue-700:hover,
+.portal-precision-grid .hover\:bg-indigo-700:hover,
+.portal-precision-grid .bg-blue-700,
+.portal-precision-grid .bg-indigo-700 {
+  background-color: var(--pg-primary-hover);
+}
+
+.portal-precision-grid .text-blue-600,
+.portal-precision-grid .text-blue-700,
+.portal-precision-grid .text-indigo-600,
+.portal-precision-grid .text-indigo-700 {
+  color: var(--pg-primary-text);
+}
+
+.portal-precision-grid .bg-blue-50,
+.portal-precision-grid .bg-indigo-50 {
+  background-color: var(--pg-primary-soft);
+}
+
+.portal-precision-grid .border-blue-200,
+.portal-precision-grid .border-blue-300,
+.portal-precision-grid .border-indigo-200,
+.portal-precision-grid .border-indigo-300 {
+  border-color: var(--pg-primary-border);
+}
+
+.portal-precision-grid .border-blue-500,
+.portal-precision-grid .border-blue-600,
+.portal-precision-grid .border-indigo-500,
+.portal-precision-grid .border-indigo-600 {
+  border-color: var(--pg-primary);
+}
+
+/* Flatten decorative primary/dark hero gradients into solid Classic Steel */
+.portal-precision-grid .bg-gradient-to-r.text-white,
+.portal-precision-grid .bg-gradient-to-br.text-white {
+  background-image: none;
+  background-color: var(--pg-primary);
+}
+
+/* 4. Form Inputs, Selects & Textareas — Crisp Compact ERP Standard */
+.portal-precision-grid input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.portal-precision-grid select,
+.portal-precision-grid textarea {
+  border-radius: var(--pg-radius);
+  border-color: var(--pg-border-input);
+}
+
+.portal-precision-grid input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+.portal-precision-grid select:focus,
+.portal-precision-grid textarea:focus {
+  border-color: var(--pg-primary);
+  box-shadow: 0 0 0 2px rgba(29, 78, 137, 0.16);
+  outline: none;
+}
+
+/* 5. Signature Precision Grid Tables — Column Gridlines, Zebra Striping & Tabular Numbers */
+.portal-precision-grid table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-precision-grid table thead {
+  background-color: var(--pg-table-head);
+  border-bottom: 1px solid var(--pg-border);
+}
+
+.portal-precision-grid table thead th {
+  background-color: var(--pg-table-head);
+  color: var(--pg-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-right: 1px solid var(--pg-border-subtle);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.portal-precision-grid table thead th:last-child {
+  border-right: 0;
+}
+
+.portal-precision-grid table tbody tr {
+  border-bottom: 1px solid var(--pg-border-subtle);
+}
+
+.portal-precision-grid table tbody tr:nth-child(even) {
+  background-color: var(--pg-table-zebra);
+}
+
+.portal-precision-grid table tbody tr:hover {
+  background-color: var(--pg-table-hover);
+}
+
+.portal-precision-grid table tbody td {
+  border-right: 1px solid var(--pg-border-cell);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.portal-precision-grid table tbody td:last-child {
+  border-right: 0;
+}
+
+/* ============================================================================
+   6. Precision Grid Skeleton Loading System (Neutral Shimmer, Zero Layout Shift)
+   ============================================================================ */
+@keyframes pg-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.pg-skeleton {
+  background-color: #e4e9f0;
+  background-image: linear-gradient(
+    90deg,
+    #e4e9f0 0%,
+    #f1f4f8 45%,
+    #f8fafc 50%,
+    #f1f4f8 55%,
+    #e4e9f0 100%
+  );
+  background-size: 200% 100%;
+  animation: pg-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+html.dark .pg-skeleton {
+  background-color: #212833;
+  background-image: linear-gradient(
+    90deg,
+    #212833 0%,
+    #2c3544 45%,
+    #364255 50%,
+    #2c3544 55%,
+    #212833 100%
+  );
+}
+
+.pg-skeleton-dark {
+  background-color: rgba(255, 255, 255, 0.14);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.24) 50%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+  background-size: 200% 100%;
+  animation: pg-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-skeleton,
+  .pg-skeleton-dark {
+    animation: none;
+    background-image: none;
+  }
+}
+
+/* ============================================================================
+   7. PRECISION GRID (#5) GLOBAL DARK MODE SURFACE & SEMANTIC HARMONIZATION
+   Scoped under html.dark .portal-precision-grid for 100% coverage across all
+   portal pages, modals, drawers, tables, forms & login without breaking studio.
+   ============================================================================ */
+
+/* 7.1 Canvas & Neutral Surfaces */
+html.dark .portal-precision-grid.bg-\[\#EFF1F4\],
+html.dark .portal-precision-grid .bg-\[\#EFF1F4\] {
+  background-color: var(--pg-canvas);
+}
+
+html.dark .portal-precision-grid .bg-white,
+html.dark .portal-precision-grid .bg-white\/95,
+html.dark .portal-precision-grid .bg-white\/90,
+html.dark .portal-precision-grid .bg-white\/80 {
+  background-color: var(--pg-surface);
+}
+
+html.dark .portal-precision-grid .bg-\[\#F8F9FB\],
+html.dark .portal-precision-grid .bg-\[\#F8FAFC\],
+html.dark .portal-precision-grid .bg-slate-50,
+html.dark .portal-precision-grid .bg-slate-50\/90,
+html.dark .portal-precision-grid .bg-slate-50\/80,
+html.dark .portal-precision-grid .bg-slate-50\/70,
+html.dark .portal-precision-grid .bg-slate-50\/60,
+html.dark .portal-precision-grid .bg-slate-50\/55,
+html.dark .portal-precision-grid .bg-slate-50\/50,
+html.dark .portal-precision-grid .bg-slate-50\/40,
+html.dark .portal-precision-grid .bg-slate-50\/35 {
+  background-color: var(--pg-surface-muted);
+}
+
+html.dark .portal-precision-grid .bg-\[\#F1F4F8\],
+html.dark .portal-precision-grid .bg-\[\#EEF2F6\],
+html.dark .portal-precision-grid .bg-slate-100,
+html.dark .portal-precision-grid .bg-slate-100\/80 {
+  background-color: var(--pg-surface-elevated);
+}
+
+html.dark .portal-precision-grid .bg-slate-200,
+html.dark .portal-precision-grid .bg-slate-200\/80,
+html.dark .portal-precision-grid .bg-slate-200\/70,
+html.dark .portal-precision-grid .bg-\[\#CFD6DF\] {
+  background-color: #252e3c;
+}
+
+html.dark .portal-precision-grid .bg-slate-300 {
+  background-color: #313d4f;
+}
+
+html.dark .portal-precision-grid .bg-\[\#E6EEF8\] {
+  background-color: var(--pg-primary-soft);
+}
+
+html.dark .portal-precision-grid .bg-\[\#1D4E89\] {
+  background-color: var(--pg-primary);
+}
+
+html.dark .portal-precision-grid .bg-\[\#163D6B\],
+html.dark .portal-precision-grid .hover\:bg-\[\#163D6B\]:hover {
+  background-color: var(--pg-primary-hover);
+}
+
+/* Neutral hover backgrounds */
+html.dark .portal-precision-grid .hover\:bg-white:hover,
+html.dark .portal-precision-grid .hover\:bg-\[\#F8F9FB\]:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-50:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-50\/80:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-50\/70:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-50\/60:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-50\/50:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-100:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-100\/80:hover {
+  background-color: #1f2735;
+}
+
+html.dark .portal-precision-grid .hover\:bg-slate-200:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-200\/80:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-200\/70:hover,
+html.dark .portal-precision-grid .hover\:bg-slate-200\/60:hover {
+  background-color: #283345;
+}
+
+html.dark .portal-precision-grid .hover\:bg-\[\#E6EEF8\]:hover {
+  background-color: rgba(56, 139, 253, 0.24);
+}
+
+/* 7.2 Borders, Dividers & Rings */
+html.dark .portal-precision-grid .border-\[\#CFD6DF\],
+html.dark .portal-precision-grid .border-\[\#DCE2EA\],
+html.dark .portal-precision-grid .hover\:border-\[\#CFD6DF\]:hover,
+html.dark .portal-precision-grid .hover\:border-slate-300:hover {
+  border-color: var(--pg-border);
+}
+
+html.dark .portal-precision-grid .border-\[\#E2E7EE\],
+html.dark .portal-precision-grid .border-slate-100 {
+  border-color: var(--pg-border-subtle);
+}
+
+html.dark .portal-precision-grid .border-\[\#BFC8D4\] {
+  border-color: var(--pg-border-input);
+}
+
+html.dark .portal-precision-grid .border-\[\#BDD2EC\],
+html.dark .portal-precision-grid .hover\:border-\[\#BDD2EC\]:hover {
+  border-color: var(--pg-primary-border);
+}
+
+html.dark .portal-precision-grid .divide-slate-100 > :not(:first-child),
+html.dark .portal-precision-grid .divide-slate-200 > :not(:first-child) {
+  border-color: var(--pg-border-subtle);
+}
+
+html.dark .portal-precision-grid .ring-white {
+  --tw-ring-color: var(--pg-surface);
+}
+
+html.dark .portal-precision-grid .ring-slate-100,
+html.dark .portal-precision-grid .ring-slate-200,
+html.dark .portal-precision-grid .ring-slate-200\/80,
+html.dark .portal-precision-grid .ring-slate-300 {
+  --tw-ring-color: var(--pg-border);
+}
+
+/* 7.3 Neutral & Primary Typography */
+html.dark .portal-precision-grid.text-slate-900,
+html.dark .portal-precision-grid .text-slate-950,
+html.dark .portal-precision-grid .text-slate-900 {
+  color: var(--pg-text);
+}
+
+html.dark .portal-precision-grid .text-slate-800,
+html.dark .portal-precision-grid .text-slate-700 {
+  color: var(--pg-text-secondary);
+}
+
+html.dark .portal-precision-grid .text-slate-600,
+html.dark .portal-precision-grid .text-slate-500 {
+  color: var(--pg-text-muted);
+}
+
+html.dark .portal-precision-grid .text-slate-400 {
+  color: var(--pg-text-subtle);
+}
+
+html.dark .portal-precision-grid .hover\:text-slate-950:hover,
+html.dark .portal-precision-grid .hover\:text-slate-900:hover,
+html.dark .portal-precision-grid .hover\:text-slate-800:hover,
+html.dark .portal-precision-grid .hover\:text-slate-700:hover {
+  color: #f0f6fc;
+}
+
+html.dark .portal-precision-grid .hover\:text-slate-600:hover {
+  color: var(--pg-text-secondary);
+}
+
+html.dark .portal-precision-grid .text-\[\#1D4E89\],
+html.dark .portal-precision-grid .text-blue-800,
+html.dark .portal-precision-grid .text-blue-900,
+html.dark .portal-precision-grid .text-blue-950,
+html.dark .portal-precision-grid .text-indigo-800,
+html.dark .portal-precision-grid .text-indigo-900 {
+  color: var(--pg-primary-text);
+}
+
+html.dark .portal-precision-grid .hover\:text-blue-600:hover,
+html.dark .portal-precision-grid .hover\:text-blue-700:hover,
+html.dark .portal-precision-grid .hover\:text-indigo-600:hover,
+html.dark .portal-precision-grid .hover\:text-indigo-700:hover {
+  color: #93c5fd;
+}
+
+/* 7.4 Form Controls in Dark Mode */
+html.dark .portal-precision-grid input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+html.dark .portal-precision-grid select,
+html.dark .portal-precision-grid textarea {
+  background-color: #0f141b;
+  color: var(--pg-text);
+  border-color: var(--pg-border-input);
+}
+
+html.dark .portal-precision-grid input::placeholder,
+html.dark .portal-precision-grid textarea::placeholder {
+  color: #6e7681;
+}
+
+html.dark .portal-precision-grid input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+html.dark .portal-precision-grid select:focus,
+html.dark .portal-precision-grid textarea:focus {
+  border-color: var(--pg-primary-text);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.25);
+}
+
+html.dark .portal-precision-grid table thead th {
+  color: #9ba7b4;
+}
+
+/* 7.5 Semantic Status Badges, Alerts & Tints (WCAG AA on Dark Surfaces) */
+/* Blue & Indigo */
+html.dark .portal-precision-grid .bg-blue-50\/80,
+html.dark .portal-precision-grid .bg-blue-50\/70,
+html.dark .portal-precision-grid .bg-blue-50\/65,
+html.dark .portal-precision-grid .bg-blue-50\/60,
+html.dark .portal-precision-grid .bg-blue-50\/50,
+html.dark .portal-precision-grid .bg-blue-50\/40,
+html.dark .portal-precision-grid .bg-blue-50\/35,
+html.dark .portal-precision-grid .bg-indigo-50\/70 {
+  background-color: rgba(56, 139, 253, 0.14);
+}
+
+html.dark .portal-precision-grid .bg-blue-100,
+html.dark .portal-precision-grid .bg-indigo-100,
+html.dark .portal-precision-grid .hover\:bg-blue-50:hover,
+html.dark .portal-precision-grid .hover\:bg-blue-50\/70:hover,
+html.dark .portal-precision-grid .hover\:bg-blue-50\/50:hover,
+html.dark .portal-precision-grid .hover\:bg-blue-50\/45:hover,
+html.dark .portal-precision-grid .hover\:bg-blue-50\/40:hover,
+html.dark .portal-precision-grid .hover\:bg-blue-50\/30:hover,
+html.dark .portal-precision-grid .hover\:bg-blue-100:hover,
+html.dark .portal-precision-grid .hover\:bg-blue-100\/70:hover,
+html.dark .portal-precision-grid .hover\:bg-indigo-50:hover,
+html.dark .portal-precision-grid .hover\:bg-indigo-100:hover {
+  background-color: rgba(56, 139, 253, 0.24);
+}
+
+html.dark .portal-precision-grid .border-blue-100,
+html.dark .portal-precision-grid .border-indigo-100,
+html.dark .portal-precision-grid .hover\:border-blue-300:hover,
+html.dark .portal-precision-grid .hover\:border-blue-400:hover,
+html.dark .portal-precision-grid .hover\:border-indigo-300:hover,
+html.dark .portal-precision-grid .hover\:border-indigo-400:hover {
+  border-color: rgba(88, 166, 255, 0.42);
+}
+
+html.dark .portal-precision-grid .ring-blue-100,
+html.dark .portal-precision-grid .ring-blue-200,
+html.dark .portal-precision-grid .ring-blue-200\/80,
+html.dark .portal-precision-grid .ring-blue-200\/70,
+html.dark .portal-precision-grid .ring-indigo-200,
+html.dark .portal-precision-grid .ring-indigo-200\/80 {
+  --tw-ring-color: rgba(88, 166, 255, 0.35);
+}
+
+/* Sky & Cyan */
+html.dark .portal-precision-grid .bg-sky-50,
+html.dark .portal-precision-grid .bg-cyan-50 {
+  background-color: rgba(14, 165, 233, 0.14);
+}
+
+html.dark .portal-precision-grid .bg-sky-100,
+html.dark .portal-precision-grid .hover\:bg-cyan-100:hover {
+  background-color: rgba(14, 165, 233, 0.24);
+}
+
+html.dark .portal-precision-grid .border-sky-200,
+html.dark .portal-precision-grid .border-cyan-200 {
+  border-color: rgba(56, 189, 248, 0.36);
+}
+
+html.dark .portal-precision-grid .text-sky-600,
+html.dark .portal-precision-grid .text-sky-700,
+html.dark .portal-precision-grid .text-sky-800,
+html.dark .portal-precision-grid .text-cyan-700,
+html.dark .portal-precision-grid .text-cyan-800 {
+  color: #7dd3fc;
+}
+
+html.dark .portal-precision-grid .ring-sky-200\/80,
+html.dark .portal-precision-grid .ring-sky-200\/70,
+html.dark .portal-precision-grid .ring-sky-300,
+html.dark .portal-precision-grid .ring-cyan-200\/70 {
+  --tw-ring-color: rgba(56, 189, 248, 0.36);
+}
+
+/* Emerald & Teal */
+html.dark .portal-precision-grid .bg-emerald-50,
+html.dark .portal-precision-grid .bg-emerald-50\/70,
+html.dark .portal-precision-grid .bg-emerald-50\/60,
+html.dark .portal-precision-grid .bg-emerald-50\/50,
+html.dark .portal-precision-grid .bg-emerald-50\/40,
+html.dark .portal-precision-grid .bg-emerald-50\/35,
+html.dark .portal-precision-grid .bg-teal-50,
+html.dark .portal-precision-grid .bg-teal-50\/70,
+html.dark .portal-precision-grid .bg-teal-50\/60,
+html.dark .portal-precision-grid .bg-teal-50\/50 {
+  background-color: rgba(16, 185, 129, 0.14);
+}
+
+html.dark .portal-precision-grid .bg-emerald-100,
+html.dark .portal-precision-grid .bg-teal-200\/80,
+html.dark .portal-precision-grid .hover\:bg-emerald-50:hover,
+html.dark .portal-precision-grid .hover\:bg-emerald-50\/75:hover,
+html.dark .portal-precision-grid .hover\:bg-emerald-50\/40:hover,
+html.dark .portal-precision-grid .hover\:bg-emerald-100:hover,
+html.dark .portal-precision-grid .hover\:bg-teal-100:hover {
+  background-color: rgba(16, 185, 129, 0.24);
+}
+
+html.dark .portal-precision-grid .border-emerald-200,
+html.dark .portal-precision-grid .border-emerald-200\/90,
+html.dark .portal-precision-grid .border-emerald-200\/80,
+html.dark .portal-precision-grid .border-emerald-300,
+html.dark .portal-precision-grid .border-teal-200,
+html.dark .portal-precision-grid .border-teal-300 {
+  border-color: rgba(52, 211, 153, 0.36);
+}
+
+html.dark .portal-precision-grid .text-emerald-600,
+html.dark .portal-precision-grid .text-emerald-700,
+html.dark .portal-precision-grid .text-emerald-700\/80,
+html.dark .portal-precision-grid .text-emerald-800,
+html.dark .portal-precision-grid .text-emerald-900,
+html.dark .portal-precision-grid .text-emerald-950,
+html.dark .portal-precision-grid .text-teal-600,
+html.dark .portal-precision-grid .text-teal-700,
+html.dark .portal-precision-grid .text-teal-700\/80,
+html.dark .portal-precision-grid .text-teal-800,
+html.dark .portal-precision-grid .text-teal-900 {
+  color: #6ee7b7;
+}
+
+html.dark .portal-precision-grid .ring-emerald-200,
+html.dark .portal-precision-grid .ring-emerald-200\/80,
+html.dark .portal-precision-grid .ring-emerald-200\/70,
+html.dark .portal-precision-grid .ring-teal-200,
+html.dark .portal-precision-grid .ring-teal-200\/80 {
+  --tw-ring-color: rgba(52, 211, 153, 0.35);
+}
+
+/* Amber, Orange & Yellow */
+html.dark .portal-precision-grid .bg-amber-50,
+html.dark .portal-precision-grid .bg-amber-50\/70,
+html.dark .portal-precision-grid .bg-amber-50\/60,
+html.dark .portal-precision-grid .bg-amber-50\/50,
+html.dark .portal-precision-grid .bg-amber-50\/40,
+html.dark .portal-precision-grid .bg-amber-50\/35,
+html.dark .portal-precision-grid .bg-amber-50\/30,
+html.dark .portal-precision-grid .bg-orange-50,
+html.dark .portal-precision-grid .bg-orange-50\/80,
+html.dark .portal-precision-grid .bg-orange-50\/70 {
+  background-color: rgba(245, 158, 11, 0.14);
+}
+
+html.dark .portal-precision-grid .bg-amber-100,
+html.dark .portal-precision-grid .bg-amber-100\/90,
+html.dark .portal-precision-grid .bg-amber-200,
+html.dark .portal-precision-grid .bg-amber-200\/80,
+html.dark .portal-precision-grid .bg-orange-100,
+html.dark .portal-precision-grid .bg-yellow-200,
+html.dark .portal-precision-grid .hover\:bg-amber-50:hover,
+html.dark .portal-precision-grid .hover\:bg-amber-50\/80:hover,
+html.dark .portal-precision-grid .hover\:bg-amber-50\/40:hover,
+html.dark .portal-precision-grid .hover\:bg-amber-100:hover,
+html.dark .portal-precision-grid .hover\:bg-orange-50\/40:hover,
+html.dark .portal-precision-grid .hover\:bg-orange-100:hover {
+  background-color: rgba(245, 158, 11, 0.24);
+}
+
+html.dark .portal-precision-grid .border-amber-200,
+html.dark .portal-precision-grid .border-amber-200\/90,
+html.dark .portal-precision-grid .border-amber-200\/80,
+html.dark .portal-precision-grid .border-amber-300,
+html.dark .portal-precision-grid .border-orange-200,
+html.dark .portal-precision-grid .border-orange-300 {
+  border-color: rgba(251, 191, 36, 0.38);
+}
+
+html.dark .portal-precision-grid .text-amber-600,
+html.dark .portal-precision-grid .text-amber-700,
+html.dark .portal-precision-grid .text-amber-700\/80,
+html.dark .portal-precision-grid .text-amber-800,
+html.dark .portal-precision-grid .text-amber-900,
+html.dark .portal-precision-grid .text-amber-950 {
+  color: #fcd34d;
+}
+
+html.dark .portal-precision-grid .text-orange-600,
+html.dark .portal-precision-grid .text-orange-700,
+html.dark .portal-precision-grid .text-orange-900 {
+  color: #fdba74;
+}
+
+html.dark .portal-precision-grid .ring-amber-100,
+html.dark .portal-precision-grid .ring-amber-200,
+html.dark .portal-precision-grid .ring-amber-200\/80,
+html.dark .portal-precision-grid .ring-amber-200\/70,
+html.dark .portal-precision-grid .ring-orange-200,
+html.dark .portal-precision-grid .ring-orange-200\/70 {
+  --tw-ring-color: rgba(251, 191, 36, 0.36);
+}
+
+/* Red & Rose */
+html.dark .portal-precision-grid .bg-red-50,
+html.dark .portal-precision-grid .bg-rose-50,
+html.dark .portal-precision-grid .bg-rose-50\/70,
+html.dark .portal-precision-grid .bg-rose-50\/50 {
+  background-color: rgba(244, 63, 94, 0.14);
+}
+
+html.dark .portal-precision-grid .bg-rose-100,
+html.dark .portal-precision-grid .bg-rose-100\/90,
+html.dark .portal-precision-grid .hover\:bg-red-50:hover,
+html.dark .portal-precision-grid .hover\:bg-rose-50:hover,
+html.dark .portal-precision-grid .hover\:bg-rose-50\/40:hover,
+html.dark .portal-precision-grid .hover\:bg-rose-100:hover {
+  background-color: rgba(244, 63, 94, 0.24);
+}
+
+html.dark .portal-precision-grid .border-red-200,
+html.dark .portal-precision-grid .border-red-300,
+html.dark .portal-precision-grid .border-rose-200,
+html.dark .portal-precision-grid .border-rose-300,
+html.dark .portal-precision-grid .hover\:border-red-300:hover,
+html.dark .portal-precision-grid .hover\:border-rose-300:hover {
+  border-color: rgba(251, 113, 133, 0.42);
+}
+
+html.dark .portal-precision-grid .divide-rose-100 > :not(:first-child) {
+  border-color: rgba(251, 113, 133, 0.25);
+}
+
+html.dark .portal-precision-grid .text-red-600,
+html.dark .portal-precision-grid .text-red-700,
+html.dark .portal-precision-grid .text-red-800,
+html.dark .portal-precision-grid .text-rose-600,
+html.dark .portal-precision-grid .text-rose-700,
+html.dark .portal-precision-grid .text-rose-700\/80,
+html.dark .portal-precision-grid .text-rose-800,
+html.dark .portal-precision-grid .text-rose-900 {
+  color: #fda4af;
+}
+
+html.dark .portal-precision-grid .hover\:text-red-700:hover,
+html.dark .portal-precision-grid .hover\:text-rose-600:hover {
+  color: #fecdd3;
+}
+
+html.dark .portal-precision-grid .ring-rose-200,
+html.dark .portal-precision-grid .ring-rose-200\/70,
+html.dark .portal-precision-grid .ring-rose-300 {
+  --tw-ring-color: rgba(251, 113, 133, 0.36);
+}
+
+/* Purple & Violet */
+html.dark .portal-precision-grid .bg-purple-50,
+html.dark .portal-precision-grid .bg-violet-50,
+html.dark .portal-precision-grid .bg-violet-50\/50 {
+  background-color: rgba(139, 92, 246, 0.16);
+}
+
+html.dark .portal-precision-grid .bg-purple-100,
+html.dark .portal-precision-grid .hover\:bg-purple-100:hover,
+html.dark .portal-precision-grid .hover\:bg-violet-100:hover {
+  background-color: rgba(139, 92, 246, 0.26);
+}
+
+html.dark .portal-precision-grid .border-purple-200,
+html.dark .portal-precision-grid .border-violet-200,
+html.dark .portal-precision-grid .hover\:border-violet-300:hover,
+html.dark .portal-precision-grid .hover\:border-violet-400:hover {
+  border-color: rgba(167, 139, 250, 0.38);
+}
+
+html.dark .portal-precision-grid .text-purple-700,
+html.dark .portal-precision-grid .text-violet-600,
+html.dark .portal-precision-grid .text-violet-700,
+html.dark .portal-precision-grid .text-violet-800 {
+  color: #c4b5fd;
+}
+
+html.dark .portal-precision-grid .ring-purple-300,
+html.dark .portal-precision-grid .ring-violet-200\/80 {
+  --tw-ring-color: rgba(167, 139, 250, 0.38);
+}
+
+/* Always keep printed documents crisp light on paper */
+@media print {
+  html.dark {
+    color-scheme: light;
+    --pg-canvas: #ffffff;
+    --pg-surface: #ffffff;
+    --pg-surface-muted: #f8f9fb;
+    --pg-text: #0f172a;
+    --pg-text-secondary: #334155;
+    --pg-text-muted: #475569;
+    --pg-border: #cfd6df;
+  }
 }

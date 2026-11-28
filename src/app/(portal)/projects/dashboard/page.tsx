@@ -21,6 +21,7 @@ import {
   IconDownload,
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonDashboard } from '@/components/ui/Skeleton';
 import { PROJECT_HEALTH_META, pickLabel } from '@/components/projects/project-ui-helpers';
 import { formatVND } from '@/lib/portable/currency-utils';
 import type { PortfolioDashboardSummary } from '@/modules/projects/reports.service';
@@ -66,16 +67,7 @@ export default function PortfolioDashboardPage() {
   }, [selectedBranchId, tr]);
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="h-24 animate-pulse rounded-2xl bg-white" />
-          ))}
-        </div>
-        <div className="h-80 animate-pulse rounded-2xl bg-white" />
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   if (error || !summary) {

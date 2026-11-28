@@ -1581,13 +1581,10 @@ export async function payPayrollPeriod(
   publishedCount: number;
   notifiedCount: number;
 }> {
-  if (
-    !hasRequiredPermission(auth, 'hrm.payroll.approve') &&
-    !hasRequiredPermission(auth, 'hrm.payroll.manage')
-  ) {
+  if (!hasRequiredPermission(auth, 'hrm.payroll.approve')) {
     throw new AppError(
       'FORBIDDEN',
-      'Bạn không có quyền xác nhận chi trả & phát hành phiếu lương.',
+      'Bạn không có quyền xác nhận chi trả & phát hành phiếu lương (yêu cầu quyền duyệt lương).',
       403,
     );
   }

@@ -26,6 +26,7 @@ import { EmployeeWorkHistoryTimeline } from '@/components/hrm/EmployeeWorkHistor
 import { ChangePasswordModal } from '@/components/portal/ChangePasswordModal';
 import { LanguageSwitcher } from '@/components/portal/LanguageSwitcher';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonDetailPage } from '@/components/ui/Skeleton';
 import { getUserInitials } from '@/layouts/portal-navigation';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -277,10 +278,7 @@ export default function MyProfilePage() {
 
       {/* HR Employee Profile Section (with Loading / Error / Not Linked / Full 360° Profile states) */}
       {isLoading ? (
-        <div className="space-y-4">
-          <div className="h-32 animate-pulse rounded-2xl bg-white/80" />
-          <div className="h-64 animate-pulse rounded-2xl bg-white/80" />
-        </div>
+        <SkeletonDetailPage showKpis={false} showBottomWorkflow={false} />
       ) : resolvedError ? (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-2xs">
           <p className="text-sm font-medium text-rose-700">{resolvedError}</p>

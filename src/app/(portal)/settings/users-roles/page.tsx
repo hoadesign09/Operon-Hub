@@ -15,6 +15,11 @@ import {
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import {
+  SkeletonFormFields,
+  SkeletonListRows,
+  SkeletonTable,
+} from '@/components/ui/Skeleton';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -381,11 +386,18 @@ export default function UsersRolesSettingsPage() {
         </button>
       </div>
 
-      {viewState === 'loading' && (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6">
-          {[1, 2, 3].map((row) => (
-            <div key={row} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-          ))}
+      {viewState === 'loading' && activeTab === 'users' && (
+        <SkeletonTable rows={6} columns={5} showToolbar showPagination={false} />
+      )}
+
+      {viewState === 'loading' && activeTab === 'roles' && (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="rounded-2xl border border-[#CFD6DF] bg-white p-4">
+            <SkeletonListRows rows={5} showMeta />
+          </div>
+          <div className="rounded-2xl border border-[#CFD6DF] bg-white p-5 lg:col-span-2">
+            <SkeletonFormFields fields={6} columns={2} showActions={false} />
+          </div>
         </div>
       )}
 

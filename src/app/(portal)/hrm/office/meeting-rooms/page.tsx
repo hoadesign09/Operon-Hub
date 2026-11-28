@@ -23,6 +23,11 @@ import {
 import { RoomBookingModal } from '@/components/hrm/RoomBookingModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import {
+  SkeletonCalendarGrid,
+  SkeletonCardGrid,
+  SkeletonTable,
+} from '@/components/ui/Skeleton';
 import type { RoomBookingStatus } from '@/config/database';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
 import type {
@@ -828,11 +833,16 @@ export default function MeetingRoomsPage() {
 
       {/* Main Content */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-44 animate-pulse rounded-2xl bg-slate-200/70" />
-          ))}
-        </div>
+        activeTab === 'calendar' ? (
+          <SkeletonCalendarGrid rows={calendarMode === 'week' ? 3 : 5} cols={7} />
+        ) : activeTab === 'rooms' ? (
+          <SkeletonCardGrid
+            count={6}
+            columnsClass="grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+          />
+        ) : (
+          <SkeletonTable rows={5} columns={6} showToolbar={false} showPagination={false} />
+        )
       ) : errorMessage ? (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-rose-700">{errorMessage}</p>

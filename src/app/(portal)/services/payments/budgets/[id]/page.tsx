@@ -30,6 +30,7 @@ import {
 } from '@/components/payments/budget-ui.helpers';
 import type { PaymentCategoryDto } from '@/components/payments/payment-ui.helpers';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonDetailPage } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -81,7 +82,7 @@ export default function BudgetDetailPage() {
         cache: 'no-store',
         signal: controller.signal,
       }),
-      fetch('/api/v1/hrm/departments?limit=200', {
+      fetch('/api/v1/hrm/org/departments?limit=200', {
         cache: 'no-store',
         signal: controller.signal,
       }),
@@ -154,15 +155,12 @@ export default function BudgetDetailPage() {
 
   if (viewState === 'loading') {
     return (
-      <div className="w-full space-y-4">
-        <div className="h-44 animate-pulse rounded-2xl bg-slate-200" />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-100" />
-          ))}
-        </div>
-        <div className="h-80 animate-pulse rounded-2xl bg-slate-100" />
-      </div>
+      <SkeletonDetailPage
+        showKpis
+        showTabs
+        showBottomWorkflow={false}
+        showSidebarCard={false}
+      />
     );
   }
 

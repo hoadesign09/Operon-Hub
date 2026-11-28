@@ -1,6 +1,5 @@
 'use client';
 
-import { IconWorld } from '@tabler/icons-react';
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from '@/shared/i18n/config';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -12,16 +11,15 @@ interface LanguageSwitcherProps {
 
 export function LanguageSwitcher({
   variant = 'light',
-  showIcon = true,
   className = '',
 }: LanguageSwitcherProps) {
   const { locale, setLocale, t } = useI18n();
 
   const containerCls =
     variant === 'dark'
-      ? 'inline-flex h-9 items-center gap-1 rounded-xl border border-white/15 bg-white/8 p-1 backdrop-blur-xs'
-      : 'inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1';
-      
+      ? 'inline-flex h-8 items-center gap-0.5 rounded border border-white/20 bg-white/10 p-0.5'
+      : 'inline-flex h-8 items-center gap-0.5 rounded border border-[#BFC8D4] bg-[#EFF1F4] p-0.5 dark:border-[#384454] dark:bg-[#12171F]';
+
   return (
     <div
       role="group"
@@ -34,11 +32,11 @@ export function LanguageSwitcher({
         const buttonCls =
           variant === 'dark'
             ? isActive
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-300 hover:bg-white/10 hover:text-white'
+              ? 'bg-white text-[#1D4E89]'
+              : 'text-slate-200 hover:bg-white/10 hover:text-white'
             : isActive
-              ? 'bg-[#0F172A] text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900';
+              ? 'border border-[#CFD6DF] bg-white text-[#1D4E89] dark:border-[#384454] dark:bg-[#1F2937] dark:text-[#6EA8FE]'
+              : 'border border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100';
 
         return (
           <button
@@ -47,7 +45,7 @@ export function LanguageSwitcher({
             onClick={() => setLocale(code)}
             aria-pressed={isActive}
             title={meta.native}
-            className={`rounded-lg px-2 py-1 text-[11px] font-bold tracking-wide transition ${buttonCls}`}
+            className={`rounded-xs px-2 py-0.5 text-[11px] font-bold tracking-wide transition ${buttonCls}`}
           >
             {meta.short}
           </button>

@@ -13,6 +13,12 @@ import {
 } from '@tabler/icons-react';
 import type { AttendanceSummaryRecord } from '@/components/hrm/AttendanceSummaryEditModal';
 import type { AttendanceLogRecord } from '@/components/hrm/ManualAttendanceModal';
+import {
+  Skeleton,
+  SkeletonKpiGrid,
+  SkeletonTable,
+  SkeletonTableRows,
+} from '@/components/ui/Skeleton';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -299,14 +305,36 @@ export default function MyAttendancePage() {
       </div>
 
       {isLoading && !data ? (
-        <div className="space-y-4">
-          <div className="h-44 animate-pulse rounded-2xl border border-slate-200 bg-white p-6" />
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, idx) => (
-              <div key={idx} className="h-24 animate-pulse rounded-2xl border border-slate-200 bg-white" />
-            ))}
+        <div
+          role="status"
+          aria-busy="true"
+          aria-label="Loading attendance"
+          className="space-y-4"
+        >
+          <div className="rounded border border-[#CFD6DF] bg-white p-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-3">
+                <Skeleton className="h-6 w-40" rounded="full" />
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-4 w-72 max-w-full" />
+                <Skeleton className="h-3 w-64 max-w-full" />
+              </div>
+              <div className="w-full max-w-md space-y-3 rounded border border-[#E2E7EE] bg-[#F8F9FB] p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <Skeleton className="h-16 w-full" rounded="sm" />
+                  <Skeleton className="h-16 w-full" rounded="sm" />
+                </div>
+                <Skeleton className="h-9 w-full" rounded="sm" />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Skeleton className="h-10 w-full" rounded="sm" />
+                  <Skeleton className="h-10 w-full" rounded="sm" />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="h-64 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+          <SkeletonKpiGrid count={4} compact columnsClass="grid-cols-2 gap-4 lg:grid-cols-4" />
+          <SkeletonTable rows={6} columns={10} showToolbar={false} showPagination={false} />
+          <span className="sr-only">Loading</span>
         </div>
       ) : errorMsg ? (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-sm">
@@ -596,7 +624,7 @@ export default function MyAttendancePage() {
               </span>
             </div>
 
-            {data.logs.length === 0 ? (
+            {!isLoading && data.logs.length === 0 ? (
               <div className="p-10 text-center">
                 <p className="text-sm font-medium text-slate-700">
                   {tr(
@@ -643,7 +671,10 @@ export default function MyAttendancePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.logs.map((log) => {
+                    {isLoading ? (
+                      <SkeletonTableRows rows={6} columns={10} />
+                    ) : (
+                      data.logs.map((log) => {
                       const badge = STATUS_BADGE_MAP[log.status] ?? {
                         vi: log.status,
                         en: log.status,
@@ -706,7 +737,8 @@ export default function MyAttendancePage() {
                           </td>
                         </tr>
                       );
-                    })}
+                    })
+                    )}
                   </tbody>
                 </table>
               </div>

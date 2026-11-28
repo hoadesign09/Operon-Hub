@@ -17,6 +17,7 @@ import {
   type AttendanceSummaryRecord,
 } from '@/components/hrm/AttendanceSummaryEditModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonKpiGrid, SkeletonTableRows } from '@/components/ui/Skeleton';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
 interface SummaryPeriodStats {
@@ -468,51 +469,49 @@ export function AttendanceSummariesPanel({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">
-            {tr(`Nhân sự kỳ ${month}/${year}`, `Employees (${month}/${year})`)}
+      {isLoading ? (
+        <SkeletonKpiGrid count={4} compact columnsClass="grid-cols-2 gap-3 lg:grid-cols-4" />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">
+              {tr(`Nhân sự kỳ ${month}/${year}`, `Employees (${month}/${year})`)}
+            </div>
+            <div className="mt-1 text-2xl font-bold text-slate-900">{stats.totalEmployees}</div>
           </div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{stats.totalEmployees}</div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">{tr('Trạng thái chốt', 'Lock Status')}</div>
+            <div className="mt-1 text-lg font-bold">
+              <span className="text-emerald-600">
+                {tr(`${stats.lockedCount} đã chốt`, `${stats.lockedCount} locked`)}
+              </span>
+              <span className="mx-1.5 text-slate-300">/</span>
+              <span className="text-amber-600">
+                {tr(`${stats.draftCount} nháp`, `${stats.draftCount} draft`)}
+              </span>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">
+              {tr('Tổng công hưởng lương', 'Total Payable Days')}
+            </div>
+            <div className="mt-1 font-mono text-2xl font-bold text-blue-700">
+              {stats.totalPayableDays.toFixed(2)}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">
+              {tr('Tổng giờ OT đã duyệt', 'Total Approved OT Hours')}
+            </div>
+            <div className="mt-1 font-mono text-2xl font-bold text-purple-700">
+              {stats.totalOtHours.toFixed(2)}h
+            </div>
+          </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">{tr('Trạng thái chốt', 'Lock Status')}</div>
-          <div className="mt-1 text-lg font-bold">
-            <span className="text-emerald-600">
-              {tr(`${stats.lockedCount} đã chốt`, `${stats.lockedCount} locked`)}
-            </span>
-            <span className="mx-1.5 text-slate-300">/</span>
-            <span className="text-amber-600">
-              {tr(`${stats.draftCount} nháp`, `${stats.draftCount} draft`)}
-            </span>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">
-            {tr('Tổng công hưởng lương', 'Total Payable Days')}
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-blue-700">
-            {stats.totalPayableDays.toFixed(2)}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">
-            {tr('Tổng giờ OT đã duyệt', 'Total Approved OT Hours')}
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-purple-700">
-            {stats.totalOtHours.toFixed(2)}h
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {isLoading ? (
-          <div className="space-y-3 p-6">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />
-            ))}
-          </div>
-        ) : errorMsg ? (
+        {!isLoading && errorMsg ? (
           <div className="p-8 text-center">
             <p className="text-sm font-medium text-rose-700">{errorMsg}</p>
             <button
@@ -524,7 +523,7 @@ export function AttendanceSummariesPanel({
               <span>{tr('Thử lại', 'Retry')}</span>
             </button>
           </div>
-        ) : items.length === 0 ? (
+        ) : !isLoading && items.length === 0 ? (
           <div className="p-10 text-center">
             <p className="text-sm font-medium text-slate-700">
               {tr(
@@ -557,7 +556,7 @@ export function AttendanceSummariesPanel({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" aria-busy={isLoading}>
               <table className="w-full min-w-[1060px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50 uppercase text-slate-500">
                   <tr>
@@ -585,100 +584,104 @@ export function AttendanceSummariesPanel({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {items.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/70">
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900">{row.employeeName}</div>
-                        <div className="text-[11px] text-slate-500">{row.employeeCode}</div>
-                      </td>
-                      <td className="px-3 py-3 text-slate-600">{row.departmentName}</td>
-                      <td className="px-3 py-3 text-right font-mono text-slate-600">
-                        {row.standardWorkDays.toFixed(1)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono font-semibold text-slate-800">
-                        {row.actualWorkDays.toFixed(2)}
-                        {row.businessTripDays > 0 && (
-                          <div className="text-[10px] font-normal text-slate-400">
-                            {tr(`(CT: ${row.businessTripDays})`, `(Trip: ${row.businessTripDays})`)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono">
-                        <span className="text-emerald-700">{row.paidLeaveDays.toFixed(1)}</span>
-                        <span className="mx-1 text-slate-300">/</span>
-                        <span className="text-rose-600">{row.unpaidLeaveDays.toFixed(1)}</span>
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-purple-700">
-                        {row.holidayDays.toFixed(1)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm font-bold text-blue-700">
-                        {row.payableDays.toFixed(2)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-[11px] text-slate-700">
-                        {row.otHours150}/{row.otHours200}/{row.otHours300}h
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        {row.lateCount > 0 ? (
-                          <span className="font-semibold text-amber-600">
-                            {tr(
-                              `${row.lateCount} lần (${row.totalLateMinutes}p)`,
-                              `${row.lateCount}x (${row.totalLateMinutes}m)`,
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">0</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        {row.status === 'LOCKED' ? (
-                          <span
-                            className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700"
-                            title={
-                              row.lockedAt
-                                ? tr(
-                                    `Chốt lúc ${row.lockedAt} bởi ${row.lockedByName ?? ''}`,
-                                    `Locked at ${row.lockedAt} by ${row.lockedByName ?? ''}`,
-                                  )
-                                : tr('Đã chốt công', 'Locked')
-                            }
-                          >
-                            <IconLock size={12} />
-                            <span>{tr('Đã chốt', 'Locked')}</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
-                            {tr('Nháp', 'Draft')}
-                          </span>
-                        )}
-                      </td>
-                      {canManage && (
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            type="button"
-                            disabled={row.status === 'LOCKED'}
-                            onClick={() => setEditingSummary(row)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                            title={
-                              row.status === 'LOCKED'
-                                ? tr(
-                                    'Cần mở khóa kỳ công trước khi điều chỉnh',
-                                    'Unlock attendance period before editing',
-                                  )
-                                : tr('Điều chỉnh bảng công', 'Adjust attendance summary')
-                            }
-                          >
-                            <IconEdit size={14} />
-                            <span>{tr('Sửa', 'Edit')}</span>
-                          </button>
+                  {isLoading ? (
+                    <SkeletonTableRows rows={6} columns={canManage ? 11 : 10} />
+                  ) : (
+                    items.map((row) => (
+                      <tr key={row.id} className="hover:bg-slate-50/70">
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-slate-900">{row.employeeName}</div>
+                          <div className="text-[11px] text-slate-500">{row.employeeCode}</div>
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td className="px-3 py-3 text-slate-600">{row.departmentName}</td>
+                        <td className="px-3 py-3 text-right font-mono text-slate-600">
+                          {row.standardWorkDays.toFixed(1)}
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono font-semibold text-slate-800">
+                          {row.actualWorkDays.toFixed(2)}
+                          {row.businessTripDays > 0 && (
+                            <div className="text-[10px] font-normal text-slate-400">
+                              {tr(`(CT: ${row.businessTripDays})`, `(Trip: ${row.businessTripDays})`)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono">
+                          <span className="text-emerald-700">{row.paidLeaveDays.toFixed(1)}</span>
+                          <span className="mx-1 text-slate-300">/</span>
+                          <span className="text-rose-600">{row.unpaidLeaveDays.toFixed(1)}</span>
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono text-purple-700">
+                          {row.holidayDays.toFixed(1)}
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono text-sm font-bold text-blue-700">
+                          {row.payableDays.toFixed(2)}
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono text-[11px] text-slate-700">
+                          {row.otHours150}/{row.otHours200}/{row.otHours300}h
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          {row.lateCount > 0 ? (
+                            <span className="font-semibold text-amber-600">
+                              {tr(
+                                `${row.lateCount} lần (${row.totalLateMinutes}p)`,
+                                `${row.lateCount}x (${row.totalLateMinutes}m)`,
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">0</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {row.status === 'LOCKED' ? (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700"
+                              title={
+                                row.lockedAt
+                                  ? tr(
+                                      `Chốt lúc ${row.lockedAt} bởi ${row.lockedByName ?? ''}`,
+                                      `Locked at ${row.lockedAt} by ${row.lockedByName ?? ''}`,
+                                    )
+                                  : tr('Đã chốt công', 'Locked')
+                              }
+                            >
+                              <IconLock size={12} />
+                              <span>{tr('Đã chốt', 'Locked')}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                              {tr('Nháp', 'Draft')}
+                            </span>
+                          )}
+                        </td>
+                        {canManage && (
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              disabled={row.status === 'LOCKED'}
+                              onClick={() => setEditingSummary(row)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                              title={
+                                row.status === 'LOCKED'
+                                  ? tr(
+                                      'Cần mở khóa kỳ công trước khi điều chỉnh',
+                                      'Unlock attendance period before editing',
+                                    )
+                                  : tr('Điều chỉnh bảng công', 'Adjust attendance summary')
+                              }
+                            >
+                              <IconEdit size={14} />
+                              <span>{tr('Sửa', 'Edit')}</span>
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
 
-            {meta.totalPages > 1 && (
+            {!isLoading && meta.totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
                 <span>
                   {tr(

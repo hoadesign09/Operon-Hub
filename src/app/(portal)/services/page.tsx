@@ -174,20 +174,18 @@ export default function ServicesHubPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Midnight Command Service Hub Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#080E1A] via-[#0F172A] to-[#0C4A6E] p-6 text-white shadow-sm">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-60 w-60 rounded-full bg-cyan-400/15 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      {/* Precision Grid Classic Service Hub Header */}
+      <section className="rounded border border-[#163D6B] bg-[#1D4E89] p-5 text-white">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold text-cyan-300">
-              <IconApps size={14} />
+            <div className="inline-flex items-center gap-1.5 rounded-xs border border-white/25 bg-white/10 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
+              <IconApps size={13} />
               <span>{tr('Cổng Dịch vụ & Đề xuất Nội bộ', 'Internal Workplace Service Desk')}</span>
             </div>
-            <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">
+            <h1 className="mt-2 text-xl font-bold tracking-tight text-white">
               {tr('Trung tâm Dịch vụ Nhân viên', 'Employee Service Hub')}
             </h1>
-            <p className="mt-1 text-sm text-slate-300">
+            <p className="mt-1 text-xs leading-relaxed text-white/80">
               {tr(
                 'Tập trung toàn bộ tiện ích làm việc hằng ngày: đặt phòng họp, gửi đơn từ, yêu cầu IT, đề xuất, thanh toán và đặt xe tại một điểm truy cập duy nhất.',
                 'All everyday workplace services in one place: meeting room booking, HR requests, IT helpdesk, internal proposals, payments, and car booking.',
@@ -197,8 +195,8 @@ export default function ServicesHubPage() {
 
           <div className="relative w-full lg:w-80">
             <IconSearch
-              size={16}
-              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400"
+              size={15}
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500"
             />
             <input
               type="text"
@@ -208,7 +206,7 @@ export default function ServicesHubPage() {
                 'Tìm nhanh phòng họp, IT, thanh toán, đặt xe...',
                 'Search rooms, IT, payment, car booking...',
               )}
-              className="w-full rounded-xl border border-white/15 bg-white/10 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-slate-300 backdrop-blur-xs outline-none transition focus:border-cyan-400 focus:bg-white/15"
+              className="w-full rounded border border-white/30 bg-white py-2 pr-3 pl-9 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-white"
             />
           </div>
         </div>

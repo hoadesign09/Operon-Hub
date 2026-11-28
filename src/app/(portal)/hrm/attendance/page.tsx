@@ -32,6 +32,7 @@ import {
 } from '@/components/hrm/WorkShiftFormModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -708,11 +709,13 @@ export default function HrmAttendancePage() {
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {logsLoading ? (
-              <div className="space-y-3 p-6">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />
-                ))}
-              </div>
+              <SkeletonTable
+                rows={6}
+                columns={canManage ? 10 : 9}
+                showToolbar={false}
+                showPagination={false}
+                className="rounded-none border-0"
+              />
             ) : logsError ? (
               <div className="p-8 text-center">
                 <p className="text-sm font-medium text-rose-700">{logsError}</p>
@@ -892,11 +895,13 @@ export default function HrmAttendancePage() {
       {activeTab === 'shifts' && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {shiftsLoading ? (
-            <div className="space-y-3 p-6">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />
-              ))}
-            </div>
+            <SkeletonTable
+              rows={5}
+              columns={canManage ? 9 : 8}
+              showToolbar={false}
+              showPagination={false}
+              className="rounded-none border-0"
+            />
           ) : shiftsError ? (
             <div className="p-8 text-center">
               <p className="text-sm font-medium text-rose-700">{shiftsError}</p>
@@ -1059,11 +1064,13 @@ export default function HrmAttendancePage() {
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {assignmentsLoading ? (
-              <div className="space-y-3 p-6">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />
-                ))}
-              </div>
+              <SkeletonTable
+                rows={5}
+                columns={canManage ? 7 : 6}
+                showToolbar={false}
+                showPagination={false}
+                className="rounded-none border-0"
+              />
             ) : assignmentsError ? (
               <div className="p-8 text-center">
                 <p className="text-sm font-medium text-rose-700">{assignmentsError}</p>
@@ -1237,11 +1244,13 @@ export default function HrmAttendancePage() {
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {holidaysLoading ? (
-              <div className="space-y-3 p-6">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />
-                ))}
-              </div>
+              <SkeletonTable
+                rows={5}
+                columns={canManage ? 6 : 5}
+                showToolbar={false}
+                showPagination={false}
+                className="rounded-none border-0"
+              />
             ) : holidaysError ? (
               <div className="p-8 text-center">
                 <p className="text-sm font-medium text-rose-700">{holidaysError}</p>

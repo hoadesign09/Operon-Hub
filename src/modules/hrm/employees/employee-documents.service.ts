@@ -3,9 +3,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getDb, type EmployeeDocType } from '@/config/database';
 import { recordAuditLog } from '@/modules/audit/audit.service';
-import type { AuthContext } from '@/modules/auth/auth.service';
+import { hasRequiredPermission, type AuthContext } from '@/modules/auth/auth.service';
 import type { EmployeeDocumentMetaInput } from '@/modules/hrm/employees/employees.schema';
 import {
+  canViewSensitiveEmployeeFields,
   isEmployeeWithinScope,
   resolveEmployeeAccessScope,
 } from '@/modules/hrm/employees/employees.scope';
@@ -115,6 +116,18 @@ async function assertEmployeeDocumentAccess(
 
   if (allowSelfWithoutReadPerm && target.userId === auth.userId) {
     return target;
+  }
+
+  if (
+    target.userId !== auth.userId &&
+    (!hasRequiredPermission(auth, 'hrm.employees.read') ||
+      !canViewSensitiveEmployeeFields(auth, target.userId))
+  ) {
+    throw new AppError(
+      'FORBIDDEN',
+      'Bạn không có quyền truy cập tài liệu hồ sơ nhạy cảm của nhân viên này.',
+      403,
+    );
   }
 
   const scope = await resolveEmployeeAccessScope(auth);

@@ -25,6 +25,7 @@ import { HrmDashboardCharts } from '@/components/hrm/HrmDashboardCharts';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { DashboardMyTasksWidget } from '@/components/projects/DashboardMyTasksWidget';
 import { SystemStatusCard } from '@/components/system/SystemStatusCard';
+import { SkeletonDashboard } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
 import type { DashboardSummaryData } from '@/modules/hrm/dashboard/dashboard.service';
@@ -158,19 +159,17 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Midnight Command Hero Banner */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#080E1A] via-[#0F172A] to-[#0C4A6E] p-6 text-white shadow-sm">
-        <div className="pointer-events-none absolute -top-20 -right-16 h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl" />
-
-        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
+      {/* Precision Grid Classic Command Banner */}
+      <section className="rounded border border-[#163D6B] bg-[#1D4E89] p-5 text-white">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold tracking-widest text-cyan-300 uppercase">
+            <p className="text-[10px] font-bold tracking-widest text-white/75 uppercase">
               {t('dashboard.commandCenter', { period: periodLabel })}
             </p>
-            <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-white">
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-white">
               {t('dashboard.greeting', { name: user?.fullName ?? t('common.user') })}
             </h1>
-            <p className="mt-1 text-xs text-slate-300">
+            <p className="mt-1 text-xs text-white/80">
               {t('dashboard.displayBranch')}{' '}
               <span className="font-semibold text-white">
                 {currentBranch
@@ -186,7 +185,7 @@ export default function DashboardPage() {
                 aria-label={t('dashboard.selectMonth')}
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white backdrop-blur-xs outline-none focus:border-cyan-400"
+                className="h-8 rounded border border-white/25 bg-[#163D6B] px-2.5 text-xs font-semibold text-white outline-none focus:border-white"
               >
                 {Array.from({ length: 12 }, (_, idx) => idx + 1).map((m) => (
                   <option key={m} value={m} className="text-slate-900">
@@ -199,7 +198,7 @@ export default function DashboardPage() {
                 aria-label={t('dashboard.selectYear')}
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white backdrop-blur-xs outline-none focus:border-cyan-400"
+                className="h-8 rounded border border-white/25 bg-[#163D6B] px-2.5 text-xs font-semibold text-white outline-none focus:border-white"
               >
                 {yearOptions.map((y) => (
                   <option key={y} value={y} className="text-slate-900">
@@ -211,9 +210,9 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setReloadTick((v) => v + 1)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500"
+                className="inline-flex h-8 items-center gap-1.5 rounded border border-white/30 bg-white px-3 text-xs font-semibold text-[#1D4E89] transition hover:bg-slate-100"
               >
-                <IconRefresh size={15} />
+                <IconRefresh size={14} />
                 <span>{t('common.refresh')}</span>
               </button>
             </div>
@@ -330,17 +329,7 @@ export default function DashboardPage() {
           {t('dashboard.noPermission')}
         </div>
       ) : isLoading ? (
-        <div className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-32 animate-pulse rounded-2xl bg-white/80" />
-            ))}
-          </div>
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <div className="h-72 animate-pulse rounded-2xl bg-white/80" />
-            <div className="h-72 animate-pulse rounded-2xl bg-white/80" />
-          </div>
-        </div>
+        <SkeletonDashboard />
       ) : resolvedError ? (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-xs">
           <p className="text-sm font-medium text-rose-700">{resolvedError}</p>
@@ -752,8 +741,8 @@ export default function DashboardPage() {
                   className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 transition hover:border-blue-300 hover:bg-blue-50/40"
                 >
                   <div>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0F172A] text-cyan-400">
-                      <Icon size={18} />
+                    <div className="flex h-8 w-8 items-center justify-center rounded border border-[#BDD2EC] bg-[#E6EEF8] text-[#1D4E89]">
+                      <Icon size={16} />
                     </div>
                     <h3 className="mt-3 text-sm font-bold text-slate-900">{item.title}</h3>
                     <p className="mt-1 text-xs leading-relaxed text-slate-600">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { IconX } from '@tabler/icons-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { AssetListItem } from '@/modules/hrm/office/assets.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -175,24 +176,28 @@ export function AssetAssignReturnModal({
               <span className="text-xs font-semibold text-slate-700">
                 {tr('Nhân viên tiếp nhận *', 'Recipient Employee *')}
               </span>
-              <select
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-                required
-                disabled={isLoadingEmployees}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-              >
-                <option value="">
-                  {isLoadingEmployees
-                    ? tr('Đang tải danh sách nhân viên...', 'Loading employee list...')
-                    : tr('-- Chọn nhân viên đang làm việc --', '-- Select active employee --')}
-                </option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.employeeCode} — {emp.fullName} ({emp.departmentName})
+              {isLoadingEmployees ? (
+                <div role="status" aria-busy="true" aria-label="Loading employees">
+                  <Skeleton className="h-10 w-full" rounded="sm" />
+                  <span className="sr-only">Loading</span>
+                </div>
+              ) : (
+                <select
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                >
+                  <option value="">
+                    {tr('-- Chọn nhân viên đang làm việc --', '-- Select active employee --')}
                   </option>
-                ))}
-              </select>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.employeeCode} — {emp.fullName} ({emp.departmentName})
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
           ) : (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
@@ -310,7 +315,7 @@ export function AssetAssignReturnModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (mode === 'assign' && isLoadingEmployees)}
               className={`rounded-xl px-4 py-2 text-sm font-medium text-white disabled:opacity-60 ${
                 mode === 'assign'
                   ? 'bg-blue-600 hover:bg-blue-700'

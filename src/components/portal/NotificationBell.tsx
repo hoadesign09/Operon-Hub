@@ -8,6 +8,7 @@ import {
   IconInbox,
   IconRefresh,
 } from '@tabler/icons-react';
+import { SkeletonListRows } from '@/components/ui/Skeleton';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -138,20 +139,20 @@ export function NotificationBell() {
         onClick={handleToggle}
         aria-label={t('notifications.aria')}
         title={t('notifications.aria')}
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+        className="relative flex h-8 w-8 items-center justify-center rounded border border-[#BFC8D4] bg-white text-slate-700 transition hover:border-[#BDD2EC] hover:bg-[#E6EEF8] hover:text-[#1D4E89]"
       >
-        <IconBell size={18} />
+        <IconBell size={16} />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-rose-600 px-1 py-0.5 text-[10px] font-bold leading-none text-white">
+          <span className="absolute -right-1 -top-1 flex min-w-[16px] items-center justify-center rounded-xs bg-red-600 px-1 py-0.5 text-[9px] font-bold leading-none text-white">
             {badgeText}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:w-96">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-            <h3 className="text-sm font-semibold text-slate-900">
+        <div className="absolute right-0 mt-1.5 w-80 overflow-hidden rounded border border-[#BFC8D4] bg-white shadow-lg sm:w-96">
+          <div className="flex items-center justify-between border-b border-[#CFD6DF] bg-[#F8F9FB] px-3.5 py-2.5">
+            <h3 className="text-xs font-bold text-slate-900">
               {t('notifications.header', { count: unreadCount })}
             </h3>
             {unreadCount > 0 && (
@@ -159,9 +160,9 @@ export function NotificationBell() {
                 type="button"
                 disabled={isMarkingAll}
                 onClick={() => void handleMarkAllRead()}
-                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1D4E89] hover:underline disabled:opacity-50"
               >
-                <IconCheck size={14} />
+                <IconCheck size={13} />
                 <span>{t('notifications.markAllRead')}</span>
               </button>
             )}
@@ -169,10 +170,8 @@ export function NotificationBell() {
 
           <div className="max-h-80 overflow-y-auto">
             {viewState === 'loading' && (
-              <div className="space-y-2 p-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-                ))}
+              <div className="px-4 py-2">
+                <SkeletonListRows rows={4} compact showMeta={false} />
               </div>
             )}
 

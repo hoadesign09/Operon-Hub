@@ -13,6 +13,7 @@ import {
   IconRefresh,
 } from '@tabler/icons-react';
 import { pickLabel, TASK_PRIORITY_META } from '@/components/projects/project-ui-helpers';
+import { Skeleton, SkeletonListRows } from '@/components/ui/Skeleton';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import type { MyTasksGroupedView, TaskListItem } from '@/modules/projects/tasks.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -221,9 +222,19 @@ export default function MyTasksHubPage() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="h-28 animate-pulse rounded-2xl bg-white" />
+        <div className="space-y-4">
+          {[1, 2].map((group) => (
+            <div
+              key={group}
+              className="overflow-hidden rounded border border-[#CFD6DF] bg-white"
+            >
+              <div className="border-b border-[#CFD6DF] bg-[#F8F9FB] px-4 py-3">
+                <Skeleton className="h-3.5 w-44" />
+              </div>
+              <div className="px-4 py-1">
+                <SkeletonListRows rows={3} compact />
+              </div>
+            </div>
           ))}
         </div>
       ) : errorMsg ? (

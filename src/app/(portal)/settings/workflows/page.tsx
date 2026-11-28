@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonCardGrid } from '@/components/ui/Skeleton';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
 type ApproverType = 'DIRECT_MANAGER' | 'ROLE' | 'SPECIFIC_USER';
@@ -382,11 +383,13 @@ export default function WorkflowsSettingsPage() {
       </div>
 
       {viewState === 'loading' && (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
-          ))}
-        </div>
+        <SkeletonCardGrid
+          count={3}
+          columnsClass="grid-cols-1 gap-3"
+          lines={2}
+          showBadge
+          showFooter
+        />
       )}
 
       {viewState === 'error' && (

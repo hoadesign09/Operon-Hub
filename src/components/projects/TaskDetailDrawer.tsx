@@ -20,6 +20,12 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import {
+  Skeleton,
+  SkeletonFormFields,
+  SkeletonListRows,
+  SkeletonText,
+} from '@/components/ui/Skeleton';
 import type { TaskDependencyType, TaskPriority, TaskType } from '@/config/database';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
 import type {
@@ -546,7 +552,11 @@ export function TaskDetailDrawer({
                 )}
               </div>
             ) : (
-              <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-20" rounded="sm" />
+                <Skeleton className="h-5 w-16" rounded="full" />
+                <Skeleton className="h-5 w-16" rounded="full" />
+              </div>
             )}
           </div>
 
@@ -632,10 +642,15 @@ export function TaskDetailDrawer({
           )}
 
           {isLoading || !task ? (
-            <div className="space-y-4">
-              <div className="h-7 w-3/4 animate-pulse rounded bg-slate-200" />
-              <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
-              <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
+            <div className="space-y-6">
+              <div className="space-y-2.5">
+                <Skeleton className="h-6 w-3/4" />
+                <SkeletonText lines={3} />
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <SkeletonFormFields fields={4} columns={2} showActions={false} />
+              </div>
+              <SkeletonListRows rows={4} compact />
             </div>
           ) : activeTab === 'overview' ? (
             isEditing ? (

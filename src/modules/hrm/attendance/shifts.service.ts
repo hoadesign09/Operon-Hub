@@ -178,11 +178,26 @@ export async function listWorkShifts(query: {
   }));
 }
 
+function assertShiftBranchWriteAllowed(auth: AuthContext, branchId: number | null): void {
+  if (auth.isSuperAdmin || auth.hasAllBranches) {
+    return;
+  }
+  if (branchId === null || !auth.branchIds.includes(branchId)) {
+    throw new AppError(
+      'FORBIDDEN',
+      'Bạn chỉ được phép quản lý ca làm việc trong phạm vi chi nhánh được phân công.',
+      403,
+    );
+  }
+}
+
 export async function createWorkShift(
   input: CreateWorkShiftInput,
   auth: AuthContext,
   ipAddress: string | null,
 ): Promise<WorkShiftItem> {
+  const requestedBranchId = input.branchId ?? null;
+  assertShiftBranchWriteAllowed(auth, requestedBranchId);
   let workingHours: number;
   try {
     workingHours = computeShiftWorkingHours(
@@ -314,6 +329,9 @@ export async function updateWorkShift(
     throw new AppError('SHIFT_NOT_FOUND', 'Không tìm thấy ca làm việc.', 404);
   }
 
+  const currentBranchId = current.branch_id !== null ? Number(current.branch_id) : null;
+  assertShiftBranchWriteAllowed(auth, currentBranchId);
+
   const nextStart = input.startTime ?? String(current.start_time);
   const nextEnd = input.endTime ?? String(current.end_time);
   const nextBreakStart =
@@ -331,9 +349,8 @@ export async function updateWorkShift(
   const nextBranchId =
     input.branchId !== undefined
       ? input.branchId
-      : current.branch_id !== null
-        ? Number(current.branch_id)
-        : null;
+      : currentBranchId;
+  assertShiftBranchWriteAllowed(auth, nextBranchId);
 
   let workingHours: number;
   try {
@@ -425,7 +442,7 @@ export async function deleteWorkShift(
   const db = getDb();
   const current = await db
     .selectFrom('work_shifts')
-    .select(['id', 'code', 'name'])
+    .select(['id', 'branch_id', 'code', 'name'])
     .where('id', '=', id)
     .where('deleted_at', 'is', null)
     .executeTakeFirst();
@@ -433,6 +450,11 @@ export async function deleteWorkShift(
   if (!current) {
     throw new AppError('SHIFT_NOT_FOUND', 'Không tìm thấy ca làm việc.', 404);
   }
+
+  assertShiftBranchWriteAllowed(
+    auth,
+    current.branch_id !== null ? Number(current.branch_id) : null,
+  );
 
   const assigned = await db
     .selectFrom('employee_shift_assignments')

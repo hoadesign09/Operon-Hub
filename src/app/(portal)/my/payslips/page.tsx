@@ -8,6 +8,7 @@ import {
   IconRefresh,
 } from '@tabler/icons-react';
 import { PayslipDetailModal } from '@/components/hrm/PayslipDetailModal';
+import { SkeletonKpiGrid, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import type { PayslipRowItem } from '@/modules/hrm/payroll/payroll.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -120,49 +121,56 @@ export default function MyPayslipsPage() {
       </div>
 
       {/* Annual KPI Summary */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">
-            {tr('Số kỳ lương đã nhận', 'Payslips Received')}
+      {isLoading ? (
+        <SkeletonKpiGrid count={4} compact columnsClass="grid-cols-2 gap-3 lg:grid-cols-4" />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">
+              {tr('Số kỳ lương đã nhận', 'Payslips Received')}
+            </div>
+            <div className="mt-1 text-xl font-bold text-slate-900">
+              {data?.summary.count ?? 0}{' '}
+              {tr('kỳ', (data?.summary.count ?? 0) === 1 ? 'period' : 'periods')}
+            </div>
           </div>
-          <div className="mt-1 text-xl font-bold text-slate-900">
-            {isLoading ? '...' : (data?.summary.count ?? 0)}{' '}
-            {tr('kỳ', (data?.summary.count ?? 0) === 1 ? 'period' : 'periods')}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">
+              {tr('Tổng Thu nhập (Gross)', 'Total Gross Income')}
+            </div>
+            <div className="mt-1 text-xl font-bold text-slate-900">
+              {formatVND(data?.summary.totalGross ?? 0)}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">
+              {tr('Tổng Thuế TNCN đã khấu trừ', 'Total PIT Withheld')}
+            </div>
+            <div className="mt-1 text-xl font-bold text-amber-700">
+              {formatVND(data?.summary.totalTax ?? 0)}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+            <div className="text-xs font-medium text-blue-700">
+              {tr('Tổng Thực lĩnh (Net)', 'Total Net Pay')}
+            </div>
+            <div className="mt-1 text-xl font-bold text-blue-800">
+              {formatVND(data?.summary.totalNet ?? 0)}
+            </div>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">
-            {tr('Tổng Thu nhập (Gross)', 'Total Gross Income')}
-          </div>
-          <div className="mt-1 text-xl font-bold text-slate-900">
-            {isLoading ? '...' : formatVND(data?.summary.totalGross ?? 0)}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">
-            {tr('Tổng Thuế TNCN đã khấu trừ', 'Total PIT Withheld')}
-          </div>
-          <div className="mt-1 text-xl font-bold text-amber-700">
-            {isLoading ? '...' : formatVND(data?.summary.totalTax ?? 0)}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-          <div className="text-xs font-medium text-blue-700">
-            {tr('Tổng Thực lĩnh (Net)', 'Total Net Pay')}
-          </div>
-          <div className="mt-1 text-xl font-bold text-blue-800">
-            {isLoading ? '...' : formatVND(data?.summary.totalNet ?? 0)}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* List */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="space-y-3 p-6">
-            <div className="h-14 animate-pulse rounded-xl bg-slate-100" />
-            <div className="h-14 animate-pulse rounded-xl bg-slate-100" />
-          </div>
+          <SkeletonTable
+            rows={5}
+            columns={7}
+            showToolbar={false}
+            showPagination={false}
+            className="rounded-none border-0"
+          />
         ) : errorMessage ? (
           <div className="p-8 text-center">
             <p className="text-sm text-rose-700">{errorMessage}</p>

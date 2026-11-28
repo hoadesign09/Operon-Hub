@@ -19,6 +19,7 @@ import {
   IconPlayerPlay,
   IconPlus,
 } from '@tabler/icons-react';
+import { SkeletonKanbanBoard } from '@/components/ui/Skeleton';
 import type { ProjectSprintView, SprintAnalyticsView } from '@/modules/projects/sprints.service';
 import type { TaskListItem } from '@/modules/projects/tasks.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -235,7 +236,7 @@ export function ProjectSprintBoard({
   const plannedSprints = sprints.filter((s) => s.status === 'PLANNED');
 
   if (loading) {
-    return <div className="h-72 animate-pulse rounded-2xl bg-white" />;
+    return <SkeletonKanbanBoard />;
   }
 
   return (

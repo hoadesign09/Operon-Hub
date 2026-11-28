@@ -23,6 +23,7 @@ import {
   IconWallet,
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonCardGrid, SkeletonKpiGrid, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -103,7 +104,7 @@ export function BudgetsManagementPanel({
         cache: 'no-store',
         signal: controller.signal,
       }),
-      fetch('/api/v1/hrm/departments?limit=200', {
+      fetch('/api/v1/hrm/org/departments?limit=200', {
         cache: 'no-store',
         signal: controller.signal,
       }),
@@ -249,6 +250,13 @@ export function BudgetsManagementPanel({
   return (
     <div className="w-full space-y-5">
       {/* 5 Executive Budget KPI Cards */}
+      {viewState === 'loading' && !summary ? (
+        <SkeletonKpiGrid
+          count={5}
+          compact
+          columnsClass="grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-5"
+        />
+      ) : (
       <section className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
         <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
@@ -351,6 +359,7 @@ export function BudgetsManagementPanel({
           </div>
         </button>
       </section>
+      )}
 
       {statusBannerError && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-700">
@@ -502,13 +511,15 @@ export function BudgetsManagementPanel({
       </section>
 
       {/* 4 Mandatory States */}
-      {viewState === 'loading' && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-white p-5" />
-          ))}
-        </div>
-      )}
+      {viewState === 'loading' &&
+        (viewMode === 'table' ? (
+          <SkeletonTable rows={6} columns={8} showToolbar={false} showPagination={false} />
+        ) : (
+          <SkeletonCardGrid
+            count={6}
+            columnsClass="grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+          />
+        ))}
 
       {viewState === 'error' && (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center">

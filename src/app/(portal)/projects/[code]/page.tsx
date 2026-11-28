@@ -25,6 +25,7 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonDetailPage } from '@/components/ui/Skeleton';
 import { ProjectAutomationPanel } from '@/components/projects/ProjectAutomationPanel';
 import { ProjectBudgetRisksPanel } from '@/components/projects/ProjectBudgetRisksPanel';
 import { ProjectCalendarView } from '@/components/projects/ProjectCalendarView';
@@ -298,12 +299,7 @@ export default function ProjectWorkspacePage({
   });
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="h-28 animate-pulse rounded-2xl bg-white" />
-        <div className="h-96 animate-pulse rounded-2xl bg-white" />
-      </div>
-    );
+    return <SkeletonDetailPage showTabs showBottomWorkflow={false} />;
   }
 
   if (errorMsg || !project) {

@@ -18,9 +18,10 @@ import {
   formatProposalCode,
 } from '@/lib/portable/proposal-calculator';
 import {
-  canUserActOnApproval,
+  canAuthActOnApproval,
   createApprovalRequest,
   getApprovalDetailWithHistory,
+  listActionablePendingApprovals,
   notifyApprovalRequestCreated,
   type ApprovalHistoryView,
   type ApprovalRequestItem,
@@ -635,15 +636,17 @@ export async function assertProposalViewAccess(
   if (info.approvalRequestId) {
     const ar = await db
       .selectFrom('approval_requests')
-      .select(['requester_id', 'current_approver_user_id', 'current_approver_role_id'])
+      .select(['requester_id', 'branch_id', 'current_approver_user_id', 'current_approver_role_id'])
       .where('id', '=', info.approvalRequestId)
       .executeTakeFirst();
 
     if (
       ar &&
-      canUserActOnApproval(
+      (await canAuthActOnApproval(
         {
           requesterId: Number(ar.requester_id),
+          branchId: ar.branch_id !== null ? Number(ar.branch_id) : info.branchId,
+          requesterDepartmentId: info.departmentId,
           currentApproverUserId:
             ar.current_approver_user_id !== null ? Number(ar.current_approver_user_id) : null,
           currentApproverRoleId:
@@ -651,7 +654,7 @@ export async function assertProposalViewAccess(
         },
         auth,
         'APPROVE',
-      )
+      ))
     ) {
       return info;
     }
@@ -698,8 +701,12 @@ export async function listProposals(
   );
 
   const scopeFilter = query.scope ?? 'all';
-  const roleIds = auth.roles.map((r) => r.id);
   const accessScope = await resolveEmployeeAccessScope(auth);
+  const actionableApprovalIds = !auth.isSuperAdmin
+    ? (await listActionablePendingApprovals(auth, PROPOSAL_MODULE_CODE, PROPOSAL_ENTITY_TYPE)).map(
+        (x) => x.id,
+      )
+    : [];
 
   let baseQuery = db
     .selectFrom('proposals as p')
@@ -719,22 +726,19 @@ export async function listProposals(
       .where('p.status', '=', 'PENDING_APPROVAL')
       .where('ar.status', '=', 'PENDING');
     if (!auth.isSuperAdmin) {
-      baseQuery = baseQuery.where((eb) => {
-        const conds = [eb('ar.current_approver_user_id', '=', auth.userId)];
-        if (roleIds.length > 0) {
-          conds.push(eb('ar.current_approver_role_id', 'in', roleIds));
-        }
-        return eb.or(conds);
-      });
+      if (actionableApprovalIds.length === 0) {
+        return {
+          items: [],
+          meta: buildPaginationMeta(0, pagination.page, pagination.limit),
+        };
+      }
+      baseQuery = baseQuery.where('ar.id', 'in', actionableApprovalIds);
     }
   } else if (!hasManagePermission(auth) && accessScope.mode !== 'ALL') {
     baseQuery = baseQuery.where((eb) => {
-      const conds = [
-        eb('p.requester_user_id', '=', auth.userId),
-        eb('ar.current_approver_user_id', '=', auth.userId),
-      ];
-      if (roleIds.length > 0) {
-        conds.push(eb('ar.current_approver_role_id', 'in', roleIds));
+      const conds = [eb('p.requester_user_id', '=', auth.userId)];
+      if (actionableApprovalIds.length > 0) {
+        conds.push(eb('ar.id', 'in', actionableApprovalIds));
       }
       if (accessScope.mode === 'BRANCH' && accessScope.branchIds.length > 0) {
         conds.push(eb('p.branch_id', 'in', accessScope.branchIds));
@@ -1616,13 +1620,15 @@ export async function transitionProposalStatus(
     if (!canApproveNow && existing.approvalRequestId) {
       const ar = await db
         .selectFrom('approval_requests')
-        .select(['requester_id', 'current_approver_user_id', 'current_approver_role_id'])
+        .select(['requester_id', 'branch_id', 'current_approver_user_id', 'current_approver_role_id'])
         .where('id', '=', existing.approvalRequestId)
         .executeTakeFirst();
       if (ar) {
-        canApproveNow = canUserActOnApproval(
+        canApproveNow = await canAuthActOnApproval(
           {
             requesterId: Number(ar.requester_id),
+            branchId: ar.branch_id !== null ? Number(ar.branch_id) : existing.branchId,
+            requesterDepartmentId: existing.departmentId,
             currentApproverUserId:
               ar.current_approver_user_id !== null ? Number(ar.current_approver_user_id) : null,
             currentApproverRoleId:
@@ -1793,14 +1799,26 @@ export async function transitionProposalStatus(
       );
     }
 
+    const nextApprovedBudget =
+      input.approvedBudget !== undefined && input.approvedBudget !== null
+        ? roundCurrency(input.approvedBudget)
+        : null;
+    if (nextApprovedBudget !== null && !isManager) {
+      throw new AppError(
+        'FORBIDDEN',
+        'Chỉ quản trị Đề xuất mới được điều chỉnh ngân sách đã phê duyệt.',
+        403,
+      );
+    }
+
     await db.transaction().execute(async (trx) => {
-      if (input.approvedBudget !== undefined && input.approvedBudget !== null) {
+      if (nextApprovedBudget !== null) {
         await releaseProposalBudgetReserve(trx, {
           proposalId,
           proposalCode: existing.proposalCode,
           actorUserId: auth.userId,
           reason: `Điều chỉnh giảm giữ chỗ theo ngân sách duyệt mới của Đề xuất ${existing.proposalCode}`,
-          targetRemainingReserve: roundCurrency(input.approvedBudget),
+          targetRemainingReserve: nextApprovedBudget,
         });
       }
 
@@ -1808,9 +1826,7 @@ export async function transitionProposalStatus(
         .updateTable('proposals')
         .set({
           status: 'IN_EXECUTION',
-          ...(input.approvedBudget !== undefined && input.approvedBudget !== null
-            ? { approved_budget: roundCurrency(input.approvedBudget) }
-            : {}),
+          ...(nextApprovedBudget !== null ? { approved_budget: nextApprovedBudget } : {}),
           ...(input.executionNotes !== undefined
             ? { execution_notes: input.executionNotes?.trim() || null }
             : {}),
@@ -1840,6 +1856,17 @@ export async function transitionProposalStatus(
         409,
       );
     }
+    const completedBudget =
+      input.approvedBudget !== undefined && input.approvedBudget !== null
+        ? roundCurrency(input.approvedBudget)
+        : null;
+    if (completedBudget !== null && !isManager) {
+      throw new AppError(
+        'FORBIDDEN',
+        'Chỉ quản trị Đề xuất mới được điều chỉnh ngân sách đã phê duyệt.',
+        403,
+      );
+    }
 
     await db.transaction().execute(async (trx) => {
       await releaseProposalBudgetReserve(trx, {
@@ -1854,9 +1881,7 @@ export async function transitionProposalStatus(
         .set({
           status: 'COMPLETED',
           completed_at: new Date(),
-          ...(input.approvedBudget !== undefined && input.approvedBudget !== null
-            ? { approved_budget: roundCurrency(input.approvedBudget) }
-            : {}),
+          ...(completedBudget !== null ? { approved_budget: completedBudget } : {}),
           ...(input.executionNotes !== undefined
             ? { execution_notes: input.executionNotes?.trim() || null }
             : {}),
@@ -1872,7 +1897,7 @@ export async function transitionProposalStatus(
           actor_user_id: auth.userId,
           action_type: 'COMPLETED',
           detail_json: JSON.stringify({
-            approvedBudget: input.approvedBudget ?? null,
+            approvedBudget: completedBudget,
             notes: input.executionNotes?.trim() || null,
           }),
         })

@@ -41,6 +41,7 @@
     "@types/pdfmake": "^0.2.12",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "docx": "^9.16.1",
     "eslint": "^9.28.0",
     "eslint-config-next": "^16.4.6",
     "postcss": "^8.5.3",

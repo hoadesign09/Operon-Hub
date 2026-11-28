@@ -29,6 +29,7 @@ import {
 } from '@/components/it-requests/ItRequestFormModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Skeleton, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import type { PaginationMeta } from '@/lib/portable/pagination';
 import type { SlaHealthStatus } from '@/lib/portable/sla-calculator';
@@ -414,51 +415,71 @@ export default function ItRequestsPage() {
             <div className="text-[11px] font-medium text-slate-300">
               {tr('Tổng số ticket', 'Total Tickets')}
             </div>
-            <div className="mt-1 text-2xl font-bold text-white">{summary?.total ?? '—'}</div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-7 w-12" />
+            ) : (
+              <div className="mt-1 text-2xl font-bold text-white">{summary?.total ?? '—'}</div>
+            )}
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xs">
             <div className="text-[11px] font-medium text-sky-200">
               {tr('Đang mở / Xử lý', 'Open / In Progress')}
             </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-white">{activeInProgressTotal}</span>
-              <span className="text-[11px] text-slate-300">
-                ({summary?.unassignedCount ?? 0} {tr('chưa gán', 'unassigned')})
-              </span>
-            </div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-7 w-24" />
+            ) : (
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-white">{activeInProgressTotal}</span>
+                <span className="text-[11px] text-slate-300">
+                  ({summary?.unassignedCount ?? 0} {tr('chưa gán', 'unassigned')})
+                </span>
+              </div>
+            )}
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xs">
             <div className="text-[11px] font-medium text-amber-200">
               {tr('Chờ tôi phê duyệt', 'Pending My Approval')}
             </div>
-            <div className="mt-1 text-2xl font-bold text-amber-300">
-              {summary?.pendingMyApprovalCount ?? 0}
-            </div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-7 w-12" />
+            ) : (
+              <div className="mt-1 text-2xl font-bold text-amber-300">
+                {summary?.pendingMyApprovalCount ?? 0}
+              </div>
+            )}
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xs">
             <div className="flex items-center gap-1 text-[11px] font-medium text-rose-200">
               <IconAlertTriangle size={13} />
               <span>{tr('Cảnh báo / Quá hạn SLA', 'SLA At Risk / Breached')}</span>
             </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-rose-300">
-                {summary?.slaBreachedCount ?? 0}
-              </span>
-              <span className="text-[11px] text-amber-200">
-                / {summary?.slaAtRiskCount ?? 0} {tr('sắp hạn', 'at risk')}
-              </span>
-            </div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-7 w-24" />
+            ) : (
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-rose-300">
+                  {summary?.slaBreachedCount ?? 0}
+                </span>
+                <span className="text-[11px] text-amber-200">
+                  / {summary?.slaAtRiskCount ?? 0} {tr('sắp hạn', 'at risk')}
+                </span>
+              </div>
+            )}
           </div>
           <div className="col-span-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xs lg:col-span-1">
             <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-200">
               <IconStarFilled size={13} className="text-amber-300" />
               <span>{tr('Điểm hài lòng CSAT', 'Avg CSAT Rating')}</span>
             </div>
-            <div className="mt-1 text-2xl font-bold text-white">
-              {summary?.avgSatisfactionRating !== null && summary?.avgSatisfactionRating !== undefined
-                ? `${summary.avgSatisfactionRating}/5`
-                : '—'}
-            </div>
+            {viewState === 'loading' && !summary ? (
+              <Skeleton tone="dark" className="mt-1.5 h-7 w-16" />
+            ) : (
+              <div className="mt-1 text-2xl font-bold text-white">
+                {summary?.avgSatisfactionRating !== null && summary?.avgSatisfactionRating !== undefined
+                  ? `${summary.avgSatisfactionRating}/5`
+                  : '—'}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -685,11 +706,7 @@ export default function ItRequestsPage() {
 
           {/* 4 Required States: Loading / Error / Empty / Success */}
           {viewState === 'loading' && (
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
-              {[1, 2, 3, 4].map((n) => (
-                <div key={n} className="h-14 animate-pulse rounded-xl bg-slate-100" />
-              ))}
-            </div>
+            <SkeletonTable rows={6} columns={7} showToolbar={false} showPagination={false} />
           )}
 
           {viewState === 'error' && (

@@ -37,6 +37,7 @@ import {
   type ProposalPriorityKey,
   type ProposalStatusKey,
 } from '@/components/proposals/proposal-ui.constants';
+import { SkeletonDetailPage } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -233,7 +234,7 @@ export default function ProposalDetailPage() {
         cache: 'no-store',
         signal: controller.signal,
       }),
-      fetch('/api/v1/hrm/departments?limit=200', {
+      fetch('/api/v1/hrm/org/departments?limit=200', {
         cache: 'no-store',
         signal: controller.signal,
       }),
@@ -492,15 +493,7 @@ export default function ProposalDetailPage() {
   }
 
   if (viewState === 'loading') {
-    return (
-      <div className="w-full space-y-4">
-        <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="h-80 animate-pulse rounded-2xl bg-slate-100 lg:col-span-2" />
-          <div className="h-80 animate-pulse rounded-2xl bg-slate-100" />
-        </div>
-      </div>
-    );
+    return <SkeletonDetailPage showKpis showBottomWorkflow />;
   }
 
   if (viewState === 'error' || !detail) {

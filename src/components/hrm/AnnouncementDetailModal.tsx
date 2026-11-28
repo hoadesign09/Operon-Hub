@@ -11,6 +11,7 @@ import {
   IconUsers,
   IconX,
 } from '@tabler/icons-react';
+import { SkeletonKpiGrid, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import type {
   AnnouncementItem,
@@ -337,7 +338,9 @@ export function AnnouncementDetailModal({
             </div>
           ) : (
             <div className="space-y-4">
-              {readersData && (
+              {isLoadingReaders && !readersData ? (
+                <SkeletonKpiGrid count={3} compact columnsClass="grid-cols-3 gap-3" />
+              ) : readersData ? (
                 <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
                     <div className="text-xs text-slate-500">
@@ -360,7 +363,7 @@ export function AnnouncementDetailModal({
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative flex-1">
@@ -391,11 +394,7 @@ export function AnnouncementDetailModal({
               </div>
 
               {isLoadingReaders ? (
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-                  ))}
-                </div>
+                <SkeletonTable rows={4} columns={4} showToolbar={false} showPagination={false} />
               ) : readersError ? (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-700">
                   <p>{readersError}</p>

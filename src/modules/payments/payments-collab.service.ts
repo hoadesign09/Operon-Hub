@@ -217,7 +217,23 @@ export async function uploadPaymentAttachment(
       409,
     );
   }
+  const isFinance = isFinanceManager(auth);
+  const isOwner = payment.requesterUserId === auth.userId;
+  if (!isOwner && !isFinance) {
+    throw new AppError(
+      'FORBIDDEN',
+      'Chỉ người tạo phiếu hoặc Kế toán quản trị mới được tải lên chứng từ đính kèm.',
+      403,
+    );
+  }
   const isUnc = attachmentKind === 'UNC_RECEIPT';
+  if (isUnc && !isFinance && !auth.permissions.includes('payments.disburse')) {
+    throw new AppError(
+      'FORBIDDEN',
+      'Chỉ Kế toán Thanh toán / Thủ quỹ mới được tải lên chứng từ Ủy nhiệm chi (UNC).',
+      403,
+    );
+  }
 
   const { safeExt, safeOriginalName } = validatePaymentAttachmentFile({
     name: file.name,

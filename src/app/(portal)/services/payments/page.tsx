@@ -34,6 +34,7 @@ import {
   type PaymentSummaryDto,
 } from '@/components/payments/payment-ui.helpers';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonCardGrid, SkeletonKpiGrid, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import type { PaginationMeta } from '@/lib/portable/pagination';
@@ -391,6 +392,13 @@ export default function PaymentsListPage() {
         <>
 
       {/* 5 Interactive Finance KPI Cards */}
+      {viewState === 'loading' && !summary ? (
+        <SkeletonKpiGrid
+          count={5}
+          compact
+          columnsClass="grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-5"
+        />
+      ) : (
       <section className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
         <button
           type="button"
@@ -524,6 +532,7 @@ export default function PaymentsListPage() {
           </div>
         </button>
       </section>
+      )}
 
       {/* Scope Tabs + Filter Toolbar */}
       <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
@@ -679,13 +688,15 @@ export default function PaymentsListPage() {
       </section>
 
       {/* Main Content: 4 Mandatory States */}
-      {viewState === 'loading' && (
-        <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-5">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
-          ))}
-        </div>
-      )}
+      {viewState === 'loading' &&
+        (viewMode === 'cards' ? (
+          <SkeletonCardGrid
+            count={6}
+            columnsClass="grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+          />
+        ) : (
+          <SkeletonTable rows={6} columns={7} showToolbar={false} showPagination={false} />
+        ))}
 
       {viewState === 'error' && (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-2xs">

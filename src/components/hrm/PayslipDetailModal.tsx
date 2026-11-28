@@ -8,6 +8,12 @@ import {
   IconTrash,
   IconX,
 } from '@tabler/icons-react';
+import {
+  Skeleton,
+  SkeletonKpiGrid,
+  SkeletonListRows,
+  SkeletonText,
+} from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import type { PayslipDetail } from '@/modules/hrm/payroll/payroll.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -247,9 +253,32 @@ export function PayslipDetailModal({
 
         <div className="flex-1 space-y-5 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="space-y-3">
-              <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
-              <div className="h-40 animate-pulse rounded-xl bg-slate-100" />
+            <div
+              role="status"
+              aria-busy="true"
+              aria-label="Loading payslip details"
+              className="space-y-5"
+            >
+              <SkeletonKpiGrid
+                count={4}
+                compact
+                columnsClass="grid-cols-2 gap-3 sm:grid-cols-4"
+              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-[#CFD6DF] bg-white p-4">
+                  <Skeleton className="mb-3 h-3 w-44" />
+                  <SkeletonListRows rows={3} compact />
+                </div>
+                <div className="rounded-xl border border-[#CFD6DF] bg-white p-4">
+                  <Skeleton className="mb-3 h-3 w-44" />
+                  <SkeletonListRows rows={3} compact />
+                </div>
+              </div>
+              <div className="rounded-xl border border-[#CFD6DF] bg-white p-4">
+                <Skeleton className="mb-3 h-3 w-48" />
+                <SkeletonText lines={2} />
+              </div>
+              <span className="sr-only">Loading</span>
             </div>
           ) : errorMessage && !payslip ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center">

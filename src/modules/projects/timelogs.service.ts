@@ -7,6 +7,7 @@ import {
   assertProjectAccess,
   resolveEmployeeForUser,
 } from '@/modules/projects/projects.access';
+import { listProjects } from '@/modules/projects/projects.service';
 import { MAX_RUNNING_TIMER_WARNING_HOURS } from '@/modules/projects/projects.constants';
 import type {
   CreateManualTimeLogInput,
@@ -247,7 +248,7 @@ export async function startTaskTimer(
     throw new AppError('TASK_NOT_FOUND', 'Không tìm thấy công việc.', 404);
   }
 
-  await assertProjectAccess(auth, Number(task.project_id), 'VIEW');
+  await assertProjectAccess(auth, Number(task.project_id), 'CONTRIBUTE');
 
   // Stop any existing running timer for this employee cleanly
   const running = await db
@@ -383,6 +384,21 @@ export async function listTimeLogs(
     await assertProjectAccess(auth, filters.projectId, 'VIEW');
   }
 
+  let scopedProjectIds: number[] | null = null;
+  if (
+    !filters.projectId &&
+    !filters.mineOnly &&
+    canApprove &&
+    !auth.isSuperAdmin &&
+    !hasRequiredPermission(auth, 'pm.projects.manage')
+  ) {
+    const visibleProjects = await listProjects(auth, { limit: '500' });
+    scopedProjectIds = visibleProjects.items.map((p) => p.id);
+    if (scopedProjectIds.length === 0) {
+      return [];
+    }
+  }
+
   const db = getDb();
   let query = db
     .selectFrom('task_time_logs as l')
@@ -414,6 +430,8 @@ export async function listTimeLogs(
 
   if (filters.projectId) {
     query = query.where('l.project_id', '=', filters.projectId);
+  } else if (scopedProjectIds !== null) {
+    query = query.where('l.project_id', 'in', scopedProjectIds);
   }
   if (filters.taskId) {
     query = query.where('l.task_id', '=', filters.taskId);
@@ -462,7 +480,7 @@ export async function createManualTimeLog(
     throw new AppError('TASK_NOT_FOUND', 'Không tìm thấy công việc.', 404);
   }
 
-  await assertProjectAccess(auth, Number(task.project_id), 'VIEW');
+  await assertProjectAccess(auth, Number(task.project_id), 'CONTRIBUTE');
   const rate = await resolveHourlyRate(Number(task.project_id), emp.id);
 
   const inserted = await db
@@ -599,7 +617,7 @@ export async function reviewTimeLogs(
 
   const projectIds = Array.from(new Set(rows.map((r) => Number(r.project_id))));
   for (const pid of projectIds) {
-    await assertProjectAccess(auth, pid, 'VIEW');
+    await assertProjectAccess(auth, pid, 'MANAGE');
   }
 
   const res = await db

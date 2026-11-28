@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { IconDevices, IconDownload, IconRefresh } from '@tabler/icons-react';
+import { SkeletonCardGrid, SkeletonKpiGrid } from '@/components/ui/Skeleton';
 import type { AssetAssignmentItem } from '@/modules/hrm/office/assets.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -83,30 +84,35 @@ export default function MyAssetsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-          <div className="text-xs font-medium text-blue-700">
-            {tr('Đang sử dụng', 'In Use')}
+      {isLoading ? (
+        <SkeletonKpiGrid count={2} compact columnsClass="grid-cols-2 gap-3 sm:max-w-md" />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+            <div className="text-xs font-medium text-blue-700">
+              {tr('Đang sử dụng', 'In Use')}
+            </div>
+            <div className="mt-1 text-2xl font-bold text-blue-800">
+              {data?.activeItems.length ?? 0}
+            </div>
           </div>
-          <div className="mt-1 text-2xl font-bold text-blue-800">
-            {isLoading ? '...' : (data?.activeItems.length ?? 0)}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">
+              {tr('Đã bàn giao trả', 'Returned')}
+            </div>
+            <div className="mt-1 text-2xl font-bold text-slate-800">
+              {data?.historyItems.length ?? 0}
+            </div>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs text-slate-500">
-            {tr('Đã bàn giao trả', 'Returned')}
-          </div>
-          <div className="mt-1 text-2xl font-bold text-slate-800">
-            {isLoading ? '...' : (data?.historyItems.length ?? 0)}
-          </div>
-        </div>
-      </div>
+      )}
 
       {isLoading ? (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6">
-          <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
-          <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
-        </div>
+        <SkeletonCardGrid
+          count={4}
+          columnsClass="grid-cols-1 gap-4 md:grid-cols-2"
+          lines={3}
+        />
       ) : errorMessage ? (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-sm">
           <p className="text-sm text-rose-700">{errorMessage}</p>

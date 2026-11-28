@@ -10,5 +10,5 @@ export const GET = withAuth(
     const staff = await listAssignableItStaff();
     return ok(staff);
   },
-  { permission: IT_REQUEST_PERMISSIONS.READ },
+  { permission: IT_REQUEST_PERMISSIONS.MANAGE },
 );

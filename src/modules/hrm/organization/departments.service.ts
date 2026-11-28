@@ -340,6 +340,7 @@ export async function getOrganizationTree(
       .innerJoin('positions as pos', 'pos.id', 'e.position_id')
       .select([
         'e.id',
+        'e.user_id',
         'e.department_id',
         'e.employee_code',
         'e.full_name',
@@ -366,17 +367,19 @@ export async function getOrganizationTree(
     );
   }
 
+  const maskPeerPhones = !auth.isSuperAdmin && auth.dataScope === 'OWN';
   const membersByDept = new Map<number, DepartmentMemberSummary[]>();
   for (const emp of empRows) {
     const deptId = Number(emp.department_id);
     const empId = Number(emp.id);
+    const isSelf = emp.user_id !== null && Number(emp.user_id) === auth.userId;
     const list = membersByDept.get(deptId) ?? [];
     list.push({
       id: empId,
       employeeCode: emp.employee_code,
       fullName: emp.full_name,
       workEmail: emp.work_email,
-      phone: emp.phone ?? null,
+      phone: maskPeerPhones && !isSelf ? null : (emp.phone ?? null),
       positionName: emp.position_name,
       positionNameEn: emp.position_name_en ?? null,
       positionLevel: Number(emp.position_level),

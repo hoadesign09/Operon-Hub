@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/middlewares/auth';
-import { canManageBudgets, exportBudgetsExcel } from '@/modules/payments/budgets.service';
+import { canManageBudgets, canViewBudgets, exportBudgetsExcel } from '@/modules/payments/budgets.service';
 import { AppError } from '@/shared/api-response';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +13,8 @@ function toPositiveInt(raw: string | null): number | undefined {
 
 export const GET = withAuth(async (request, _context, auth) => {
   const canExport =
-    canManageBudgets(auth) || auth.permissions.includes('payments.export');
+    canManageBudgets(auth) ||
+    (canViewBudgets(auth) && auth.permissions.includes('payments.export'));
   if (!canExport) {
     throw new AppError('FORBIDDEN', 'Bạn không có quyền xuất báo cáo ngân sách Excel.', 403);
   }

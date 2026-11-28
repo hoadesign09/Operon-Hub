@@ -106,7 +106,16 @@ export function resolveActiveRailKey(pathname: string): PortalRailKey {
 export function buildDualRailGroups(
   modules: readonly PortalModuleDefinition[],
   locale: AppLocale = DEFAULT_LOCALE,
+  permissions?: readonly string[],
+  isSuperAdmin: boolean = false,
 ): PortalRailGroup[] {
+  const permSet = permissions ? new Set(permissions) : null;
+  const canAccessNavItem = (item: PortalRailNavItem): boolean => {
+    if (!permSet || isSuperAdmin || !item.requiredPermission) {
+      return true;
+    }
+    return permSet.has(item.requiredPermission);
+  };
   const coreModule = modules.find((m) => m.code === 'core');
   const projectsModule = modules.find((m) => m.code === 'projects');
   const hrmModule = modules.find((m) => m.code === 'hrm');
@@ -159,7 +168,7 @@ export function buildDualRailGroups(
         href: '/services/car-booking',
         isComingSoon: true,
       },
-    ],
+    ].filter(canAccessNavItem),
     locale,
   );
 

@@ -10,6 +10,7 @@ import {
   IconPlus,
   IconRoute,
 } from '@tabler/icons-react';
+import { SkeletonGanttChart } from '@/components/ui/Skeleton';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import type { ProjectGanttPayload } from '@/modules/projects/milestones.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -201,7 +202,7 @@ export function ProjectGanttChart({
   }
 
   if (loading || !gantt) {
-    return <div className="h-80 animate-pulse rounded-2xl bg-white" />;
+    return <SkeletonGanttChart rows={6} />;
   }
 
   return (

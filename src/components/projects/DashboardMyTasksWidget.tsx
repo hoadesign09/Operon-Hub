@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { IconArrowRight, IconListCheck } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonListRows } from '@/components/ui/Skeleton';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import type { MyTasksGroupedView } from '@/modules/projects/tasks.service';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -72,10 +73,7 @@ export function DashboardMyTasksWidget() {
       </div>
 
       {isLoading ? (
-        <div className="mt-4 space-y-2">
-          <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
-          <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
-        </div>
+        <SkeletonListRows rows={3} compact className="mt-3" />
       ) : urgentItems.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-5 text-center text-xs text-slate-500">
           {tr('Hiện không có công việc dự án nào sắp đến hạn.', 'No upcoming project tasks due soon.')}

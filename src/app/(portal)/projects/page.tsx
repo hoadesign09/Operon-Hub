@@ -16,6 +16,7 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonCardGrid, SkeletonTableRows } from '@/components/ui/Skeleton';
 import {
   ProjectFormModal,
   type SimpleDepartmentOption,
@@ -335,17 +336,7 @@ export default function ProjectsPortfolioPage() {
       </div>
 
       {/* States: Loading / Error / Empty / Success */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, idx) => (
-            <div key={idx} className="h-48 animate-pulse rounded-2xl border border-slate-200 bg-white p-5">
-              <div className="h-4 w-24 rounded bg-slate-200" />
-              <div className="mt-3 h-5 w-3/4 rounded bg-slate-200" />
-              <div className="mt-6 h-2 w-full rounded bg-slate-100" />
-            </div>
-          ))}
-        </div>
-      ) : errorMsg ? (
+      {!isLoading && errorMsg ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
           <p className="text-sm font-medium text-rose-700">{errorMsg}</p>
           <button
@@ -356,7 +347,7 @@ export default function ProjectsPortfolioPage() {
             {tr('Thử lại', 'Retry')}
           </button>
         </div>
-      ) : data.items.length === 0 ? (
+      ) : !isLoading && data.items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
           <IconFolder size={36} className="mx-auto mb-3 text-slate-300" />
           <h3 className="text-base font-semibold text-slate-800">
@@ -380,6 +371,12 @@ export default function ProjectsPortfolioPage() {
           )}
         </div>
       ) : viewMode === 'grid' ? (
+        isLoading ? (
+          <SkeletonCardGrid
+            count={6}
+            columnsClass="grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+          />
+        ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.items.map((proj) => (
             <Link
@@ -452,6 +449,7 @@ export default function ProjectsPortfolioPage() {
             </Link>
           ))}
         </div>
+        )
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="overflow-x-auto">
@@ -468,60 +466,64 @@ export default function ProjectsPortfolioPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.items.map((proj) => (
-                  <tr
-                    key={proj.id}
-                    onClick={() => router.push(`/projects/${proj.code}`)}
-                    className="cursor-pointer hover:bg-blue-50/40"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                {isLoading ? (
+                  <SkeletonTableRows rows={6} columns={7} />
+                ) : (
+                  data.items.map((proj) => (
+                    <tr
+                      key={proj.id}
+                      onClick={() => router.push(`/projects/${proj.code}`)}
+                      className="cursor-pointer hover:bg-blue-50/40"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: proj.colorHex }}
+                          />
+                          <span className="font-mono font-bold text-slate-500">{proj.code}</span>
+                          <span className="font-semibold text-slate-900">{proj.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-slate-600">
+                        <div className="font-medium text-slate-800">{proj.managerName}</div>
+                        <div className="text-[11px] text-slate-400">
+                          {ln(proj.branchName, proj.branchNameEn)}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
                         <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: proj.colorHex }}
-                        />
-                        <span className="font-mono font-bold text-slate-500">{proj.code}</span>
-                        <span className="font-semibold text-slate-900">{proj.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-slate-600">
-                      <div className="font-medium text-slate-800">{proj.managerName}</div>
-                      <div className="text-[11px] text-slate-400">
-                        {ln(proj.branchName, proj.branchNameEn)}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PROJECT_STATUS_META[proj.status].cls}`}
-                      >
-                        {pickLabel(PROJECT_STATUS_META[proj.status], locale)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${PROJECT_PRIORITY_META[proj.priority].cls}`}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PROJECT_STATUS_META[proj.status].cls}`}
                         >
-                          {pickLabel(PROJECT_PRIORITY_META[proj.priority], locale)}
+                          {pickLabel(PROJECT_STATUS_META[proj.status], locale)}
                         </span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${PROJECT_HEALTH_META[proj.healthStatus].cls}`}
-                        >
-                          {pickLabel(PROJECT_HEALTH_META[proj.healthStatus], locale)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 font-semibold text-slate-800">
-                      {Math.round(proj.progressPercent)}% ({proj.completedTaskCount}/{proj.taskCount})
-                    </td>
-                    <td className="px-3 py-3 font-medium text-slate-700">
-                      {proj.plannedBudget > 0 ? formatVND(proj.plannedBudget) : '—'}
-                    </td>
-                    <td className="px-3 py-3 text-slate-600">
-                      {proj.targetEndDate ? formatDateVN(proj.targetEndDate) : '—'}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${PROJECT_PRIORITY_META[proj.priority].cls}`}
+                          >
+                            {pickLabel(PROJECT_PRIORITY_META[proj.priority], locale)}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${PROJECT_HEALTH_META[proj.healthStatus].cls}`}
+                          >
+                            {pickLabel(PROJECT_HEALTH_META[proj.healthStatus], locale)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 font-semibold text-slate-800">
+                        {Math.round(proj.progressPercent)}% ({proj.completedTaskCount}/{proj.taskCount})
+                      </td>
+                      <td className="px-3 py-3 font-medium text-slate-700">
+                        {proj.plannedBudget > 0 ? formatVND(proj.plannedBudget) : '—'}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600">
+                        {proj.targetEndDate ? formatDateVN(proj.targetEndDate) : '—'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

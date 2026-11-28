@@ -21,6 +21,7 @@ import {
 import {
   createApprovalRequest,
   getApprovalDetailWithHistory,
+  listActionablePendingApprovals,
   type ApprovalHistoryView,
   type ApprovalRequestItem,
 } from '@/modules/approvals/approvals.service';
@@ -649,24 +650,12 @@ export async function listAssignableItStaff(): Promise<AssignableItStaffView[]> 
 // ============================================================
 
 async function getPendingApprovalEntityIdsForUser(auth: AuthContext): Promise<number[]> {
-  const db = getDb();
-  const roleIds = auth.roles.map((r) => r.id);
-  const rows = await db
-    .selectFrom('approval_requests')
-    .select(['entity_id'])
-    .where('module_code', '=', IT_REQUEST_MODULE_CODE)
-    .where('entity_type', '=', IT_REQUEST_ENTITY_TYPE)
-    .where('status', '=', 'PENDING')
-    .where((eb) => {
-      const conds = [eb('current_approver_user_id', '=', auth.userId)];
-      if (roleIds.length > 0) {
-        conds.push(eb('current_approver_role_id', 'in', roleIds));
-      }
-      return eb.or(conds);
-    })
-    .execute();
-
-  return rows.map((r) => Number(r.entity_id));
+  const actionable = await listActionablePendingApprovals(
+    auth,
+    IT_REQUEST_MODULE_CODE,
+    IT_REQUEST_ENTITY_TYPE,
+  );
+  return actionable.map((r) => r.entityId);
 }
 
 export async function assertItRequestViewAccess(

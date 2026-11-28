@@ -11,6 +11,7 @@ import {
   IconSend,
   IconX,
 } from '@tabler/icons-react';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import type { PaginationMeta } from '@/lib/portable/pagination';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -293,11 +294,7 @@ export default function ApprovalsInboxPage() {
       </div>
 
       {viewState === 'loading' && (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-          ))}
-        </div>
+        <SkeletonTable rows={6} columns={6} showToolbar={false} showPagination={false} />
       )}
 
       {viewState === 'error' && (

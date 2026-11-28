@@ -375,7 +375,10 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
       p.code === 'core.approvals.act' ||
       p.code === 'core.branches.read' ||
       p.code === 'hrm.org.read' ||
-      p.code === 'hrm.employees.read',
+      p.code === 'hrm.employees.read' ||
+      p.code === 'hrm.requests.read' ||
+      p.code === 'hrm.requests.create' ||
+      p.code === 'hrm.attendance.read',
   ).map((p) => p.code),
   IT_SUPPORT: [
     'core.branches.read',
@@ -383,6 +386,9 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'core.approvals.act',
     'hrm.org.read',
     'hrm.employees.read',
+    'hrm.requests.read',
+    'hrm.requests.create',
+    'hrm.attendance.read',
     'hrm.assets.read',
     'hrm.assets.manage',
     'hrm.assets.export',
@@ -406,6 +412,9 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, readonly string[]> = {
     'core.approvals.act',
     'hrm.org.read',
     'hrm.employees.read',
+    'hrm.requests.read',
+    'hrm.requests.create',
+    'hrm.attendance.read',
     'hrm.rooms.read',
     'hrm.rooms.book',
     'hrm.announcements.read',

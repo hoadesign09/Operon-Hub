@@ -2689,6 +2689,242 @@
         "src/components/proposals/ProposalFormModal.tsx"
       ],
       "last_run_id": "RUN-20261126-06"
+    },
+    {
+      "id": "TC-SKEL-001",
+      "module": "ui-system",
+      "title": "Precision Grid Skeleton Kit & Route loading.tsx Coverage",
+      "type": "regression",
+      "priority": "P1",
+      "target_files": [
+        "src/components/ui/Skeleton.tsx",
+        "src/app/globals.css",
+        "src/layouts/PortalShell.tsx"
+      ],
+      "expected": "All 16 skeleton presets, 14 loading.tsx files, shimmer CSS with reduced-motion, zero ad-hoc pulse loading blocks",
+      "status": "PASS"
+    },
+    {
+      "id": "TC-SKEL-002",
+      "module": "ui-system",
+      "title": "Live Chrome Active Skeleton Capture & Zero Layout Shift (Desktop + Mobile)",
+      "type": "e2e",
+      "priority": "P1",
+      "target_files": [
+        "src/components/ui/Skeleton.tsx",
+        "src/app/(portal)/dashboard/page.tsx",
+        "src/app/(portal)/services/payments/page.tsx"
+      ],
+      "expected": "PortalShell, Dashboard (16/16 chart bars 73-157px), Payments table, Org Tree, Projects grid render shimmer cleanly with 0 stuck skeletons and 0 horizontal overflow at 1440x900 & 390x844",
+      "status": "PASS"
+    },
+    {
+      "id": "TC-SKEL-003",
+      "module": "services-payments",
+      "title": "Budgets & Proposals Departments Dropdown API 200 OK & Zero Console Errors",
+      "type": "regression",
+      "priority": "P1",
+      "target_files": [
+        "src/components/payments/BudgetsManagementPanel.tsx",
+        "src/app/(portal)/services/payments/budgets/[id]/page.tsx",
+        "src/app/(portal)/services/proposals/page.tsx",
+        "src/app/(portal)/services/proposals/[id]/page.tsx"
+      ],
+      "expected": "GET /api/v1/hrm/org/departments?limit=200 returns 200 OK with 0 console errors across all 4 routes",
+      "status": "PASS"
+    },
+    {
+      "tc_id": "TC-RBAC-001",
+      "module": "core",
+      "feature": "Seed đầy đủ 16 tài khoản (11 vai trò, 6 chức danh, 2 chi nhánh, 1 LOCKED) & khử trùng user_roles",
+      "spec_ref": "DB-RBAC-01",
+      "target_files": [
+        "database/seed-rbac-users.ts"
+      ],
+      "type": "DATABASE",
+      "preconditions": "MySQL Local Dev (127.0.0.1 / operon_hub)",
+      "steps": [
+        "Chạy npx tsx --env-file-if-exists=.env database/seed-rbac-users.ts 2 lần liên tiếp",
+        "Kiểm tra đăng nhập 15 tài khoản ACTIVE và 1 tài khoản LOCKED"
+      ],
+      "expected_result": "Idempotent 100%, 15 tài khoản đăng nhập HTTP 200 đúng dataScope/branchIds, locked.user bị chặn 403 ACCOUNT_LOCKED, anonymous bị chặn 401",
+      "actual_result": "PASS — 21/21 ca Auth & Login PASS trên localhost:3000",
+      "status": "PASS",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
+    },
+    {
+      "tc_id": "TC-RBAC-002",
+      "module": "core",
+      "feature": "Phân quyền Core Admin (Users, Roles, Audit Logs, password_hash masking)",
+      "spec_ref": "API-RBAC-01",
+      "target_files": [
+        "src/modules/users/users.service.ts",
+        "src/modules/roles/roles.service.ts",
+        "src/modules/audit/audit.service.ts"
+      ],
+      "type": "SECURITY",
+      "preconditions": "15 phiên đăng nhập các vai trò trên localhost:3000",
+      "steps": [
+        "Gọi GET/POST /api/v1/core/users, /roles, /audit-logs từ SUPER_ADMIN, EXECUTIVE, HR_MANAGER và 6 vai trò không có quyền admin"
+      ],
+      "expected_result": "SUPER_ADMIN toàn quyền không lộ password_hash; EXECUTIVE chỉ đọc; 6 vai trò ngoài admin nhận 403",
+      "actual_result": "PASS — 10/10 ca kiểm soát Core Admin PASS (chỉ ghi nhận LOW info disclosure trên GET /approvals/workflows)",
+      "status": "PASS",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
+    },
+    {
+      "tc_id": "TC-RBAC-003",
+      "module": "hrm",
+      "feature": "Cô lập Data Scope HRM (OWN / DEPARTMENT / BRANCH) cho Employees, Payslips, Leaves, Assets",
+      "spec_ref": "API-RBAC-02",
+      "target_files": [
+        "src/modules/hrm/employees/employees.service.ts",
+        "src/modules/hrm/payroll/payroll.service.ts",
+        "src/modules/hrm/requests/leave-requests.service.ts",
+        "src/modules/hrm/office/assets.service.ts"
+      ],
+      "type": "SECURITY",
+      "preconditions": "Dữ liệu mẫu đa chi nhánh HQ/HCM và đa phòng ban TECH/FIN/HR",
+      "steps": [
+        "Kiểm tra EMPLOYEE (OWN), DEPT_MANAGER (TECH), HR_STAFF (HQ), ADMIN_OPS (HQ) truy cập dữ liệu ngoài phạm vi"
+      ],
+      "expected_result": "Mọi truy cập hồ sơ/hợp đồng/phiếu lương/đơn phép/tài sản ngoài phạm vi trả 403 và trường nhạy cảm được mask",
+      "actual_result": "PASS — 14/14 ca cô lập cơ bản PASS trên cả API và Chrome UI",
+      "status": "PASS",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
+    },
+    {
+      "tc_id": "TC-RBAC-004",
+      "module": "approvals",
+      "feature": "Chống Approval Hijack chéo phòng ban/chi nhánh & chống Self-Approval",
+      "spec_ref": "API-RBAC-03",
+      "target_files": [
+        "src/modules/approvals/approvals.service.ts",
+        "src/modules/proposals/proposals.service.ts",
+        "src/modules/payments/payments.service.ts"
+      ],
+      "type": "SECURITY",
+      "preconditions": "PROP-RBAC-FIN-01 & PAY-RBAC-FIN-01 của NV phòng FIN đang PENDING Step 1",
+      "steps": [
+        "Đăng nhập manager.tech (HQ/TECH) & manager.hcm (HCM) gọi /approvals/inbox, /proposals/12, /payments/12",
+        "Đăng nhập manager.tech tạo đề xuất và gọi POST /approvals/[own-id]/action APPROVE"
+      ],
+      "expected_result": "Trưởng phòng ban/chi nhánh khác không thấy & nhận 403; không cho phép tự phê duyệt đề xuất của chính mình",
+      "actual_result": "FAIL (CRITICAL/HIGH) — Cả manager.tech và manager.hcm đều thấy và mở HTTP 200 đơn phòng FIN (xác nhận cả trên Chrome /approvals); manager.tech tự duyệt thành công HTTP 200",
+      "status": "FAIL",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
+    },
+    {
+      "tc_id": "TC-RBAC-005",
+      "module": "payments",
+      "feature": "Chống rò rỉ dự án PRIVATE_INVITE, đề xuất & ngân sách qua Payments/Budgets API",
+      "spec_ref": "API-RBAC-04",
+      "target_files": [
+        "src/modules/payments/payments.service.ts",
+        "src/modules/payments/budgets.service.ts",
+        "src/app/api/v1/payments/budgets/export/excel/route.ts"
+      ],
+      "type": "SECURITY",
+      "preconditions": "PRJ-SECRET-01 (PRIVATE_INVITE), PRJ-HCM-01 (BRANCH), 5 quỹ ngân sách FY2026",
+      "steps": [
+        "EMPLOYEE gọi GET /payments/options và /budgets/options",
+        "DEPT_MANAGER(TECH) gọi GET /payments/budgets/4 (HR)",
+        "HR_MANAGER gọi GET /payments/budgets/export/excel"
+      ],
+      "expected_result": "Không lộ PRJ-SECRET-01/đề xuất người khác; DEPT_MANAGER bị chặn 403 ngân sách phòng khác; HR_MANAGER bị chặn 403 xuất Excel ngân sách",
+      "actual_result": "FAIL (HIGH) — /payments/options lộ PRJ-SECRET-01 & 3 đề xuất & 5 quỹ ngân sách; DEPT_MANAGER đọc HTTP 200 ngân sách HR + chứng từ liên kết; HR_MANAGER tải được Excel 8362 bytes",
+      "status": "FAIL",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
+    },
+    {
+      "tc_id": "TC-RBAC-006",
+      "module": "hrm",
+      "feature": "Chống tải trộm tài liệu nhạy cảm (CCCD) nhân viên từ các vai trò không có quyền PII",
+      "spec_ref": "API-RBAC-05",
+      "target_files": [
+        "src/app/api/v1/hrm/employees/[id]/documents/[docId]/download/route.ts",
+        "src/modules/hrm/employees/employee-documents.service.ts"
+      ],
+      "type": "SECURITY",
+      "preconditions": "Tài liệu ID_CARD (cccd-nv0014.pdf, cccd-nv0013.pdf)",
+      "steps": [
+        "Gọi GET /hrm/employees/14/documents/1/download từ it.support, finance, pmo và /13/documents/2/download từ manager.tech"
+      ],
+      "expected_result": "Trả 403 FORBIDDEN cho mọi vai trò bị ẩn sensitive fields",
+      "actual_result": "FAIL (HIGH) — Cả 4 vai trò (IT_SUPPORT, FINANCE_ACCOUNTANT, PMO_MANAGER, DEPT_MANAGER) đều tải thành công HTTP 200 file CCCD PDF (45 bytes)",
+      "status": "FAIL",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
+    },
+    {
+      "tc_id": "TC-RBAC-007",
+      "module": "hrm",
+      "feature": "Chặn HR_STAFF(HQ) ghi vượt phạm vi chi nhánh (Work History Transfer, Holidays, Shifts) & Dashboard Assets leak",
+      "spec_ref": "API-RBAC-06",
+      "target_files": [
+        "src/modules/hrm/contracts/work-histories.service.ts",
+        "src/modules/hrm/attendance/holidays.service.ts",
+        "src/modules/hrm/attendance/shifts.service.ts",
+        "src/modules/hrm/dashboard/dashboard.service.ts"
+      ],
+      "type": "SECURITY",
+      "preconditions": "hr.staff.hq (BRANCH=HQ), manager.tech (DEPT=TECH)",
+      "steps": [
+        "hr.staff.hq gửi POST work-histories (toBranchId=HCM) và POST holidays (branchId=HCM)",
+        "manager.tech gọi GET /hrm/dashboard/summary so sánh kpis.assets với /admin-ops/assets"
+      ],
+      "expected_result": "hr.staff.hq bị chặn 403 khi ghi sang HCM; dashboard.kpis.assets chỉ đếm tài sản phòng TECH",
+      "actual_result": "FAIL (HIGH/MEDIUM) — hr.staff.hq tạo thành công HTTP 201 quyết định chuyển sang HCM & ngày lễ HCM; dashboard trả 5 tài sản toàn HQ thay vì 1 của TECH",
+      "status": "FAIL",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
+    },
+    {
+      "tc_id": "TC-RBAC-008",
+      "module": "projects",
+      "feature": "Phân quyền Projects (PRIVATE_INVITE, BRANCH visibility, Non-member VIEW comment/timelog guard)",
+      "spec_ref": "API-RBAC-07",
+      "target_files": [
+        "src/modules/projects/projects.access.ts",
+        "src/modules/projects/collaboration.service.ts",
+        "src/modules/projects/timelogs.service.ts"
+      ],
+      "type": "SECURITY",
+      "preconditions": "PRJ-SECRET-01 (PRIVATE_INVITE), PRJ-HCM-01 (BRANCH), dự án PUBLIC_COMPANY",
+      "steps": [
+        "employee.tech1 truy cập PRJ-SECRET-01 & PRJ-HCM-01",
+        "employee.tech1 (non-member) gửi POST /tasks/1/comments trên dự án PUBLIC_COMPANY"
+      ],
+      "expected_result": "Chặn 403 toàn bộ PRIVATE_INVITE, BRANCH khác chi nhánh và chặn non-member comment/log time",
+      "actual_result": "FAIL (MEDIUM) — Chặn chuẩn 403 trên PRJ-SECRET-01 & PRJ-HCM-01, nhưng non-member EMPLOYEE vẫn tạo được comment HTTP 201 trên task của dự án PUBLIC_COMPANY",
+      "status": "FAIL",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
+    },
+    {
+      "tc_id": "TC-RBAC-009",
+      "module": "hrm",
+      "feature": "Logic quyền ESS cá nhân cho các vai trò chuyên môn đơn lẻ (IT_SUPPORT, FINANCE_ACCOUNTANT, PMO_MANAGER)",
+      "spec_ref": "FR-RBAC-01",
+      "target_files": [
+        "database/seed-core.ts",
+        "src/modules/hrm/requests/leave-requests.service.ts"
+      ],
+      "type": "FUNCTIONAL",
+      "preconditions": "Tài khoản đơn vai trò it.support, finance, pmo đã liên kết hồ sơ nhân viên",
+      "steps": [
+        "Gọi POST /api/v1/hrm/requests/leaves tạo đơn nghỉ phép cá nhân từ 3 tài khoản trên"
+      ],
+      "expected_result": "HTTP 201 — mọi nhân sự nội bộ đều tạo được đơn nghỉ phép cá nhân tại ESS",
+      "actual_result": "FAIL (MEDIUM Logic) — Cả 3 vai trò đều nhận 403 do thiếu quyền hrm.requests.create trong ROLE_DEFAULT_PERMISSIONS",
+      "status": "FAIL",
+      "last_task_id": "TASK-20261128-04",
+      "last_tested_at": "2026-11-28"
     }
   ],
   "runs": [
@@ -3068,6 +3304,28 @@
       "failed": 0,
       "status": "PASS",
       "notes": "6 new Budget Management E2E/Unit/UI cases + 14 matched regression cases (TC-PROP-002..008, TC-PAY-002..008) all PASS; 78/78 vitest files (231/231 tests), live MySQL E2E (6/6), live HTTP E2E (12/12), production build PASS."
+    },
+    {
+      "run_id": "RUN-20261128-01",
+      "task_id": "TASK-20261128-01",
+      "date": "2026-11-28",
+      "total": 240,
+      "passed": 240,
+      "failed": 0,
+      "verdict": "PASS",
+      "notes": "Global Skeleton Loading UI + 29-route Chrome UX/UI Audit Loop 2 PASS"
+    },
+    {
+      "run_id": "RUN-20261128-02",
+      "task_id": "TASK-20261128-04",
+      "date": "2026-11-28",
+      "module": "rbac_security",
+      "total": 71,
+      "passed": 50,
+      "failed": 21,
+      "status": "FAIL",
+      "verdict": "FAIL",
+      "notes": "Seeded 16 users (11 roles, 6 positions, 2 branches, 1 LOCKED). Live API audit (71 probes) + Chrome UI (3 roles): 50 PASS, 18 API leaks (11 root vulnerabilities: CRITICAL Cross-Dept Approval Hijack, HIGH Self-Approval/Payments Options/Employee CCCD Docs/Budgets Cross-Dept & Excel Export/HR_STAFF Cross-Branch Transfer & Holidays) + 3 ESS logic bugs."
     }
   ]
 }

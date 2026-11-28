@@ -232,7 +232,7 @@ export async function createTaskComment(
     throw new AppError('TASK_NOT_FOUND', 'Không tìm thấy công việc.', 404);
   }
 
-  const access = await assertProjectAccess(auth, Number(task.project_id), 'VIEW');
+  const access = await assertProjectAccess(auth, Number(task.project_id), 'CONTRIBUTE');
   const authorEmployeeId = access.employeeId ?? access.project.managerEmployeeId;
   const mentionedIds = Array.from(new Set(input.mentionedEmployeeIds ?? []));
 
@@ -317,11 +317,15 @@ export async function updateTaskComment(
     throw new AppError('COMMENT_NOT_FOUND', 'Không tìm thấy bình luận.', 404);
   }
 
-  const access = await assertProjectAccess(auth, Number(comment.project_id), 'VIEW');
+  const access = await assertProjectAccess(auth, Number(comment.project_id), 'CONTRIBUTE');
   const isAuthor = access.employeeId !== null && access.employeeId === Number(comment.author_employee_id);
 
-  if ((input.content !== undefined || input.archive) && !isAuthor && !access.canEditProject) {
-    throw new AppError('COMMENT_FORBIDDEN', 'Bạn chỉ có thể chỉnh sửa hoặc ẩn bình luận của mình.', 403);
+  if (
+    (input.content !== undefined || input.archive || input.isResolved !== undefined) &&
+    !isAuthor &&
+    !access.canEditProject
+  ) {
+    throw new AppError('COMMENT_FORBIDDEN', 'Bạn chỉ có thể chỉnh sửa, giải quyết hoặc ẩn bình luận của mình.', 403);
   }
 
   await db

@@ -24,6 +24,7 @@ import {
 } from '@/components/hrm/LeaveTypeFormModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -719,11 +720,13 @@ export default function HrmRequestsPage() {
       {/* Content */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-xs">
         {isLoading ? (
-          <div className="space-y-3 p-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-            ))}
-          </div>
+          <SkeletonTable
+            rows={6}
+            columns={activeTab === 'BALANCES' || activeTab === 'TYPES' ? (canManage ? 8 : 7) : 8}
+            showToolbar={false}
+            showPagination={false}
+            className="rounded-none border-0"
+          />
         ) : errorMsg ? (
           <div className="p-8 text-center">
             <IconAlertCircle size={32} className="mx-auto text-rose-500" />

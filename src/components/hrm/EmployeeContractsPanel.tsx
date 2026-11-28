@@ -13,6 +13,7 @@ import {
   type EditableContractData,
 } from '@/components/hrm/ContractFormModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonCardGrid } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -124,11 +125,13 @@ export function EmployeeContractsPanel({
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {[1, 2].map((n) => (
-          <div key={n} className="h-20 animate-pulse rounded-xl bg-slate-100" />
-        ))}
-      </div>
+      <SkeletonCardGrid
+        count={2}
+        columnsClass="grid-cols-1 gap-3"
+        lines={2}
+        showBadge
+        showFooter
+      />
     );
   }
 

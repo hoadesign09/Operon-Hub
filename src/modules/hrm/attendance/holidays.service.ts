@@ -101,6 +101,19 @@ async function assertNoDuplicateHoliday(
   }
 }
 
+function assertHolidayBranchWriteAllowed(auth: AuthContext, branchId: number | null): void {
+  if (auth.isSuperAdmin || auth.hasAllBranches) {
+    return;
+  }
+  if (branchId === null || !auth.branchIds.includes(branchId)) {
+    throw new AppError(
+      'FORBIDDEN',
+      'Bạn chỉ được phép quản lý ngày lễ trong phạm vi chi nhánh được phân công.',
+      403,
+    );
+  }
+}
+
 export async function createHoliday(
   input: CreateHolidayInput,
   auth: AuthContext,
@@ -108,6 +121,7 @@ export async function createHoliday(
 ): Promise<HolidayItem> {
   const db = getDb();
   const branchId = input.branchId ?? null;
+  assertHolidayBranchWriteAllowed(auth, branchId);
 
   if (branchId !== null) {
     const branch = await db
@@ -174,12 +188,14 @@ export async function updateHoliday(
     throw new AppError('HOLIDAY_NOT_FOUND', 'Không tìm thấy ngày lễ.', 404);
   }
 
+  const currentBranchId = current.branch_id !== null ? Number(current.branch_id) : null;
+  assertHolidayBranchWriteAllowed(auth, currentBranchId);
+
   const nextBranchId =
     input.branchId !== undefined
       ? input.branchId
-      : current.branch_id !== null
-        ? Number(current.branch_id)
-        : null;
+      : currentBranchId;
+  assertHolidayBranchWriteAllowed(auth, nextBranchId);
   const nextDate = input.holidayDate ?? extractIsoDate(current.holiday_date) ?? '';
 
   await assertNoDuplicateHoliday(nextBranchId, nextDate, id);
@@ -235,7 +251,7 @@ export async function deleteHoliday(
   const db = getDb();
   const current = await db
     .selectFrom('holidays')
-    .select(['id', 'holiday_date', 'name'])
+    .select(['id', 'branch_id', 'holiday_date', 'name'])
     .where('id', '=', id)
     .where('deleted_at', 'is', null)
     .executeTakeFirst();
@@ -243,6 +259,11 @@ export async function deleteHoliday(
   if (!current) {
     throw new AppError('HOLIDAY_NOT_FOUND', 'Không tìm thấy ngày lễ.', 404);
   }
+
+  assertHolidayBranchWriteAllowed(
+    auth,
+    current.branch_id !== null ? Number(current.branch_id) : null,
+  );
 
   await db
     .updateTable('holidays')

@@ -23,6 +23,7 @@ import {
 } from '@/lib/portable/pagination';
 import { recordAuditLog } from '@/modules/audit/audit.service';
 import type { AuthContext } from '@/modules/auth/auth.service';
+import { resolveEmployeeAccessScope } from '@/modules/hrm/employees/employees.scope';
 import { BUDGET_ENTITY_TYPE } from '@/modules/payments/budgets.constants';
 import type {
   AdjustBudgetInput,
@@ -299,10 +300,35 @@ async function fetchBudgetRows(auth: AuthContext, query: ListBudgetsQuery): Prom
     ])
     .where('pb.deleted_at', 'is', null);
 
-  if (!canManageBudgets(auth) && !auth.hasAllBranches && auth.branchIds.length > 0) {
-    qb = qb.where((eb) =>
-      eb.or([eb('pb.branch_id', 'is', null), eb('pb.branch_id', 'in', auth.branchIds)]),
-    );
+  if (!canManageBudgets(auth)) {
+    if (!auth.hasAllBranches && auth.branchIds.length > 0) {
+      qb = qb.where((eb) =>
+        eb.or([eb('pb.branch_id', 'is', null), eb('pb.branch_id', 'in', auth.branchIds)]),
+      );
+    }
+
+    if (auth.dataScope === 'DEPARTMENT') {
+      const empScope = await resolveEmployeeAccessScope(auth);
+      qb = qb.where((eb) => {
+        const deptConds = [eb('pb.owner_user_id', '=', auth.userId)];
+        if (empScope.departmentIds.length > 0) {
+          deptConds.push(eb('pb.department_id', 'in', empScope.departmentIds));
+        }
+        return eb.or(deptConds);
+      });
+    } else if (auth.dataScope === 'OWN') {
+      const empScope = await resolveEmployeeAccessScope(auth);
+      qb = qb.where((eb) => {
+        const ownConds = [
+          eb('pb.department_id', 'is', null),
+          eb('pb.owner_user_id', '=', auth.userId),
+        ];
+        if (empScope.departmentIds.length > 0) {
+          ownConds.push(eb('pb.department_id', 'in', empScope.departmentIds));
+        }
+        return eb.or(ownConds);
+      });
+    }
   }
 
   if (query.fiscalYear) {
@@ -517,6 +543,8 @@ export async function listActiveBudgetOptions(
     return a.code.localeCompare(b.code);
   });
 
+  const showFinancials = canViewBudgets(auth);
+
   return sorted.map((r) => ({
     id: r.id,
     code: r.code,
@@ -529,11 +557,11 @@ export async function listActiveBudgetOptions(
     departmentId: r.departmentId,
     departmentName: r.departmentName,
     categoryId: r.categoryId,
-    allocatedAmount: r.allocatedAmount,
-    reservedAmount: r.reservedAmount,
-    spentAmount: r.spentAmount,
-    availableAmount: r.availableAmount,
-    utilizationPercent: r.utilizationPercent,
+    allocatedAmount: showFinancials ? r.allocatedAmount : 0,
+    reservedAmount: showFinancials ? r.reservedAmount : 0,
+    spentAmount: showFinancials ? r.spentAmount : 0,
+    availableAmount: showFinancials ? r.availableAmount : 0,
+    utilizationPercent: showFinancials ? r.utilizationPercent : 0,
     warningThresholdPercent: r.warningThresholdPercent,
     enforcementMode: r.enforcementMode,
     health: r.health,
@@ -548,6 +576,67 @@ export async function getBudgetDetail(auth: AuthContext, budgetId: number): Prom
   }
 
   const db = getDb();
+  const isMgr = canManageBudgets(auth);
+  const empScope =
+    !isMgr && auth.dataScope === 'DEPARTMENT' ? await resolveEmployeeAccessScope(auth) : null;
+
+  let propQuery = db
+    .selectFrom('proposals as p')
+    .innerJoin('users as u', 'u.id', 'p.requester_user_id')
+    .select([
+      'p.id',
+      'p.proposal_code',
+      'p.title',
+      'p.status',
+      'u.full_name as requester_name',
+      'p.estimated_budget',
+      'p.approved_budget',
+      'p.budget_reserved_amount',
+      'p.is_over_budget',
+      'p.created_at',
+    ])
+    .where('p.budget_id', '=', budgetId)
+    .where('p.deleted_at', 'is', null);
+
+  let payQuery = db
+    .selectFrom('payment_requests as pr')
+    .innerJoin('users as u', 'u.id', 'pr.requester_user_id')
+    .leftJoin('proposals as prop', 'prop.id', 'pr.proposal_id')
+    .select([
+      'pr.id',
+      'pr.code',
+      'pr.payment_type',
+      'pr.title',
+      'pr.status',
+      'u.full_name as requester_name',
+      'pr.total_amount',
+      'pr.disbursed_amount',
+      'pr.budget_reserved_amount',
+      'pr.budget_spent_amount',
+      'prop.proposal_code',
+      'pr.is_over_budget',
+      'pr.created_at',
+    ])
+    .where('pr.budget_id', '=', budgetId)
+    .where('pr.deleted_at', 'is', null);
+
+  if (empScope) {
+    propQuery = propQuery.where((eb) => {
+      const conds = [eb('p.requester_user_id', '=', auth.userId)];
+      if (empScope.departmentIds.length > 0) {
+        conds.push(eb('p.department_id', 'in', empScope.departmentIds));
+      }
+      return eb.or(conds);
+    });
+    payQuery = payQuery.where((eb) => {
+      const conds = [eb('pr.requester_user_id', '=', auth.userId)];
+      if (empScope.departmentIds.length > 0) {
+        conds.push(eb('pr.department_id', 'in', empScope.departmentIds));
+      }
+      return eb.or(conds);
+    });
+  }
+
   const [txRows, propRows, payRows] = await Promise.all([
     db
       .selectFrom('payment_budget_transactions as tx')
@@ -578,53 +667,10 @@ export async function getBudgetDetail(auth: AuthContext, budgetId: number): Prom
       .orderBy('tx.id', 'desc')
       .limit(100)
       .execute(),
-    db
-      .selectFrom('proposals as p')
-      .innerJoin('users as u', 'u.id', 'p.requester_user_id')
-      .select([
-        'p.id',
-        'p.proposal_code',
-        'p.title',
-        'p.status',
-        'u.full_name as requester_name',
-        'p.estimated_budget',
-        'p.approved_budget',
-        'p.budget_reserved_amount',
-        'p.is_over_budget',
-        'p.created_at',
-      ])
-      .where('p.budget_id', '=', budgetId)
-      .where('p.deleted_at', 'is', null)
-      .orderBy('p.id', 'desc')
-      .limit(100)
-      .execute(),
-    db
-      .selectFrom('payment_requests as pr')
-      .innerJoin('users as u', 'u.id', 'pr.requester_user_id')
-      .leftJoin('proposals as prop', 'prop.id', 'pr.proposal_id')
-      .select([
-        'pr.id',
-        'pr.code',
-        'pr.payment_type',
-        'pr.title',
-        'pr.status',
-        'u.full_name as requester_name',
-        'pr.total_amount',
-        'pr.disbursed_amount',
-        'pr.budget_reserved_amount',
-        'pr.budget_spent_amount',
-        'prop.proposal_code',
-        'pr.is_over_budget',
-        'pr.created_at',
-      ])
-      .where('pr.budget_id', '=', budgetId)
-      .where('pr.deleted_at', 'is', null)
-      .orderBy('pr.id', 'desc')
-      .limit(100)
-      .execute(),
+    propQuery.orderBy('p.id', 'desc').limit(100).execute(),
+    payQuery.orderBy('pr.id', 'desc').limit(100).execute(),
   ]);
 
-  const isMgr = canManageBudgets(auth);
   return {
     ...found,
     transactions: txRows.map((t) => ({

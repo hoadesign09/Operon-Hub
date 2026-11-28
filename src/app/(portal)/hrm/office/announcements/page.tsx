@@ -20,6 +20,7 @@ import { AnnouncementDetailModal } from '@/components/hrm/AnnouncementDetailModa
 import { AnnouncementFormModal } from '@/components/hrm/AnnouncementFormModal';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonCardGrid } from '@/components/ui/Skeleton';
 import type { AnnouncementCategory, AnnouncementStatus } from '@/config/database';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import type {
@@ -382,11 +383,7 @@ export default function AnnouncementsPage() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-36 animate-pulse rounded-2xl bg-slate-200/70" />
-          ))}
-        </div>
+        <SkeletonCardGrid count={3} columnsClass="grid-cols-1 gap-4" lines={3} />
       ) : errorMessage ? (
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-rose-700">{errorMessage}</p>

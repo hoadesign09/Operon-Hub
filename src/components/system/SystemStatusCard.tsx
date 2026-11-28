@@ -10,6 +10,7 @@ import {
   IconRefresh,
   IconServer,
 } from '@tabler/icons-react';
+import { SkeletonCardGrid, SkeletonKpiGrid } from '@/components/ui/Skeleton';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 import type { TranslationKey } from '@/shared/i18n/translator';
@@ -97,18 +98,15 @@ async function requestHealthStatus(signal: AbortSignal): Promise<{
 function HealthLoadingSkeleton({ label }: { label: string }) {
   return (
     <div className="space-y-4" aria-busy="true" aria-label={label}>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {[1, 2, 3].map((item) => (
-          <div
-            key={item}
-            className="h-28 animate-pulse rounded-2xl border border-slate-200 bg-white p-5"
-          >
-            <div className="h-4 w-24 rounded bg-slate-200" />
-            <div className="mt-4 h-7 w-36 rounded bg-slate-200" />
-          </div>
-        ))}
+      <SkeletonKpiGrid count={3} columnsClass="grid-cols-1 gap-4 md:grid-cols-3" compact />
+      <div className="rounded border border-[#CFD6DF] bg-white p-5">
+        <SkeletonCardGrid
+          count={3}
+          columnsClass="grid-cols-1 gap-4 md:grid-cols-3"
+          lines={2}
+          showFooter
+        />
       </div>
-      <div className="h-44 animate-pulse rounded-2xl border border-slate-200 bg-white p-6" />
     </div>
   );
 }

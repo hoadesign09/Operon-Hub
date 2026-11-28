@@ -41,6 +41,7 @@ import {
   type PaymentFormOptionsDto,
 } from '@/components/payments/payment-ui.helpers';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonDetailPage } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateTimeVN, formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
@@ -353,15 +354,7 @@ export default function PaymentDetailPage() {
   }
 
   if (viewState === 'loading') {
-    return (
-      <div className="w-full space-y-4">
-        <div className="h-32 animate-pulse rounded-2xl bg-slate-200" />
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-          <div className="h-96 animate-pulse rounded-2xl bg-slate-200 xl:col-span-8" />
-          <div className="h-96 animate-pulse rounded-2xl bg-slate-200 xl:col-span-4" />
-        </div>
-      </div>
-    );
+    return <SkeletonDetailPage showKpis showBottomWorkflow />;
   }
 
   if (viewState === 'error' || !detail) {

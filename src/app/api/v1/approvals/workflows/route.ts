@@ -14,7 +14,7 @@ export const GET = withAuth(
     });
     return ok(workflows);
   },
-  { permission: 'core.approvals.read' },
+  { permission: 'core.approvals.workflow_manage' },
 );
 
 export const POST = withAuth(

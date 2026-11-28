@@ -8,6 +8,12 @@ import {
   IconPlus,
   IconSend,
 } from '@tabler/icons-react';
+import {
+  SkeletonFormFields,
+  SkeletonKpiGrid,
+  SkeletonTable,
+  SkeletonText,
+} from '@/components/ui/Skeleton';
 import type { ProjectBudgetCategory, ProjectRiskItemType } from '@/config/database';
 import { formatVND } from '@/lib/portable/currency-utils';
 import type {
@@ -203,7 +209,31 @@ export function ProjectBudgetRisksPanel({
   }
 
   if (loading) {
-    return <div className="h-64 animate-pulse rounded-2xl bg-white" />;
+    if (mode === 'budget') {
+      return (
+        <div className="space-y-4">
+          <SkeletonKpiGrid
+            count={4}
+            compact
+            columnsClass="grid-cols-2 gap-3 lg:grid-cols-4"
+          />
+          <SkeletonTable rows={5} columns={7} showToolbar={false} showPagination={false} />
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-5">
+            <SkeletonText lines={4} />
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-7">
+            <SkeletonFormFields fields={4} columns={2} />
+          </div>
+        </div>
+        <SkeletonTable rows={5} columns={6} showToolbar={false} showPagination={false} />
+      </div>
+    );
   }
 
   if (mode === 'budget' && budget) {

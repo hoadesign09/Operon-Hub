@@ -24,15 +24,19 @@ import {
   type PaginationMeta,
 } from '@/lib/portable/pagination';
 import {
+  canAuthActOnApproval,
   createApprovalRequest,
   getApprovalDetailWithHistory,
+  listActionablePendingApprovals,
   notifyApprovalRequestCreated,
   type ApprovalHistoryView,
   type ApprovalRequestItem,
 } from '@/modules/approvals/approvals.service';
 import { recordAuditLog } from '@/modules/audit/audit.service';
 import type { AuthContext } from '@/modules/auth/auth.service';
+import { resolveEmployeeAccessScope } from '@/modules/hrm/employees/employees.scope';
 import { createNotification } from '@/modules/notifications/notifications.service';
+import { listProjects } from '@/modules/projects/projects.service';
 import {
   notifyBudgetAlertIfNeeded,
   releasePaymentBudgetReserve,
@@ -528,18 +532,38 @@ export async function assertPaymentViewAccess(
   }
 
   if (accessRow.approvalRequestId) {
-    const roleIds = auth.roles.map((r) => r.id);
     const ar = await db
       .selectFrom('approval_requests')
-      .select(['id', 'current_approver_user_id', 'current_approver_role_id'])
+      .select(['id', 'requester_id', 'branch_id', 'current_approver_user_id', 'current_approver_role_id'])
       .where('id', '=', accessRow.approvalRequestId)
       .executeTakeFirst();
     if (
       ar &&
-      (Number(ar.current_approver_user_id) === auth.userId ||
-        (ar.current_approver_role_id !== null &&
-          roleIds.includes(Number(ar.current_approver_role_id))))
+      (await canAuthActOnApproval(
+        {
+          requesterId: Number(ar.requester_id),
+          branchId: ar.branch_id !== null ? Number(ar.branch_id) : accessRow.branchId,
+          requesterDepartmentId: accessRow.departmentId,
+          currentApproverUserId:
+            ar.current_approver_user_id !== null ? Number(ar.current_approver_user_id) : null,
+          currentApproverRoleId:
+            ar.current_approver_role_id !== null ? Number(ar.current_approver_role_id) : null,
+        },
+        auth,
+        'APPROVE',
+      ))
     ) {
+      return accessRow;
+    }
+
+    const participated = await db
+      .selectFrom('approval_histories')
+      .select(['id'])
+      .where('approval_request_id', '=', accessRow.approvalRequestId)
+      .where('actor_id', '=', auth.userId)
+      .limit(1)
+      .executeTakeFirst();
+    if (participated) {
       return accessRow;
     }
   }
@@ -769,9 +793,12 @@ export async function deletePaymentCategory(
   });
 }
 
-function buildScopedPaymentsBaseQuery(auth: AuthContext, empDepartmentId: number | null) {
+function buildScopedPaymentsBaseQuery(
+  auth: AuthContext,
+  empDepartmentId: number | null,
+  actionableApprovalIds: number[],
+) {
   const db = getDb();
-  const roleIds = auth.roles.map((r) => r.id);
 
   let query = db
     .selectFrom('payment_requests as p')
@@ -788,17 +815,9 @@ function buildScopedPaymentsBaseQuery(auth: AuthContext, empDepartmentId: number
   if (!isFinanceManager(auth) && auth.dataScope !== 'ALL') {
     query = query.where((eb) => {
       const clauses = [eb('p.requester_user_id', '=', auth.userId)];
-      clauses.push(
-        eb.and([
-          eb('ar.status', '=', 'PENDING'),
-          roleIds.length > 0
-            ? eb.or([
-                eb('ar.current_approver_user_id', '=', auth.userId),
-                eb('ar.current_approver_role_id', 'in', roleIds),
-              ])
-            : eb('ar.current_approver_user_id', '=', auth.userId),
-        ]),
-      );
+      if (actionableApprovalIds.length > 0) {
+        clauses.push(eb('ar.id', 'in', actionableApprovalIds));
+      }
 
       if (auth.dataScope === 'BRANCH') {
         if (auth.hasAllBranches) {
@@ -836,23 +855,26 @@ export async function listPayments(
       ? await resolveRequesterEmployeeContext(auth.userId)
       : null;
 
-  const roleIds = auth.roles.map((r) => r.id);
+  const actionableApprovalIds = !auth.isSuperAdmin
+    ? (await listActionablePendingApprovals(auth, PAYMENT_MODULE_CODE, PAYMENT_ENTITY_TYPE)).map(
+        (x) => x.id,
+      )
+    : [];
   const today = getTodayDateString();
-  let query = buildScopedPaymentsBaseQuery(auth, empCtx?.departmentId ?? null);
+  let query = buildScopedPaymentsBaseQuery(auth, empCtx?.departmentId ?? null, actionableApprovalIds);
 
   if (rawQuery.scope === 'mine') {
     query = query.where('p.requester_user_id', '=', auth.userId);
   } else if (rawQuery.scope === 'pending_my_approval') {
     query = query.where('p.status', '=', 'PENDING_APPROVAL').where('ar.status', '=', 'PENDING');
     if (!auth.isSuperAdmin) {
-      query = query.where((eb) =>
-        roleIds.length > 0
-          ? eb.or([
-              eb('ar.current_approver_user_id', '=', auth.userId),
-              eb('ar.current_approver_role_id', 'in', roleIds),
-            ])
-          : eb('ar.current_approver_user_id', '=', auth.userId),
-      );
+      if (actionableApprovalIds.length === 0) {
+        return {
+          items: [],
+          meta: buildPaginationMeta(0, pagination.page, pagination.limit),
+        };
+      }
+      query = query.where('ar.id', 'in', actionableApprovalIds);
     }
   } else if (rawQuery.scope === 'ready_to_disburse') {
     query = query.where('p.status', 'in', ['APPROVED', 'PARTIALLY_PAID']);
@@ -1073,7 +1095,14 @@ export async function getPaymentsSummary(
       ? await resolveRequesterEmployeeContext(auth.userId)
       : null;
 
-  let query = buildScopedPaymentsBaseQuery(auth, empCtx?.departmentId ?? null);
+  const actionableApprovalIds = !auth.isSuperAdmin
+    ? (await listActionablePendingApprovals(auth, PAYMENT_MODULE_CODE, PAYMENT_ENTITY_TYPE)).map(
+        (x) => x.id,
+      )
+    : [];
+  const actionableIdSet = new Set(actionableApprovalIds);
+
+  let query = buildScopedPaymentsBaseQuery(auth, empCtx?.departmentId ?? null, actionableApprovalIds);
   if (branchId) {
     query = query.where('p.branch_id', '=', branchId);
   }
@@ -1091,13 +1120,13 @@ export async function getPaymentsSummary(
       'p.due_date',
       'p.advance_due_date',
       'p.paid_at',
+      'ar.id as ar_id',
       'ar.status as ar_status',
       'ar.current_approver_user_id',
       'ar.current_approver_role_id',
     ])
     .execute();
 
-  const roleIds = auth.roles.map((r) => r.id);
   const today = getTodayDateString();
   const currentMonthPrefix = today.slice(0, 7);
 
@@ -1141,10 +1170,7 @@ export async function getPaymentsSummary(
 
     if (r.status === 'PENDING_APPROVAL' && r.ar_status === 'PENDING') {
       const canAct =
-        auth.isSuperAdmin ||
-        Number(r.current_approver_user_id) === auth.userId ||
-        (r.current_approver_role_id !== null &&
-          roleIds.includes(Number(r.current_approver_role_id)));
+        auth.isSuperAdmin || (r.ar_id !== null && actionableIdSet.has(Number(r.ar_id)));
       if (canAct) {
         summary.pendingMyApprovalCount += 1;
         summary.pendingMyApprovalAmount += totalAmount;
@@ -1186,61 +1212,82 @@ export async function getPaymentsSummary(
 
 export async function getPaymentFormOptions(auth: AuthContext): Promise<PaymentFormOptionsView> {
   const db = getDb();
-  const [empCtx, openAdvancesRows, proposalRows, projectRows, activeBudgets] = await Promise.all([
-    resolveRequesterEmployeeContext(auth.userId),
-    db
-      .selectFrom('payment_requests as pr')
-      .leftJoin('payment_budgets as pb', 'pb.id', 'pr.budget_id')
-      .select([
-        'pr.id',
-        'pr.code',
-        'pr.title',
-        'pr.disbursed_amount',
-        'pr.advance_due_date',
-        'pr.budget_id',
-        'pb.code as budget_code',
-        'pb.name as budget_name',
-        'pb.name_en as budget_name_en',
-      ])
-      .where('pr.deleted_at', 'is', null)
-      .where('pr.payment_type', '=', 'CASH_ADVANCE')
-      .where('pr.status', '=', 'PAID')
-      .where('pr.is_settled', '=', 0)
-      .$if(!isFinanceManager(auth), (qb) => qb.where('pr.requester_user_id', '=', auth.userId))
-      .orderBy('pr.paid_at', 'desc')
-      .limit(50)
-      .execute(),
-    db
-      .selectFrom('proposals as prop')
-      .leftJoin('payment_budgets as pb', 'pb.id', 'prop.budget_id')
-      .select([
-        'prop.id',
-        'prop.proposal_code',
-        'prop.title',
-        'prop.approved_budget',
-        'prop.estimated_budget',
-        'prop.budget_id',
-        'pb.code as budget_code',
-        'pb.name as budget_name',
-        'pb.name_en as budget_name_en',
-        'prop.budget_reserved_amount',
-        'prop.vendor_name',
-      ])
-      .where('prop.deleted_at', 'is', null)
-      .where('prop.status', 'in', ['APPROVED', 'IN_EXECUTION'])
-      .orderBy('prop.id', 'desc')
-      .limit(50)
-      .execute(),
-    db
-      .selectFrom('projects')
-      .select(['id', 'code', 'name'])
-      .where('deleted_at', 'is', null)
-      .where('status', 'in', ['PLANNING', 'ACTIVE'])
-      .orderBy('id', 'desc')
-      .limit(50)
-      .execute(),
-    listActiveBudgetOptions(auth),
-  ]);
+  const canViewAllProposals =
+    isFinanceManager(auth) ||
+    auth.isSuperAdmin ||
+    auth.dataScope === 'ALL' ||
+    auth.permissions.includes('proposals.manage');
+  const empScope = canViewAllProposals ? null : await resolveEmployeeAccessScope(auth);
+
+  let proposalsQuery = db
+    .selectFrom('proposals as prop')
+    .leftJoin('payment_budgets as pb', 'pb.id', 'prop.budget_id')
+    .select([
+      'prop.id',
+      'prop.proposal_code',
+      'prop.title',
+      'prop.approved_budget',
+      'prop.estimated_budget',
+      'prop.budget_id',
+      'pb.code as budget_code',
+      'pb.name as budget_name',
+      'pb.name_en as budget_name_en',
+      'prop.budget_reserved_amount',
+      'prop.vendor_name',
+    ])
+    .where('prop.deleted_at', 'is', null)
+    .where('prop.status', 'in', ['APPROVED', 'IN_EXECUTION']);
+
+  if (!canViewAllProposals && empScope) {
+    proposalsQuery = proposalsQuery.where((eb) => {
+      const conds = [eb('prop.requester_user_id', '=', auth.userId)];
+      if (empScope.mode === 'BRANCH' && empScope.branchIds.length > 0) {
+        conds.push(eb('prop.branch_id', 'in', empScope.branchIds));
+      } else if (empScope.mode === 'DEPARTMENT' && empScope.departmentIds.length > 0) {
+        conds.push(eb('prop.department_id', 'in', empScope.departmentIds));
+      }
+      return eb.or(conds);
+    });
+  }
+
+  const canReadProjects =
+    auth.isSuperAdmin ||
+    auth.permissions.includes('pm.projects.read') ||
+    auth.permissions.includes('pm.projects.manage');
+
+  const [empCtx, openAdvancesRows, proposalRows, scopedProjectsRes, activeBudgets] =
+    await Promise.all([
+      resolveRequesterEmployeeContext(auth.userId),
+      db
+        .selectFrom('payment_requests as pr')
+        .leftJoin('payment_budgets as pb', 'pb.id', 'pr.budget_id')
+        .select([
+          'pr.id',
+          'pr.code',
+          'pr.title',
+          'pr.disbursed_amount',
+          'pr.advance_due_date',
+          'pr.budget_id',
+          'pb.code as budget_code',
+          'pb.name as budget_name',
+          'pb.name_en as budget_name_en',
+        ])
+        .where('pr.deleted_at', 'is', null)
+        .where('pr.payment_type', '=', 'CASH_ADVANCE')
+        .where('pr.status', '=', 'PAID')
+        .where('pr.is_settled', '=', 0)
+        .$if(!isFinanceManager(auth), (qb) => qb.where('pr.requester_user_id', '=', auth.userId))
+        .orderBy('pr.paid_at', 'desc')
+        .limit(50)
+        .execute(),
+      proposalsQuery.orderBy('prop.id', 'desc').limit(50).execute(),
+      canReadProjects ? listProjects(auth, { limit: '50' }) : Promise.resolve({ items: [] }),
+      listActiveBudgetOptions(auth),
+    ]);
+
+  const projectRows = scopedProjectsRes.items.filter(
+    (pr) => pr.status === 'PLANNING' || pr.status === 'ACTIVE',
+  );
 
   return {
     myBankProfile: {
@@ -1274,7 +1321,7 @@ export async function getPaymentFormOptions(auth: AuthContext): Promise<PaymentF
       vendorName: p.vendor_name ?? null,
     })),
     activeProjects: projectRows.map((pr) => ({
-      id: Number(pr.id),
+      id: pr.id,
       code: pr.code,
       name: pr.name,
     })),
@@ -1962,8 +2009,6 @@ export async function transitionPaymentStatus(
 ): Promise<PaymentDetailView> {
   const access = await assertPaymentViewAccess(auth, paymentId);
   const db = getDb();
-  const roleIds = auth.roles.map((r) => r.id);
-
   if (input.action === 'REQUEST_REVISION') {
     if (access.status !== 'PENDING_APPROVAL') {
       throw new AppError(
@@ -1977,15 +2022,25 @@ export async function transitionPaymentStatus(
     if (!canRevise && access.approvalRequestId) {
       const ar = await db
         .selectFrom('approval_requests')
-        .select(['current_approver_user_id', 'current_approver_role_id', 'status'])
+        .select(['requester_id', 'branch_id', 'current_approver_user_id', 'current_approver_role_id', 'status'])
         .where('id', '=', access.approvalRequestId)
         .executeTakeFirst();
       if (
         ar &&
         ar.status === 'PENDING' &&
-        (Number(ar.current_approver_user_id) === auth.userId ||
-          (ar.current_approver_role_id !== null &&
-            roleIds.includes(Number(ar.current_approver_role_id))))
+        (await canAuthActOnApproval(
+          {
+            requesterId: Number(ar.requester_id),
+            branchId: ar.branch_id !== null ? Number(ar.branch_id) : access.branchId,
+            requesterDepartmentId: access.departmentId,
+            currentApproverUserId:
+              ar.current_approver_user_id !== null ? Number(ar.current_approver_user_id) : null,
+            currentApproverRoleId:
+              ar.current_approver_role_id !== null ? Number(ar.current_approver_role_id) : null,
+          },
+          auth,
+          'APPROVE',
+        ))
       ) {
         canRevise = true;
       }

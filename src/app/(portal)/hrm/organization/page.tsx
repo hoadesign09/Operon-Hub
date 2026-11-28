@@ -23,6 +23,7 @@ import {
 } from '@/components/hrm/OrgChartTree';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonOrgTree, SkeletonTable } from '@/components/ui/Skeleton';
 import { computeOrgTreeMetrics } from '@/lib/portable/org-chart-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -599,11 +600,16 @@ export default function HrmOrganizationPage() {
       )}
 
       {viewState === 'loading' && (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-100" />
-          ))}
-        </div>
+        activeTab === 'tree' ? (
+          <SkeletonOrgTree />
+        ) : (
+          <SkeletonTable
+            rows={6}
+            columns={activeTab === 'departments' ? 8 : 5}
+            showToolbar={false}
+            showPagination={false}
+          />
+        )
       )}
 
       {viewState === 'error' && (

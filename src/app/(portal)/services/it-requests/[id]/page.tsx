@@ -40,7 +40,9 @@ import {
   ItRequestFormModal,
   type ItCategoryOption,
 } from '@/components/it-requests/ItRequestFormModal';
+import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SkeletonDetailPage } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import type { SlaHealthStatus } from '@/lib/portable/sla-calculator';
@@ -229,6 +231,8 @@ export default function ItRequestDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { locale, tr, ln } = useI18n();
+  const { hasPermission } = usePortalAuth();
+  const canManageIt = hasPermission('it_requests.manage');
   const isEn = locale === 'en';
   const ticketId = Number(params?.id);
   const isValidTicketId = Number.isInteger(ticketId) && ticketId > 0;
@@ -291,10 +295,12 @@ export default function ItRequestDetailPage() {
         cache: 'no-store',
         signal: controller.signal,
       }),
-      fetch('/api/v1/it-requests/assignable-staff', {
-        cache: 'no-store',
-        signal: controller.signal,
-      }),
+      canManageIt
+        ? fetch('/api/v1/it-requests/assignable-staff', {
+            cache: 'no-store',
+            signal: controller.signal,
+          })
+        : Promise.resolve(null),
     ])
       .then(async ([dRes, cRes, aRes, catRes, stRes]) => {
         if (controller.signal.aborted) return;
@@ -303,7 +309,7 @@ export default function ItRequestDetailPage() {
           cRes.json().catch(() => null),
           aRes.json().catch(() => null),
           catRes.json().catch(() => null),
-          stRes.json().catch(() => null),
+          stRes ? stRes.json().catch(() => null) : Promise.resolve(null),
         ]);
         if (!dRes.ok || !dJson?.success || !dJson.data) {
           setErrorCode(dJson?.error?.message ?? ERR_LOAD_DETAIL);
@@ -314,7 +320,7 @@ export default function ItRequestDetailPage() {
         if (cRes.ok && cJson?.success) setComments((cJson.data ?? []) as CommentRow[]);
         if (aRes.ok && aJson?.success) setAttachments((aJson.data ?? []) as AttachmentRow[]);
         if (catRes.ok && catJson?.success) setCategories((catJson.data ?? []) as ItCategoryOption[]);
-        if (stRes.ok && stJson?.success) setStaff((stJson.data ?? []) as AssignableStaff[]);
+        if (stRes?.ok && stJson?.success) setStaff((stJson.data ?? []) as AssignableStaff[]);
         setErrorCode('');
         setViewState('success');
       })
@@ -325,7 +331,7 @@ export default function ItRequestDetailPage() {
       });
 
     return () => controller.abort();
-  }, [ticketId, isValidTicketId, reloadTick]);
+  }, [ticketId, isValidTicketId, reloadTick, canManageIt]);
 
   function reload() {
     setActionError('');
@@ -565,15 +571,7 @@ export default function ItRequestDetailPage() {
   }
 
   if (viewState === 'loading') {
-    return (
-      <div className="w-full space-y-4">
-        <div className="h-28 animate-pulse rounded-2xl bg-slate-200" />
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          <div className="h-96 animate-pulse rounded-2xl bg-slate-100 lg:col-span-8" />
-          <div className="h-96 animate-pulse rounded-2xl bg-slate-100 lg:col-span-4" />
-        </div>
-      </div>
-    );
+    return <SkeletonDetailPage showKpis showBottomWorkflow />;
   }
 
   if (viewState === 'error' || !detail) {

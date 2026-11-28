@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { IconRefresh } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
 import { WorkloadHeatmap } from '@/components/projects/WorkloadHeatmap';
+import { SkeletonGanttChart, SkeletonKpiGrid } from '@/components/ui/Skeleton';
 import type { WorkloadMatrixResult } from '@/lib/portable/workload-calculator';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -83,7 +84,7 @@ export default function ProjectWorkloadPage() {
         </div>
       </div>
 
-      {matrix && (
+      {matrix ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-xs text-slate-500">{tr('Nhân sự theo dõi', 'Tracked Staff')}</p>
@@ -102,10 +103,16 @@ export default function ProjectWorkloadPage() {
             </p>
           </div>
         </div>
-      )}
+      ) : loading ? (
+        <SkeletonKpiGrid
+          count={3}
+          compact
+          columnsClass="grid-cols-1 gap-3 sm:grid-cols-3"
+        />
+      ) : null}
 
       {loading || !matrix ? (
-        <div className="h-80 animate-pulse rounded-2xl bg-white" />
+        <SkeletonGanttChart rows={6} />
       ) : (
         <WorkloadHeatmap matrix={matrix} />
       )}

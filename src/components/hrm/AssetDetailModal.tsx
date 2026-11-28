@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { IconDownload, IconRefresh, IconX } from '@tabler/icons-react';
+import { Skeleton, SkeletonListRows } from '@/components/ui/Skeleton';
 import { formatVND } from '@/lib/portable/currency-utils';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import type {
@@ -106,9 +107,25 @@ export function AssetDetailModal({ assetId, onClose }: AssetDetailModalProps) {
 
         <div className="flex-1 space-y-5 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="space-y-3">
-              <div className="h-20 animate-pulse rounded-xl bg-slate-100" />
-              <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
+            <div
+              role="status"
+              aria-busy="true"
+              aria-label="Loading asset details"
+              className="space-y-5"
+            >
+              <div className="grid grid-cols-2 gap-3 rounded-xl border border-[#CFD6DF] bg-[#F8F9FB] p-4 sm:grid-cols-3">
+                {Array.from({ length: 6 }, (_, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <Skeleton className="h-2.5 w-20" />
+                    <Skeleton className="h-4 w-28 max-w-full" />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-3 w-48" />
+                <SkeletonListRows rows={3} divided={false} showMeta />
+              </div>
+              <span className="sr-only">Loading</span>
             </div>
           ) : errorMessage ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center">

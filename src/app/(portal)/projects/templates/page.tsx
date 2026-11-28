@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { IconCopy, IconPlus } from '@tabler/icons-react';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonCardGrid } from '@/components/ui/Skeleton';
 import type { ProjectMethodology } from '@/config/database';
 import { DEFAULT_PROJECT_BOARD_COLUMNS } from '@/modules/projects/projects.constants';
 import type { ProjectTemplateView } from '@/modules/projects/templates-automation.service';
@@ -185,11 +186,10 @@ export default function ProjectTemplatesPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="h-40 animate-pulse rounded-2xl bg-white" />
-          ))}
-        </div>
+        <SkeletonCardGrid
+          count={3}
+          columnsClass="grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+        />
       ) : templates.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-xs text-slate-500">
           <IconCopy size={24} className="mx-auto mb-2 text-slate-300" />

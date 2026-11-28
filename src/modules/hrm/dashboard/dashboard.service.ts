@@ -426,6 +426,27 @@ export async function getHrmDashboardSummary(
     // Assets inventory summary
     visibility.canViewAssets
       ? (() => {
+          if (scope.mode === 'DEPARTMENT') {
+            if (scope.departmentIds.length === 0) {
+              return Promise.resolve([]);
+            }
+            return db
+              .selectFrom('assets')
+              .innerJoin('asset_assignments', (join) =>
+                join
+                  .onRef('asset_assignments.asset_id', '=', 'assets.id')
+                  .on('asset_assignments.status', '=', 'ACTIVE')
+                  .on('asset_assignments.deleted_at', 'is', null),
+              )
+              .innerJoin('employees', 'employees.id', 'asset_assignments.employee_id')
+              .select(['assets.status', (eb) => eb.fn.count<number>('assets.id').as('cnt')])
+              .where('assets.deleted_at', 'is', null)
+              .where('employees.deleted_at', 'is', null)
+              .where('employees.department_id', 'in', scope.departmentIds)
+              .groupBy('assets.status')
+              .execute();
+          }
+
           let q = db
             .selectFrom('assets')
             .select(['status', (eb) => eb.fn.count<number>('id').as('cnt')])
@@ -456,7 +477,13 @@ export async function getHrmDashboardSummary(
             .where('employees.deleted_at', 'is', null)
             .where('employees.employment_status', 'in', ['RESIGNED', 'TERMINATED']);
 
-          if (branchFilter !== null) {
+          if (scope.mode === 'DEPARTMENT') {
+            if (scope.departmentIds.length > 0) {
+              q = q.where('employees.department_id', 'in', scope.departmentIds);
+            } else {
+              q = q.where('asset_assignments.id', '=', -1);
+            }
+          } else if (branchFilter !== null) {
             if (branchFilter.length > 0) {
               q = q.where('assets.branch_id', 'in', branchFilter);
             } else {

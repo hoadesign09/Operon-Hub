@@ -20,6 +20,7 @@ import {
 } from '@/lib/portable/pagination';
 import { recordAuditLog } from '@/modules/audit/audit.service';
 import type { AuthContext } from '@/modules/auth/auth.service';
+import { resolveEmployeeAccessScope } from '@/modules/hrm/employees/employees.scope';
 import {
   createNotification,
   createNotificationsForRole,
@@ -103,7 +104,7 @@ function resolveStepAssignee(
   if (step.approver_type === 'DIRECT_MANAGER' && directManagerUserId) {
     return {
       approverUserId: directManagerUserId,
-      approverRoleId: step.approver_role_id !== null ? Number(step.approver_role_id) : null,
+      approverRoleId: null,
     };
   }
   return {
@@ -290,8 +291,15 @@ export function canUserActOnApproval(
     requesterId: number;
     currentApproverUserId: number | null;
     currentApproverRoleId: number | null;
+    branchId?: number | null;
+    requesterDepartmentId?: number | null;
   },
-  actor: Pick<AuthContext, 'userId' | 'isSuperAdmin' | 'roles'>,
+  actor: Pick<AuthContext, 'userId' | 'isSuperAdmin' | 'roles'> & {
+    permissions?: readonly string[];
+    hasAllBranches?: boolean;
+    branchIds?: readonly number[];
+    departmentIds?: readonly number[];
+  },
   action: ApprovalActionType,
 ): boolean {
   if (action === 'CANCEL') {
@@ -300,13 +308,196 @@ export function canUserActOnApproval(
   if (actor.isSuperAdmin) {
     return true;
   }
-  if (request.currentApproverUserId !== null && request.currentApproverUserId === actor.userId) {
-    return true;
+  // Prevent self-approval on APPROVE / REJECT
+  if (request.requesterId === actor.userId) {
+    return false;
+  }
+  // Enforce core.approvals.act when full AuthContext permissions are provided
+  if (actor.permissions && !actor.permissions.includes('core.approvals.act')) {
+    return false;
+  }
+  // If a specific approver user is assigned (SPECIFIC_USER or resolved DIRECT_MANAGER),
+  // ONLY that exact user may act — do NOT fall through to currentApproverRoleId.
+  if (request.currentApproverUserId !== null) {
+    return request.currentApproverUserId === actor.userId;
   }
   if (request.currentApproverRoleId !== null) {
-    return actor.roles.some((r) => r.id === request.currentApproverRoleId);
+    const matchingRoles = actor.roles.filter((r) => r.id === request.currentApproverRoleId);
+    if (matchingRoles.length === 0) {
+      return false;
+    }
+
+    // Enforce branch boundary for branch-scoped role assignments
+    if (request.branchId !== undefined && request.branchId !== null) {
+      const branchAllowed = matchingRoles.some(
+        (r) =>
+          (r.branchId === null && (r.dataScope === 'ALL' || actor.hasAllBranches !== false)) ||
+          r.branchId === request.branchId,
+      );
+      if (!branchAllowed) {
+        return false;
+      }
+    }
+
+    // Enforce department boundary when every matching role is DEPARTMENT-scoped
+    const requiresDeptMatch = matchingRoles.every((r) => r.dataScope === 'DEPARTMENT');
+    if (
+      requiresDeptMatch &&
+      actor.departmentIds !== undefined &&
+      request.requesterDepartmentId !== undefined
+    ) {
+      return (
+        request.requesterDepartmentId !== null &&
+        actor.departmentIds.includes(request.requesterDepartmentId)
+      );
+    }
+
+    return true;
   }
   return false;
+}
+
+export async function canAuthActOnApproval(
+  request: {
+    requesterId: number;
+    currentApproverUserId: number | null;
+    currentApproverRoleId: number | null;
+    branchId?: number | null;
+    requesterDepartmentId?: number | null;
+  },
+  auth: AuthContext,
+  action: ApprovalActionType,
+): Promise<boolean> {
+  if (action === 'CANCEL' || auth.isSuperAdmin) {
+    return canUserActOnApproval(request, auth, action);
+  }
+  if (request.requesterId === auth.userId || !auth.permissions.includes('core.approvals.act')) {
+    return false;
+  }
+  if (request.currentApproverUserId !== null) {
+    return request.currentApproverUserId === auth.userId;
+  }
+
+  let requesterDepartmentId = request.requesterDepartmentId;
+  let departmentIds: number[] | undefined;
+
+  if (request.currentApproverRoleId !== null) {
+    const matchingRoles = auth.roles.filter((r) => r.id === request.currentApproverRoleId);
+    if (matchingRoles.length === 0) {
+      return false;
+    }
+    const requiresDeptMatch = matchingRoles.every((r) => r.dataScope === 'DEPARTMENT');
+    if (requiresDeptMatch) {
+      const scope = await resolveEmployeeAccessScope(auth);
+      departmentIds = scope.departmentIds;
+      if (requesterDepartmentId === undefined) {
+        const db = getDb();
+        const reqEmp = await db
+          .selectFrom('employees')
+          .select(['department_id'])
+          .where('user_id', '=', request.requesterId)
+          .where('deleted_at', 'is', null)
+          .executeTakeFirst();
+        requesterDepartmentId = reqEmp ? Number(reqEmp.department_id) : null;
+      }
+    }
+  }
+
+  return canUserActOnApproval(
+    { ...request, requesterDepartmentId },
+    { ...auth, departmentIds },
+    action,
+  );
+}
+
+export async function listActionablePendingApprovals(
+  auth: AuthContext,
+  moduleCode?: string,
+  entityType?: string,
+): Promise<Array<{ id: number; entityId: number; entityType: string }>> {
+  if (!auth.isSuperAdmin && !auth.permissions.includes('core.approvals.act')) {
+    return [];
+  }
+
+  const db = getDb();
+  const roleIds = auth.roles.map((r) => r.id);
+
+  let q = db
+    .selectFrom('approval_requests as ar')
+    .leftJoin('employees as req_emp', (join) =>
+      join.onRef('req_emp.user_id', '=', 'ar.requester_id').on('req_emp.deleted_at', 'is', null),
+    )
+    .select([
+      'ar.id',
+      'ar.entity_id',
+      'ar.entity_type',
+      'ar.branch_id',
+      'ar.requester_id',
+      'ar.current_approver_user_id',
+      'ar.current_approver_role_id',
+      'req_emp.department_id as requester_department_id',
+    ])
+    .where('ar.status', '=', 'PENDING');
+
+  if (moduleCode) {
+    q = q.where('ar.module_code', '=', moduleCode);
+  }
+  if (entityType) {
+    q = q.where('ar.entity_type', '=', entityType);
+  }
+  if (!auth.isSuperAdmin) {
+    q = q.where('ar.requester_id', '!=', auth.userId);
+    q = q.where((eb) => {
+      const conds = [eb('ar.current_approver_user_id', '=', auth.userId)];
+      if (roleIds.length > 0) {
+        conds.push(
+          eb.and([
+            eb('ar.current_approver_user_id', 'is', null),
+            eb('ar.current_approver_role_id', 'in', roleIds),
+          ]),
+        );
+      }
+      return eb.or(conds);
+    });
+  }
+
+  const rows = await q.execute();
+  if (auth.isSuperAdmin) {
+    return rows.map((r) => ({
+      id: Number(r.id),
+      entityId: Number(r.entity_id),
+      entityType: r.entity_type,
+    }));
+  }
+
+  const hasDeptScopedRole = auth.roles.some((r) => r.dataScope === 'DEPARTMENT');
+  const departmentIds = hasDeptScopedRole
+    ? (await resolveEmployeeAccessScope(auth)).departmentIds
+    : undefined;
+
+  const actor = { ...auth, departmentIds };
+  return rows
+    .filter((r) =>
+      canUserActOnApproval(
+        {
+          requesterId: Number(r.requester_id),
+          currentApproverUserId:
+            r.current_approver_user_id !== null ? Number(r.current_approver_user_id) : null,
+          currentApproverRoleId:
+            r.current_approver_role_id !== null ? Number(r.current_approver_role_id) : null,
+          branchId: r.branch_id !== null ? Number(r.branch_id) : null,
+          requesterDepartmentId:
+            r.requester_department_id !== null ? Number(r.requester_department_id) : null,
+        },
+        actor,
+        'APPROVE',
+      ),
+    )
+    .map((r) => ({
+      id: Number(r.id),
+      entityId: Number(r.entity_id),
+      entityType: r.entity_type,
+    }));
 }
 
 export async function listApprovalInbox(
@@ -326,7 +517,11 @@ export async function listApprovalInbox(
   );
 
   const scope = query.scope ?? 'pending_my_action';
-  const roleIds = auth.roles.map((r) => r.id);
+  const actionablePendingIds = !auth.isSuperAdmin
+    ? (await listActionablePendingApprovals(auth, query.moduleCode?.trim() || undefined)).map(
+        (x) => x.id,
+      )
+    : [];
 
   let baseQuery = db.selectFrom('approval_requests as ar');
 
@@ -335,22 +530,27 @@ export async function listApprovalInbox(
   } else if (scope === 'pending_my_action') {
     baseQuery = baseQuery.where('ar.status', '=', 'PENDING');
     if (!auth.isSuperAdmin) {
-      baseQuery = baseQuery.where((eb) => {
-        const conditions = [eb('ar.current_approver_user_id', '=', auth.userId)];
-        if (roleIds.length > 0) {
-          conditions.push(eb('ar.current_approver_role_id', 'in', roleIds));
-        }
-        return eb.or(conditions);
-      });
+      if (actionablePendingIds.length === 0) {
+        return {
+          items: [],
+          meta: buildPaginationMeta(0, pagination.page, pagination.limit),
+        };
+      }
+      baseQuery = baseQuery.where('ar.id', 'in', actionablePendingIds);
     }
   } else if (!auth.isSuperAdmin) {
+    const actedRows = await db
+      .selectFrom('approval_histories')
+      .select(['approval_request_id'])
+      .where('actor_id', '=', auth.userId)
+      .distinct()
+      .execute();
+    const actedIds = actedRows.map((r) => Number(r.approval_request_id));
+    const visibleIds = Array.from(new Set([...actionablePendingIds, ...actedIds]));
     baseQuery = baseQuery.where((eb) => {
-      const conditions = [
-        eb('ar.requester_id', '=', auth.userId),
-        eb('ar.current_approver_user_id', '=', auth.userId),
-      ];
-      if (roleIds.length > 0) {
-        conditions.push(eb('ar.current_approver_role_id', 'in', roleIds));
+      const conditions = [eb('ar.requester_id', '=', auth.userId)];
+      if (visibleIds.length > 0) {
+        conditions.push(eb('ar.id', 'in', visibleIds));
       }
       return eb.or(conditions);
     });
@@ -502,7 +702,7 @@ export async function getApprovalDetailWithHistory(
     completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,
   };
 
-  const canActApprove = canUserActOnApproval(requestItem, auth, 'APPROVE');
+  const canActApprove = await canAuthActOnApproval(requestItem, auth, 'APPROVE');
   const canActCancel = canUserActOnApproval(requestItem, auth, 'CANCEL');
 
   const historyRows = await db
@@ -584,9 +784,10 @@ export async function actOnApprovalRequest(
     );
   }
 
-  const allowed = canUserActOnApproval(
+  const allowed = await canAuthActOnApproval(
     {
       requesterId: Number(existing.requester_id),
+      branchId: existing.branch_id !== null ? Number(existing.branch_id) : null,
       currentApproverUserId:
         existing.current_approver_user_id !== null
           ? Number(existing.current_approver_user_id)

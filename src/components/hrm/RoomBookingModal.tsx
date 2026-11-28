@@ -17,6 +17,7 @@ import {
   IconUsers,
   IconX,
 } from '@tabler/icons-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { RoomBookingStatus } from '@/config/database';
 import { formatDateTimeVN } from '@/lib/portable/date-utils';
 import type { MeetingRoomItem, RoomBookingItem } from '@/modules/hrm/office/meeting-rooms.service';
@@ -985,10 +986,7 @@ export function RoomBookingModal({
                 </label>
 
                 {!clientTimeError && isCheckingAvailability && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600">
-                    <IconLoader2 size={13} className="animate-spin" />
-                    <span>{tr('Đang kiểm tra phòng trống...', 'Checking availability...')}</span>
-                  </span>
+                  <Skeleton className="h-4 w-28" rounded="full" />
                 )}
 
                 {!clientTimeError &&
@@ -1020,14 +1018,19 @@ export function RoomBookingModal({
                   )}
                 </div>
               ) : isCheckingAvailability ? (
-                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500">
-                  <IconLoader2 size={15} className="animate-spin text-blue-600" />
-                  <span>
-                    {tr(
-                      'Đang xác thực danh sách phòng họp khả dụng...',
-                      'Validating available meeting rooms...',
-                    )}
-                  </span>
+                <div
+                  role="status"
+                  aria-busy="true"
+                  aria-label="Checking available meeting rooms"
+                  className="space-y-2"
+                >
+                  <Skeleton className="h-10 w-full" rounded="sm" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-24" rounded="xs" />
+                    <Skeleton className="h-5 w-16" rounded="xs" />
+                    <Skeleton className="h-5 w-20" rounded="xs" />
+                  </div>
+                  <span className="sr-only">Loading</span>
                 </div>
               ) : availability.status === 'error' ? (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-700">

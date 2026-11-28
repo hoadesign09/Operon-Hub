@@ -25,6 +25,7 @@ import {
 } from '@/components/hrm/EmployeeFormModal';
 import { EmployeeWorkHistoryTimeline } from '@/components/hrm/EmployeeWorkHistoryTimeline';
 import { usePortalAuth } from '@/components/portal/PortalAuthContext';
+import { SkeletonDetailPage } from '@/components/ui/Skeleton';
 import { formatDateVN } from '@/lib/portable/date-utils';
 import { useI18n } from '@/shared/i18n/I18nContext';
 
@@ -295,12 +296,7 @@ export default function EmployeeDetailPage({
   }
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="h-32 animate-pulse rounded-2xl bg-slate-200" />
-        <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />
-      </div>
-    );
+    return <SkeletonDetailPage showTabs showBottomWorkflow={false} />;
   }
 
   if (errorMessage || !employee) {
